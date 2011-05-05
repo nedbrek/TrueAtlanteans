@@ -24,12 +24,13 @@ proc setN {newN} {
 setN 27
 
 # plot one hexagon (flat top, not pointy top) with the upper left vertex at x y
-# place it in canvas obj, with options opt
-# add the item id to the global hexes array
+# (NOTE: the left-middle vertex will be left of x)
+# place it in canvas obj
+# return the item id
 proc plot_hex_full {obj x y} {
 	global n nrad3
-	
-	set hexId [eval $obj create polygon \
+
+	set hexId [$obj create polygon \
       $x                 $y \
 [expr $x + 2 * $n]       $y \
 [expr $x + 3 * $n] [expr $y +     $nrad3] \
@@ -41,6 +42,8 @@ proc plot_hex_full {obj x y} {
 	return $hexId
 }
 
+# plot the hex (x,y) (where x and y are integers 0..i)
+# adds the tag hex_x_y
 proc plot_hex_num {obj x y} {
 	global n nrad3
 	
@@ -53,10 +56,13 @@ proc plot_hex_num {obj x y} {
 
 	set hexId [plot_hex_full $obj [expr ($x * 3 * $n) + $n] [expr $yNum * 2 * $nrad3 + $yOff]]
 
-	$obj itemconfigure $hexId -tags [format "hex_%d_%d" $x $y]
+	set tags [$obj itemcget $hexId -tags]
+	lappend tags [format "hex_%d_%d" $x $y]
+	$obj itemconfigure $hexId -tags $tags
 	return $hexId
 }
 
+# draw the hexes described in region data
 proc drawRegion {w rdata} {
 	set hexId [plot_hex_num $w {*}[dict get $rdata Location]]
 	
@@ -66,6 +72,7 @@ proc drawRegion {w rdata} {
 	$w itemconfigure $hexId -fill $tcolor
 }
 
+# draw all the regions in the turn data
 proc drawMap {w tdata} {
 	set regions [dict get $tdata Regions]
 	foreach r $regions {
