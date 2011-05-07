@@ -88,9 +88,32 @@ proc drawMap {w tdata} {
 #	set cx [$w canvasx $x]
 #	set cy [$w canvasy $y]
 #	set hexId [$w find closest $cx $cy]
+
+# process user click on hex
 proc hexClick {w x y} {
+	# where is the click
 	set hexId [$w find withtag current]
 	if {$hexId eq ""} {return}
+
+	# what was the old active hex
+	set curTags [$w gettags $hexId]
+
+	# was it already active, then done
+	set i [lsearch $curTags active]
+	if {$i != -1} { return }
+
+	# restore normalcy
+	$w itemconfigure active -outline black
+	$w itemconfigure active -width 1
+
+	# move "active" tag from old to current
+	$w dtag active
+	$w addtag active withtag current
+
+	# show active
+	$w itemconfigure active -outline red
+	$w itemconfigure active -width 4
+	$w raise active
 
 	set tags [$w itemcget $hexId -tags]
 	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
@@ -116,7 +139,7 @@ set w [canvas .t.screen -bg white -xscrollcommand ".t.canvasX set" \
 
 pack .t.canvasX -side bottom -fill x
 pack .t.canvasY -side right  -fill y
-pack .t.screen  -side left   -fill both -expand true
+pack .t.screen  -side right  -fill both -expand true
 
 # canvas normally doesn't want focus
 bind $w <Enter> {focus %W}
