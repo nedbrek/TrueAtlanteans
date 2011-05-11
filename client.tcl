@@ -39,6 +39,10 @@ proc dGet {d k} {
 	return [string trim [dict get $d $k]]
 }
 
+proc lGet {l i} {
+	return [string trim [lindex $l $i]]
+}
+
 proc calcTurnNo {m y} {
 	set mN [lsearch $::monthNames $m]
 
@@ -109,21 +113,38 @@ proc drawDB {w db} {
 	}
 }
 
-proc updateTerrain {db tdata} {
-	set regions [dict get $tdata Regions]
+proc updateDb {db tdata} {
+	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
+
+	set regions [dGet $tdata Regions]
 	foreach r $regions {
-		set loc [dict get $r Location]
+		set loc [dGet $r Location]
 		set x [lindex $loc 0]
 		set y [lindex $loc 1]
-		set ttype [dict get $r Terrain]
+		set ttype [dGet $r Terrain]
 		$db eval {INSERT OR REPLACE INTO terrain VALUES ($x, $y, $ttype);}
 
-		set exits [dict get $r Exits]
+		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]
+		set wages   [list [dGet $r Wage] [dGet $r MaxWage]]
+		set region  [dGet $r Region]
+		set city    [dGet $r Town]
+		set pop     [dGet $r Population]
+		set race    [dGet $r Race]
+		set tax     [dGet $r MaxTax]
+		$db eval {
+			INSERT OR REPLACE INTO detail
+			(x, y, turn, weather, wages, region, city, pop, race, tax)
+			VALUES(
+			$x, $y, $turnNo, $weather, $wages, $region, $city, $pop, $race, $tax
+			);
+		}
+
+		set exits [dGet $r Exits]
 		foreach {d e} $exits {
-			set loc [dict get $e Location]
+			set loc [dGet $e Location]
 			set x [lindex $loc 0]
 			set y [lindex $loc 1]
-			set ttype [dict get $e Terrain]
+			set ttype [dGet $e Terrain]
 			$db eval {INSERT OR REPLACE INTO terrain VALUES ($x, $y, $ttype);}
 		}
 	}
@@ -134,27 +155,42 @@ proc updateTerrain {db tdata} {
 #	set hexId [$w find closest $cx $cy]
 
 proc displayRegion {x y} {
-	set d $::region
 	set t .t.fL.tDesc
 	$t delete 1.0 end
 
 	set terrain [db eval {SELECT type FROM terrain WHERE x=$x AND y=$y;}]
-	$t insert end $terrain
-
-	$t insert end " ($x,$y) in [dGet $d Region]\n"
-
-	set city [dict get $d Town]
-	if {[llength $city]} {
-		$t insert end "contains [string trim [lindex $city 0]]"
-		$t insert end " \[[string trim [lindex $city 1]]\]\n"
+	if {$terrain ne ""} {
+		$t insert end "$terrain "
 	}
 
-	$t insert end "[dGet $d Population] peasants "
-	$t insert end "([dGet $d Race]), \$[dGet $d MaxTax].\n"
+	$t insert end "($x,$y)"
+
+	set rdata [db eval {
+		SELECT turn, weather, wages, region, city, pop, race, tax FROM detail
+		WHERE x=$x and y=$y
+		ORDER BY turn DESC LIMIT 1
+	}]
+
+	if {[llength $rdata] == 0} { return }
+
+	$t insert end " in [lGet $rdata 3]\n"
+	$t insert end "Data from turn: [lGet $rdata 0]\n"
+
+	set city [lGet $rdata 4]
+	if {[llength $city]} {
+		$t insert end "contains [lGet $city 0]"
+		$t insert end " \[[lGet $city 1]\]\n"
+	}
+
+	$t insert end "[lGet $rdata 5] peasants "
+	$t insert end "([lGet $rdata 6]), \$[lGet $rdata 7].\n"
 	$t insert end "------------------------------------\n"
-	$t insert end "The weather was [dGet $d WeatherOld] last month;\n"
-	$t insert end "it will be [dGet $d WeatherNew] next month.\n"
-	$t insert end "Wages: \$[dGet $d Wage] (Max: \$[dGet $d MaxWage]).\n"
+	set weather [lindex $rdata 1]
+	$t insert end "The weather was [lGet $weather 0] last month;\n"
+	$t insert end "it will be [lGet $weather 1] next month.\n"
+
+	set wages [lindex $rdata 2]
+	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 }
 
 # process user click on hex
@@ -198,8 +234,7 @@ proc loadData {filename} {
 	set tdata [read $tfile]
 	close $tfile
 
-	set turnNo [calcTurnNo [dict get $tdata Month] [dict get $tdata Year]]
-	updateTerrain db $tdata
+	updateDb db [regsub -all {\n} $tdata " "]
 }
 
 ##############################################################################
@@ -222,7 +257,7 @@ pack .t.fR.canvasY -side right  -fill y
 pack .t.fR.screen  -side right  -fill both -expand 1
 
 pack [frame .t.fL] -side left -anchor nw
-pack [text .t.fL.tDesc -width 40 -height 8] -side top
+pack [text .t.fL.tDesc -width 40 -height 9] -side top
 
 ### bindings
 # canvas normally doesn't want focus
@@ -239,6 +274,26 @@ bind $w <1> {hexClick %W %x %y}
 sqlite3 db "test1.db"
 # terrain table: (x, y) -> terrain type
 db eval {CREATE TABLE terrain (x not null, y not null, type not null, unique(x,y));}
+
+# detailed table: (x, y) -> turn info gathered, wants?, sells?, weather(cur,
+# next) wage(per, max), region, city
+db eval {
+	CREATE TABLE detail (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		x not null,
+		y not null, 
+		turn not null,
+		weather not null,
+		wages not null,
+		region not null,
+		city not null,
+		pop not null,
+		race not null,
+		tax not null,
+		unique(x,y,turn)
+	);
+}
+
 
 loadData 1/creport.3
 loadData 2/creport.3
