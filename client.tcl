@@ -81,7 +81,7 @@ proc plot_hex_full {obj x y} {
 # adds the tag hex_x_y
 proc plot_hex_num {obj x y} {
 	global n nrad3
-	
+
 	set oddRow [expr $y & 1]
 	set yNum [expr $y / 2]
 	set yOff 0
@@ -237,10 +237,105 @@ proc loadData {filename} {
 	updateDb db [regsub -all {\n} $tdata " "]
 }
 
+proc createGame {filename} {
+	wm title .t "True Atlantians - [file tail $filename]"
+
+	if {[info exists ::db]} {
+		::db close
+	}
+	sqlite3 ::db $filename
+
+	# terrain table: (x, y) -> terrain type
+	::db eval {
+		CREATE TABLE terrain (x not null, y not null, type not null,
+		  unique(x,y));
+	}
+
+	# detailed table: (x, y) -> turn info gathered, wants?, sells?, weather(cur,
+	# next) wage(per, max), region, city
+	::db eval {
+		CREATE TABLE detail (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			x not null,
+			y not null, 
+			turn not null,
+			weather not null,
+			wages not null,
+			region not null,
+			city not null,
+			pop not null,
+			race not null,
+			tax not null,
+			unique(x,y,turn)
+		);
+	}
+}
+
+#	set ofile [tk_getOpenFile -initialdir .]
+# menu callbacks
+proc newGame {} {
+	set ofile [tk_getSaveFile]
+	if {$ofile eq ""} { return }
+
+	createGame $ofile
+	.t.fR.screen delete all
+}
+
+proc doOpen {} {
+	set ofile [tk_getOpenFile]
+	if {$ofile eq ""} { return }
+
+	wm title .t "True Atlantians - [file tail $ofile]"
+
+	if {[info exists ::db]} {
+		::db close
+	}
+	sqlite3 ::db $ofile
+	set res [db eval {SELECT name from sqlite_master}]
+	if {[lsearch $res terrain] == -1 ||
+	    [lsearch $res detail]  == -1} {
+		tk_messageBox -message "Error file $ofile is invalid"
+		::db close
+		unset ::db
+	}
+
+	.t.fR.screen delete all
+	drawDB .t.fR.screen db
+}
+
+proc doAdd {} {
+	set ofile [tk_getOpenFile]
+	if {$ofile eq ""} { return }
+
+	loadData $ofile
+
+	.t.fR.screen delete all
+	drawDB .t.fR.screen db
+}
+
+rename exit origExit
+proc exit {} {
+	::db close
+	origExit
+}
+
 ##############################################################################
 toplevel .t
 #bind .t <Destroy> {exit}
-wm title .t "True Atlantians"
+wm title .t "True Atlantians - <no game open>"
+
+# top menu
+menu .mTopMenu -tearoff 0
+menu .mTopMenu.mFile -tearoff 0
+
+.mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
+
+.mTopMenu.mFile add command -label "New"        -command newGame -underline 0 -accelerator "Ctrl+N"
+.mTopMenu.mFile add command -label "Open"       -command doOpen  -underline 0 -accelerator "Ctrl+O"
+.mTopMenu.mFile add command -label "Add Report" -command doAdd   -underline 0
+.mTopMenu.mFile add command -label "Exit"       -command exit    -underline 1 -accelerator "Ctrl+Q"
+
+.t configure -menu .mTopMenu
 
 pack [frame .t.fR] -side right -fill both -expand 1
 
@@ -269,35 +364,4 @@ bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
 
 # bind click
 bind $w <1> {hexClick %W %x %y}
-
-########
-sqlite3 db "test1.db"
-# terrain table: (x, y) -> terrain type
-db eval {CREATE TABLE terrain (x not null, y not null, type not null, unique(x,y));}
-
-# detailed table: (x, y) -> turn info gathered, wants?, sells?, weather(cur,
-# next) wage(per, max), region, city
-db eval {
-	CREATE TABLE detail (
-		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		x not null,
-		y not null, 
-		turn not null,
-		weather not null,
-		wages not null,
-		region not null,
-		city not null,
-		pop not null,
-		race not null,
-		tax not null,
-		unique(x,y,turn)
-	);
-}
-
-
-loadData 1/creport.3
-loadData 2/creport.3
-loadData 3/creport.3
-
-drawDB $w db
 
