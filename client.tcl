@@ -27,11 +27,13 @@ set ::monthNames {
 }
 
 set ::terrainColors {
-	jungle   #205020
-	mountain #704018
-	ocean    #000090
-	plain    #ffffc0
-	swamp    #a0a040
+	desert    #f0d800
+	jungle    #205020
+	mountain  #704018
+	ocean     #000090
+	plain     #ffffc0
+	swamp     #a0a040
+	wasteland #d88040
 }
 
 ##############################################################################
