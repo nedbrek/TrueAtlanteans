@@ -141,6 +141,20 @@ proc updateDb {db tdata} {
 			);
 		}
 
+		set regionId [$db last_insert_rowid]
+		set units [dGet $r Units]
+		foreach u $units {
+			set name   [dGet $u Name]
+			set desc   [dGet $u Desc]
+			set detail [dGet $u Report]
+			$db eval {
+				INSERT OR REPLACE INTO units (regionId, name, desc, detail)
+				VALUES(
+				$regionId, $name, $desc, $detail
+				);
+			}
+		}
+
 		set exits [dGet $r Exits]
 		foreach {d e} $exits {
 			set loc [dGet $e Location]
@@ -271,6 +285,19 @@ proc createGame {filename} {
 			unique(x,y,turn)
 		);
 	}
+
+	::db eval {
+		CREATE TABLE units (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			regionId INTEGER not null,
+			name not null,
+			desc not null,
+			detail not null,
+			FOREIGN KEY (regionId) REFERENCES detail(id)
+			  ON DELETE CASCADE
+			  ON UPDATE CASCADE
+		);
+	}
 }
 
 #	set ofile [tk_getOpenFile -initialdir .]
@@ -317,7 +344,9 @@ proc doAdd {} {
 
 rename exit origExit
 proc exit {} {
-	::db close
+	if {[info exists ::db]} {
+		::db close
+	}
 	origExit
 }
 
@@ -326,7 +355,7 @@ toplevel .t
 #bind .t <Destroy> {exit}
 wm title .t "True Atlantians - <no game open>"
 
-# top menu
+### top menu
 menu .mTopMenu -tearoff 0
 menu .mTopMenu.mFile -tearoff 0
 
@@ -339,12 +368,14 @@ menu .mTopMenu.mFile -tearoff 0
 
 .t configure -menu .mTopMenu
 
+### right frame
 pack [frame .t.fR] -side right -fill both -expand 1
 
 # need scrollbars to navigate
 scrollbar .t.fR.canvasX -command ".t.fR.screen xview" -orient horizontal
 scrollbar .t.fR.canvasY -command ".t.fR.screen yview" -orient vertical
 
+# main canvas
 set w [canvas .t.fR.screen -bg white -xscrollcommand ".t.fR.canvasX set" \
 -yscrollcommand ".t.fR.canvasY set" \
 -scrollregion "0 0 4000 6000"]
@@ -353,8 +384,10 @@ pack .t.fR.canvasX -side bottom -fill x
 pack .t.fR.canvasY -side right  -fill y
 pack .t.fR.screen  -side right  -fill both -expand 1
 
+### left frame
 pack [frame .t.fL] -side left -anchor nw
 pack [text .t.fL.tDesc -width 40 -height 9] -side top
+pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 43] -side top
 
 ### bindings
 # canvas normally doesn't want focus
