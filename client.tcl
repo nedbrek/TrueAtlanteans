@@ -181,12 +181,16 @@ proc displayRegion {x y} {
 
 	$t insert end "($x,$y)"
 
+	# pull the latest turn data
 	set rdata [db eval {
-		SELECT turn, weather, wages, region, city, pop, race, tax FROM detail
+		SELECT turn, weather, wages, region, city, pop, race, tax, id
+		FROM detail
 		WHERE x=$x and y=$y
 		ORDER BY turn DESC LIMIT 1
 	}]
 
+	# clear current unit, in case there is none
+	.t.fL.cbMyUnits set ""
 	if {[llength $rdata] == 0} { return }
 
 	$t insert end " in [lGet $rdata 3]\n"
@@ -207,6 +211,29 @@ proc displayRegion {x y} {
 
 	set wages [lindex $rdata 2]
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
+
+	# unit processing
+	set regionId [lindex $rdata 8]
+	set units [db eval {
+		SELECT name, detail
+		FROM units WHERE regionId=$regionId
+		ORDER BY id
+	}]
+
+	# set up units combox
+	.t.fL.cbMyUnits configure -values ""
+	set unitList {}
+	foreach {name detail} $units {
+		if {$detail eq "own"} {
+			lappend unitList $name
+		} else {
+			# other people's units
+		}
+	}
+	.t.fL.cbMyUnits configure -values $unitList
+	if {[llength $unitList] != 0} {
+		.t.fL.cbMyUnits current 0
+	}
 }
 
 # process user click on hex
