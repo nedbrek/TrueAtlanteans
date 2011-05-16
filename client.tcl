@@ -108,11 +108,26 @@ if {0} {
 
 # draw all the regions in the db data
 proc drawDB {w db} {
-	db eval {SELECT x, y, type FROM terrain} res {
-		set hexId [plot_hex_num $w $res(x) $res(y)]
+	$w delete all
 
-		$w itemconfigure $hexId -fill [dict get $::terrainColors $res(type)]
+	set data [$db eval {
+			SELECT terrain.x, terrain.y, terrain.type FROM terrain
+	}]
+
+	foreach {x y type ct} $data {
+		if {$type eq "nexus"} {continue}
+
+		set hexId [plot_hex_num $w $x $y]
+
+		$w itemconfigure $hexId -fill [dict get $::terrainColors $type]
+
+		# tag unexplored hexes
+		if {$ct == 0} {
+			$w addtag unexplored withtag $hexId
+		}
 	}
+
+	$w itemconfigure unexplored -stipple gray50
 }
 
 proc updateDb {db tdata} {
