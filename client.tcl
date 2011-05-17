@@ -91,7 +91,8 @@ proc plot_hex_num {obj x y} {
 		set yOff $nrad3
 	}
 
-	set hexId [plot_hex_full $obj [expr ($x * 3 * $n) + $n] [expr $yNum * 2 * $nrad3 + $yOff]]
+	set hexId [plot_hex_full $obj [expr ($x * 3 * $n) + $n] \
+	           [expr $yNum * 2 * $nrad3 + $yOff]]
 
 	set tags [$obj itemcget $hexId -tags]
 	lappend tags [format "hex_%d_%d" $x $y]
@@ -111,7 +112,9 @@ proc drawDB {w db} {
 	$w delete all
 
 	set data [$db eval {
-			SELECT terrain.x, terrain.y, terrain.type FROM terrain
+			SELECT x, y, type, detail.turn
+			FROM terrain left outer join detail
+			USING(x,y) GROUP BY terrain.x, terrain.y
 	}]
 
 	foreach {x y type ct} $data {
@@ -122,7 +125,7 @@ proc drawDB {w db} {
 		$w itemconfigure $hexId -fill [dict get $::terrainColors $type]
 
 		# tag unexplored hexes
-		if {$ct == 0} {
+		if {$ct eq ""} {
 			$w addtag unexplored withtag $hexId
 		}
 	}
@@ -139,20 +142,26 @@ proc updateDb {db tdata} {
 		set x [lindex $loc 0]
 		set y [lindex $loc 1]
 		set ttype [dGet $r Terrain]
-		$db eval {INSERT OR REPLACE INTO terrain VALUES ($x, $y, $ttype);}
+		if {$ttype eq "nexus"} {continue}
+
+		set city    [dGet $r Town]
+		set region  [dGet $r Region]
+
+		$db eval {
+			INSERT OR REPLACE INTO terrain VALUES
+			($x, $y, $ttype, $city, $region);
+		}
 
 		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]
 		set wages   [list [dGet $r Wage] [dGet $r MaxWage]]
-		set region  [dGet $r Region]
-		set city    [dGet $r Town]
 		set pop     [dGet $r Population]
 		set race    [dGet $r Race]
 		set tax     [dGet $r MaxTax]
 		$db eval {
 			INSERT OR REPLACE INTO detail
-			(x, y, turn, weather, wages, region, city, pop, race, tax)
+			(x, y, turn, weather, wages, pop, race, tax)
 			VALUES(
-			$x, $y, $turnNo, $weather, $wages, $region, $city, $pop, $race, $tax
+			$x, $y, $turnNo, $weather, $wages, $pop, $race, $tax
 			);
 		}
 
@@ -162,10 +171,12 @@ proc updateDb {db tdata} {
 			set name   [dGet $u Name]
 			set desc   [dGet $u Desc]
 			set detail [dGet $u Report]
+			set orders ""
 			$db eval {
-				INSERT OR REPLACE INTO units (regionId, name, desc, detail)
+				INSERT OR REPLACE INTO units
+				(regionId, name, desc, detail, orders)
 				VALUES(
-				$regionId, $name, $desc, $detail
+				$regionId, $name, $desc, $detail, $orders
 				);
 			}
 		}
@@ -176,7 +187,12 @@ proc updateDb {db tdata} {
 			set x [lindex $loc 0]
 			set y [lindex $loc 1]
 			set ttype [dGet $e Terrain]
-			$db eval {INSERT OR REPLACE INTO terrain VALUES ($x, $y, $ttype);}
+			set city [dGet $e Town]
+			set region [dGet $e Region]
+			$db eval {
+				INSERT OR REPLACE INTO terrain VALUES
+				($x, $y, $ttype, $city, $region);
+			}
 		}
 	}
 }
@@ -189,16 +205,27 @@ proc displayRegion {x y} {
 	set t .t.fL.tDesc
 	$t delete 1.0 end
 
-	set terrain [db eval {SELECT type FROM terrain WHERE x=$x AND y=$y;}]
+	set data [db eval {
+		SELECT type, city, region
+		FROM terrain WHERE x=$x AND y=$y;
+	}]
+
+	set terrain [lGet $data 0]
 	if {$terrain ne ""} {
 		$t insert end "$terrain "
 	}
 
-	$t insert end "($x,$y)"
+	$t insert end "($x,$y) in [lGet $data 2]\n"
+	set city [lGet $data 1]
+	if {[llength $city]} {
+		$t insert end "contains [lGet $city 0]"
+		$t insert end " \[[lGet $city 1]\]\n"
+	}
+
 
 	# pull the latest turn data
 	set rdata [db eval {
-		SELECT turn, weather, wages, region, city, pop, race, tax, id
+		SELECT turn, weather, wages, pop, race, tax, id
 		FROM detail
 		WHERE x=$x and y=$y
 		ORDER BY turn DESC LIMIT 1
@@ -208,17 +235,10 @@ proc displayRegion {x y} {
 	.t.fL.cbMyUnits set ""
 	if {[llength $rdata] == 0} { return }
 
-	$t insert end " in [lGet $rdata 3]\n"
 	$t insert end "Data from turn: [lGet $rdata 0]\n"
 
-	set city [lGet $rdata 4]
-	if {[llength $city]} {
-		$t insert end "contains [lGet $city 0]"
-		$t insert end " \[[lGet $city 1]\]\n"
-	}
-
-	$t insert end "[lGet $rdata 5] peasants "
-	$t insert end "([lGet $rdata 6]), \$[lGet $rdata 7].\n"
+	$t insert end "[lGet $rdata 3] peasants "
+	$t insert end "([lGet $rdata 4]), \$[lGet $rdata 5].\n"
 	$t insert end "------------------------------------\n"
 	set weather [lindex $rdata 1]
 	$t insert end "The weather was [lGet $weather 0] last month;\n"
@@ -228,7 +248,7 @@ proc displayRegion {x y} {
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 
 	# unit processing
-	set regionId [lindex $rdata 8]
+	set regionId [lindex $rdata 6]
 	set units [db eval {
 		SELECT name, detail
 		FROM units WHERE regionId=$regionId
@@ -305,7 +325,12 @@ proc createGame {filename} {
 
 	# terrain table: (x, y) -> terrain type
 	::db eval {
-		CREATE TABLE terrain (x not null, y not null, type not null,
+		CREATE TABLE terrain(
+		x not null,
+		y not null,
+		type not null,
+		city not null,
+		region not null,
 		  unique(x,y));
 	}
 
@@ -319,8 +344,6 @@ proc createGame {filename} {
 			turn not null,
 			weather not null,
 			wages not null,
-			region not null,
-			city not null,
 			pop not null,
 			race not null,
 			tax not null,
@@ -335,6 +358,7 @@ proc createGame {filename} {
 			name not null,
 			desc not null,
 			detail not null,
+			orders not null,
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
