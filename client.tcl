@@ -201,7 +201,39 @@ proc updateDb {db tdata} {
 #	set cy [$w canvasy $y]
 #	set hexId [$w find closest $cx $cy]
 
+proc unitUpdate {} {
+	.t.fL.tOrd delete 1.0 end
+
+	set w .t.fR.screen
+
+	set tags [$w gettags active]
+	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
+
+	if {$i == -1} {return}
+
+	set hexTag [lindex $tags $i]
+	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
+
+	set regionId [db eval {
+		SELECT id
+		FROM detail
+		WHERE x=$x and y=$y
+		ORDER BY turn DESC LIMIT 1
+	}]
+
+	set orders [db eval {
+		SELECT orders
+		FROM units WHERE regionId=$regionId
+		ORDER BY id
+	}]
+	foreach o $orders {
+		.t.fL.tOrd insert end "$o\n"
+	}
+}
+
 proc displayRegion {x y} {
+	unitUpdate
+
 	set t .t.fL.tDesc
 	$t delete 1.0 end
 
@@ -454,11 +486,14 @@ pack .t.fR.screen  -side right  -fill both -expand 1
 pack [frame .t.fL] -side left -anchor nw
 pack [text .t.fL.tDesc -width 40 -height 9] -side top
 pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 43] -side top
+pack [text .t.fL.tOrd -width 40 -height 9] -side top
 
 ### bindings
 # canvas normally doesn't want focus
 bind $w <Enter> {focus %W}
 bind .t.fL.tDesc <Enter> {focus %W}
+
+bind .t.fL.cbMyUnits <<ComboboxSelected>> unitUpdate
 
 # bind mousewheel to vertical scrolling
 bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
