@@ -27,13 +27,15 @@ set ::monthNames {
 }
 
 set ::terrainColors {
-	desert    #f0d800
-	jungle    #205020
-	mountain  #704018
-	ocean     #000090
-	plain     #ffffc0
-	swamp     #a0a040
-	wasteland #d88040
+	desert     #f0d800
+	forest     #00c000
+	jungle     #205020
+	mountain   #704018
+	mystforest #004000
+	ocean      #000090
+	plain      #ffffc0
+	swamp      #a0a040
+	wasteland  #d88040
 }
 
 ##############################################################################
@@ -398,6 +400,24 @@ proc createGame {filename} {
 	}
 }
 
+proc zoomIn {} {
+	set i [lsearch $::zoomLevels $::n]
+	if {$i == -1 || $i+1 == [llength $::zoomLevels]} {return}
+
+	incr i
+	setN [lindex $::zoomLevels $i]
+	drawDB .t.fR.screen db
+}
+
+proc zoomOut {} {
+	set i [lsearch $::zoomLevels $::n]
+	if {$i == -1 || $i == 0} {return}
+
+	incr i -1
+	setN [lindex $::zoomLevels $i]
+	drawDB .t.fR.screen db
+}
+
 #	set ofile [tk_getOpenFile -initialdir .]
 # menu callbacks
 proc newGame {} {
@@ -426,7 +446,6 @@ proc doOpen {} {
 		unset ::db
 	}
 
-	.t.fR.screen delete all
 	drawDB .t.fR.screen db
 }
 
@@ -436,7 +455,6 @@ proc doAdd {} {
 
 	loadData $ofile
 
-	.t.fR.screen delete all
 	drawDB .t.fR.screen db
 }
 
@@ -500,4 +518,8 @@ bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
 
 # bind click
 bind $w <1> {hexClick %W %x %y}
+
+# bind zoom keys
+bind .t.fR.screen <minus> zoomOut
+bind .t.fR.screen <plus> zoomIn
 
