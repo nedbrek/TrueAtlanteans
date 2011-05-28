@@ -121,7 +121,7 @@ proc getRegion {f} {
 
 	# exits
 	set v [getSection $f]
-	set v [string map {\[ @ \] ""} $v]
+	set v [string map {\[ "" \] ""} $v]
 	set exits [split [lrange $v 1 end] "."]
 
 	set eout ""
@@ -132,8 +132,22 @@ proc getRegion {f} {
 		set loc      [lindex $e 3]
 		regexp {\(([[:digit:]]+),([[:digit:]]+)\)} $loc -> x y
 		set lxy [list $x $y]
-		set exRegion   [lrange $e 5 end]
-		lappend eout [list Location $lxy Terrain $terrain]
+
+		set ci [lsearch $e "contains"]
+		if {$ci == -1} {
+			set exRegion [lrange $e 5 end]
+			set town ""
+		} else {
+			set exRegion [string trimright [lrange $e 5 $ci-1] ","]
+
+			set townName [lrange $e $ci+1 end-1]
+			set townType [string trimright [lindex $e end] "."]
+
+			set town [list $townName $townType]
+		}
+
+		lappend eout [list Location $lxy Terrain $terrain Town $town \
+		  Region $exRegion]
 	}
 	dict set region Exits $eout
 
@@ -144,10 +158,25 @@ proc getRegion {f} {
 	while {[lindex $v 0] == "-" ||
 	       [lindex $v 0] == "*" ||
 	       [lindex $v 0] == "+"} {
+
+		# skip building reports
+		if {[lindex $v 0] != "+"} {
+			set quality own
+			if {[lindex $v 0] == "-"} {
+				set quality foreign
+			}
+			set comma [string first "," $v]
+			set n [string range $v 2 $comma-1]
+			set u [dict create Name $n Desc {} Report $quality]
+			dict lappend region Units $u
+		}
+
 		set oldNextLine $::nextLine
 		set filePtr [tell $f]
+
 		set v [getSection $f]
 	}
+
 	seek $f $filePtr
 	set ::nextLine $oldNextLine
 
@@ -161,6 +190,20 @@ if {$argc != 1} {
 }
 
 set f [open [lindex $argv 0]]
+
+# initial headers
+set v [getSection $f]
+while {$v ne "Atlantis Report For:"} {
+	set v [getSection $f]
+}
+
+set v [getSection $f]
+while {[lindex $v 0] ne "Neddites"} {
+	set v [getSection $f]
+}
+
+set v [getSection $f]
+puts "Month [string map {"," ""} $v]"
 
 # skip all the events
 set v [getSection $f]
