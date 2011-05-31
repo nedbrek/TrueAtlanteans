@@ -1,3 +1,4 @@
+package require Tk
 package require sqlite3
 
 wm withdraw .
@@ -521,5 +522,7 @@ bind $w <1> {hexClick %W %x %y}
 
 # bind zoom keys
 bind .t.fR.screen <minus> zoomOut
+bind .t.fR.screen <KP_Subtract> zoomOut
 bind .t.fR.screen <plus> zoomIn
+bind .t.fR.screen <KP_Add> zoomIn
 
