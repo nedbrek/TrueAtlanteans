@@ -39,6 +39,10 @@ set ::terrainColors {
 	wasteland  #d88040
 }
 
+namespace eval gui {
+	set currentTurn 0
+}
+
 ##############################################################################
 proc dGet {d k} {
 	return [string trim [dict get $d $k]]
@@ -217,12 +221,15 @@ proc unitUpdate {} {
 	set hexTag [lindex $tags $i]
 	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
 
-	set regionId [db eval {
-		SELECT id
+	set detail [db eval {
+		SELECT id, turn
 		FROM detail
 		WHERE x=$x and y=$y
 		ORDER BY turn DESC LIMIT 1
 	}]
+	if {[lindex $detail 1] != $gui::currentTurn} { return }
+
+	set regionId [lindex $detail 0]
 
 	set orders [db eval {
 		SELECT orders
@@ -283,6 +290,11 @@ proc displayRegion {x y} {
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 
 	# unit processing
+	.t.fL.cbMyUnits configure -values ""
+
+	# don't show units from the past
+	if {[lindex $rdata 0] != $gui::currentTurn} { return }
+
 	set regionId [lindex $rdata 6]
 	set units [db eval {
 		SELECT name, detail
@@ -291,7 +303,6 @@ proc displayRegion {x y} {
 	}]
 
 	# set up units combox
-	.t.fL.cbMyUnits configure -values ""
 	set unitList {}
 	foreach {name detail} $units {
 		if {$detail eq "own"} {
@@ -447,6 +458,8 @@ proc doOpen {} {
 		unset ::db
 	}
 
+	set gui::currentTurn [db eval {select max(turn) from detail}]
+
 	drawDB .t.fR.screen db
 }
 
@@ -455,6 +468,8 @@ proc doAdd {} {
 	if {$ofile eq ""} { return }
 
 	loadData $ofile
+
+	set gui::currentTurn [db eval {select max(turn) from detail}]
 
 	drawDB .t.fR.screen db
 }
