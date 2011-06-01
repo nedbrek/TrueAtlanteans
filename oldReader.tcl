@@ -214,13 +214,19 @@ while {![regexp {^Unclaimed silver:} $v]} {
 # unclaimed silver
 
 # regions
-puts "Regions \{"
+set regions ""
 set regionData [getRegion $f]
 while {$regionData ne ""} {
-	puts "\{$regionData\}"
+	lappend regions $regionData
 	set regionData [getRegion $f]
 }
-puts "\}"
+puts "Regions [list $regions]"
+
+# orders template
+set v [getSection $f]
+
+# faction number and pass
+set v [getSection $f]
 
 # done
 
