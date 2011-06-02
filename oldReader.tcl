@@ -31,6 +31,74 @@ proc getSection {f} {
 	return $ret
 }
 
+proc searchListOfDict {l i key val} {
+	set d [lindex $l $i]
+	set v [dict get $d $key]
+
+	return [expr {$v eq $val}]
+}
+
+# try and pull a unit's orders (unit is in region xy)
+proc doRegionOrders {f regionVar xy} {
+	set v [getSection $f]
+	if {[eof $f]} { return "" }
+
+	if {[lindex $v 0] ne "unit"} {
+		set loc [lindex $v 2]
+		set xy [string map {( "" ) "" , " "} $loc]
+		return $xy
+	}
+
+	# save name
+	set nameLine $::nextLine
+	set ::nextLine ""
+
+	# pull the orders
+	set orders ""
+	set v [gets $f]
+	while {$v ne ""} {
+		# skip comments
+		if {[string index $v 0] ne ";"} {
+			lappend orders $v
+		}
+
+		set v [gets $f]
+	}
+
+	if {$orders eq ""} {
+		# no orders for this unit
+		return $xy
+	}
+
+	upvar $regionVar regions
+
+	set i 0
+	while {![searchListOfDict $regions $i "Location" $xy]} {
+		incr i
+	}
+	set r [lindex $regions $i]
+
+	# try and get name
+	regexp {^;(.* \([[:digit:]]+\)), } $nameLine -> unitName
+
+	set units [dict get $r Units]
+	set j 0
+	while {![searchListOfDict $units $j "Name" $unitName]} {
+		incr j
+	}
+
+	# put the orders into the unit list
+	set u [lindex $units $j]
+	dict set u "Orders" $orders
+	set units [lreplace $units $j $j $u]
+
+	# update region
+	dict set r Units $units
+	set regions [lreplace $regions $i $i $r]
+
+	return $xy
+}
+
 proc parseRegion {v} {
 	set lm [split $v " "]
 
@@ -220,13 +288,20 @@ while {$regionData ne ""} {
 	lappend regions $regionData
 	set regionData [getRegion $f]
 }
-puts "Regions [list $regions]"
 
 # orders template
-set v [getSection $f]
-
 # faction number and pass
 set v [getSection $f]
 
+# orders
+set v [getSection $f]
+set loc [lindex $v 2]
+set xy [string map {( "" ) "" , " "} $loc]
+
+while {$xy ne ""} {
+	set xy [doRegionOrders $f regions $xy]
+}
+
 # done
+puts "Regions [list $regions]"
 
