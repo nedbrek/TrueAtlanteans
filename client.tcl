@@ -45,6 +45,8 @@ namespace eval gui {
 
 ##############################################################################
 proc dGet {d k} {
+	if {![dict exists $d $k]} { return "" }
+
 	return [string trim [dict get $d $k]]
 }
 
@@ -178,9 +180,9 @@ proc updateDb {db tdata} {
 			set name   [dGet $u Name]
 			set desc   [dGet $u Desc]
 			set detail [dGet $u Report]
-			set orders ""
+			set orders [dGet $u Orders]
 			$db eval {
-				INSERT OR REPLACE INTO units
+				INSERT INTO units
 				(regionId, name, desc, detail, orders)
 				VALUES(
 				$regionId, $name, $desc, $detail, $orders
@@ -208,7 +210,7 @@ proc updateDb {db tdata} {
 #	set cy [$w canvasy $y]
 #	set hexId [$w find closest $cx $cy]
 
-proc unitUpdate {} {
+proc unitUpdate {wcb} {
 	.t.fL.tOrd delete 1.0 end
 
 	set w .t.fR.screen
@@ -231,18 +233,19 @@ proc unitUpdate {} {
 
 	set regionId [lindex $detail 0]
 
+	set name [$wcb get]
 	set orders [db eval {
 		SELECT orders
-		FROM units WHERE regionId=$regionId
+		FROM units WHERE regionId=$regionId AND name=$name
 		ORDER BY id
 	}]
-	foreach o $orders {
+	foreach o [lindex $orders 0] {
 		.t.fL.tOrd insert end "$o\n"
 	}
 }
 
 proc displayRegion {x y} {
-	unitUpdate
+	.t.fL.tOrd delete 1.0 end
 
 	set t .t.fL.tDesc
 	$t delete 1.0 end
@@ -314,6 +317,7 @@ proc displayRegion {x y} {
 	.t.fL.cbMyUnits configure -values $unitList
 	if {[llength $unitList] != 0} {
 		.t.fL.cbMyUnits current 0
+		unitUpdate .t.fL.cbMyUnits
 	}
 }
 
@@ -527,7 +531,7 @@ pack [text .t.fL.tOrd -width 40 -height 9] -side top
 bind $w <Enter> {focus %W}
 bind .t.fL.tDesc <Enter> {focus %W}
 
-bind .t.fL.cbMyUnits <<ComboboxSelected>> unitUpdate
+bind .t.fL.cbMyUnits <<ComboboxSelected>> [list unitUpdate %W]
 
 # bind mousewheel to vertical scrolling
 bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
