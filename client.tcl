@@ -218,7 +218,10 @@ proc updateDb {db tdata} {
 
 proc orderBoxReset {w} {
 	if {$gui::prevUnit ne "" && [$w edit modified]} {
-		puts "modified orders $gui::prevUnit $gui::prevId"
+		set orders [split [string trimright [$w get 1.0 end]] "\n"]
+		db eval [subst {
+			UPDATE units SET orders='$orders' WHERE id='$gui::prevId'
+		}]
 	}
 
 	$w delete 1.0 end
