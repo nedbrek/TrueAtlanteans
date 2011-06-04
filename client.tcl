@@ -41,6 +41,12 @@ set ::terrainColors {
 
 namespace eval gui {
 	set currentTurn 0
+
+	set prevUnit ""
+	set prevId   ""
+
+	set rightX 0
+	set rightY 0
 }
 
 ##############################################################################
@@ -210,8 +216,18 @@ proc updateDb {db tdata} {
 #	set cy [$w canvasy $y]
 #	set hexId [$w find closest $cx $cy]
 
+proc orderBoxReset {w} {
+	if {$gui::prevUnit ne "" && [$w edit modified]} {
+		puts "modified orders $gui::prevUnit $gui::prevId"
+	}
+
+	$w delete 1.0 end
+	$w edit reset
+	$w edit modified 0
+}
+
 proc unitUpdate {wcb} {
-	.t.fL.tOrd delete 1.0 end
+	orderBoxReset .t.fL.tOrd
 
 	set w .t.fR.screen
 
@@ -234,18 +250,24 @@ proc unitUpdate {wcb} {
 	set regionId [lindex $detail 0]
 
 	set name [$wcb get]
-	set orders [db eval {
-		SELECT orders
+	set gui::prevUnit $name
+
+	set data [db eval {
+		SELECT orders, id
 		FROM units WHERE regionId=$regionId AND name=$name
 		ORDER BY id
 	}]
-	foreach o [lindex $orders 0] {
+	set orders [lindex $data 0]
+	set gui::prevId [lindex $data 1]
+
+	foreach o $orders {
 		.t.fL.tOrd insert end "$o\n"
 	}
+	.t.fL.tOrd edit modified 0
 }
 
 proc displayRegion {x y} {
-	.t.fL.tOrd delete 1.0 end
+	orderBoxReset .t.fL.tOrd
 
 	set t .t.fL.tDesc
 	$t delete 1.0 end
@@ -478,6 +500,46 @@ proc doAdd {} {
 	drawDB .t.fR.screen db
 }
 
+proc rightCenter {} {
+	recenter .t.fR.screen $gui::rightX $gui::rightY
+}
+
+proc recenter {w x y} {
+	set width  [winfo width $w]
+	set height [winfo height $w]
+
+	set deltaX [expr double($x)/$width]
+	set deltaY [expr double($y)/$height]
+
+	if {$deltaX > 0.9} {
+		$w xview scroll 4 units
+	} elseif {$deltaX > 0.7} {
+		$w xview scroll 2 units
+	} elseif {$deltaX > 0.5} {
+		$w xview scroll 1 units
+	} elseif {$deltaX < 0.1} {
+		$w xview scroll -4 units
+	} elseif {$deltaX < 0.3} {
+		$w xview scroll -2 units
+	} elseif {$deltaX < 0.5} {
+		$w xview scroll -1 units
+	}
+
+	if {$deltaY > 0.9} {
+		$w yview scroll 4 units
+	} elseif {$deltaY > 0.7} {
+		$w yview scroll 2 units
+	} elseif {$deltaY > 0.5} {
+		$w yview scroll 1 units
+	} elseif {$deltaY < 0.1} {
+		$w yview scroll -4 units
+	} elseif {$deltaY < 0.3} {
+		$w yview scroll -2 units
+	} elseif {$deltaY < 0.5} {
+		$w yview scroll -1 units
+	}
+}
+
 rename exit origExit
 proc exit {} {
 	if {[info exists ::db]} {
@@ -516,32 +578,48 @@ set w [canvas .t.fR.screen -bg white -xscrollcommand ".t.fR.canvasX set" \
 -yscrollcommand ".t.fR.canvasY set" \
 -scrollregion "0 0 4000 6000"]
 
+# right-click menu
+menu .mRight -tearoff 0
+.mRight add command -label "Center" -command {rightCenter}
+
 pack .t.fR.canvasX -side bottom -fill x
 pack .t.fR.canvasY -side right  -fill y
 pack .t.fR.screen  -side right  -fill both -expand 1
 
 ### left frame
 pack [frame .t.fL] -side left -anchor nw
-pack [text .t.fL.tDesc -width 40 -height 9] -side top
-pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 43] -side top
-pack [text .t.fL.tOrd -width 40 -height 9] -side top
+pack [text .t.fL.tDesc -width 42 -height 9] -side top
+pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45] -side top
+pack [text .t.fL.tOrd -width 42 -height 9 -undo 1] -side top
 
 ### bindings
+## canvas
 # canvas normally doesn't want focus
 bind $w <Enter> {focus %W}
 bind .t.fL.tDesc <Enter> {focus %W}
-
-bind .t.fL.cbMyUnits <<ComboboxSelected>> [list unitUpdate %W]
 
 # bind mousewheel to vertical scrolling
 bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
 
 # bind click
 bind $w <1> {hexClick %W %x %y}
+bind $w <Double-1> {recenter %W %x %y}
+bind $w <3> {
+	set gui::rightX %x
+	set gui::rightY %y
+	.mRight post %X %Y
+}
 
 # bind zoom keys
 bind .t.fR.screen <minus> zoomOut
 bind .t.fR.screen <KP_Subtract> zoomOut
 bind .t.fR.screen <plus> zoomIn
 bind .t.fR.screen <KP_Add> zoomIn
+
+## orders
+# update orders on unit dropdown change
+bind .t.fL.cbMyUnits <<ComboboxSelected>> [list unitUpdate %W]
+
+# redo should be default on Windows, but needed on Linux
+bind .t.fL.tOrd <Control-y> {%W edit redo}
 
