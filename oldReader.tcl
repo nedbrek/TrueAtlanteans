@@ -165,7 +165,7 @@ proc getRegion {f} {
 
 	# weather
 	set v [getSection $f]
-	regexp {was (.*) last month; it will be (.*) next month.} $v -> old new
+	regexp {was (.*) last month; it will be (.*) next} $v -> old new
 	dict set region WeatherOld $old
 	dict set region WeatherNew $new
 
