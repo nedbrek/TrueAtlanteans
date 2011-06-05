@@ -155,6 +155,31 @@ proc parseRegion {v} {
 	return $ret
 }
 
+# fields - originally comma separated list of a bunch of stuff
+# return index of first item (after flags)
+proc unitItemsIdx {fields} {
+	# field 0 - name (and report type)
+	# field 1 - faction
+	# fields 2+ flags
+	set i 2
+	while {![string is integer [lindex [lindex $fields $i] 0]]} {
+		incr i
+	}
+	return $i
+}
+
+proc repairItemList {l} {
+	set ret ""
+	foreach i $l {
+		if {[string is integer [lindex $i 0]]} {
+			lappend ret [list [lindex $i 0] [lrange $i 1 end-1] [lindex $i end]]
+		} else {
+			lappend ret [list 1 [lrange $i 0 end-1] [lindex $i end]]
+		}
+	}
+	return $ret
+}
+
 proc getRegion {f} {
 	set v [getSection $f]
 	if {$v eq "Orders Template (Long Format):"} {
@@ -229,13 +254,26 @@ proc getRegion {f} {
 
 		# skip building reports
 		if {[lindex $v 0] != "+"} {
+			# what sort of report is this
 			set quality own
 			if {[lindex $v 0] == "-"} {
 				set quality foreign
 			}
+
+			# get unit name
 			set comma [string first "," $v]
 			set n [string range $v 2 $comma-1]
-			set u [dict create Name $n Desc {} Report $quality]
+
+			set groups [split $v "."]
+
+			set group0 [split [lindex $groups 0] ","]
+			set itemIdx [unitItemsIdx $group0]
+			set items [lrange $group0 $itemIdx end]
+			set items [repairItemList $items]
+
+			# group 3 - skills
+
+			set u [dict create Name $n Desc {} Report $quality Items $items]
 			dict lappend region Units $u
 		}
 
@@ -251,6 +289,54 @@ proc getRegion {f} {
 	return $region
 }
 
+proc parseFile {f} {
+	# initial headers
+	set v [getSection $f]
+	while {$v ne "Atlantis Report For:"} {
+		set v [getSection $f]
+	}
+
+	set v [getSection $f]
+	while {[lindex $v 0] ne "Last"} {
+		set v [getSection $f]
+	}
+
+	set v [getSection $f]
+	puts "Month [string map {"," ""} $v]"
+
+	# skip all the events
+	set v [getSection $f]
+	while {![regexp {^Unclaimed silver:} $v]} {
+		set v [getSection $f]
+	}
+
+	# unclaimed silver
+
+	# regions
+	set regions ""
+	set regionData [getRegion $f]
+	while {$regionData ne ""} {
+		lappend regions $regionData
+		set regionData [getRegion $f]
+	}
+
+	# orders template
+	# faction number and pass
+	set v [getSection $f]
+
+	# orders
+	set v [getSection $f]
+	set loc [lindex $v 2]
+	set xy [string map {( "" ) "" , " "} $loc]
+
+	while {$xy ne ""} {
+		set xy [doRegionOrders $f regions $xy]
+	}
+
+	# done
+	puts "Regions [list $regions]"
+}
+
 ################
 if {$argc != 1} {
 	puts "Usage $argv0 <filename>"
@@ -258,50 +344,5 @@ if {$argc != 1} {
 }
 
 set f [open [lindex $argv 0]]
-
-# initial headers
-set v [getSection $f]
-while {$v ne "Atlantis Report For:"} {
-	set v [getSection $f]
-}
-
-set v [getSection $f]
-while {[lindex $v 0] ne "Neddites"} {
-	set v [getSection $f]
-}
-
-set v [getSection $f]
-puts "Month [string map {"," ""} $v]"
-
-# skip all the events
-set v [getSection $f]
-while {![regexp {^Unclaimed silver:} $v]} {
-	set v [getSection $f]
-}
-
-# unclaimed silver
-
-# regions
-set regions ""
-set regionData [getRegion $f]
-while {$regionData ne ""} {
-	lappend regions $regionData
-	set regionData [getRegion $f]
-}
-
-# orders template
-# faction number and pass
-set v [getSection $f]
-
-# orders
-set v [getSection $f]
-set loc [lindex $v 2]
-set xy [string map {( "" ) "" , " "} $loc]
-
-while {$xy ne ""} {
-	set xy [doRegionOrders $f regions $xy]
-}
-
-# done
-puts "Regions [list $regions]"
+parseFile $f
 
