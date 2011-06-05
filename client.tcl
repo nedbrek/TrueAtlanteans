@@ -187,13 +187,16 @@ proc updateDb {db tdata} {
 			set desc   [dGet $u Desc]
 			set detail [dGet $u Report]
 			set orders [dGet $u Orders]
+			set items  [dGet $u Items]
+
 			$db eval {
 				INSERT INTO units
-				(regionId, name, desc, detail, orders)
+				(regionId, name, desc, detail, orders, items)
 				VALUES(
-				$regionId, $name, $desc, $detail, $orders
+				$regionId, $name, $desc, $detail, $orders, $items
 				);
 			}
+
 		}
 
 		set exits [dGet $r Exits]
@@ -426,6 +429,7 @@ proc createGame {filename} {
 		);
 	}
 
+	# unit table: (regionId -> name description detailType (own or foreign) orders
 	::db eval {
 		CREATE TABLE units (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -434,6 +438,7 @@ proc createGame {filename} {
 			desc not null,
 			detail not null,
 			orders not null,
+			items not null,
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
