@@ -227,6 +227,10 @@ proc orderBoxReset {w} {
 		}]
 	}
 
+	.t.fL.fItems.t configure -state normal
+	.t.fL.fItems.t delete 1.0 end
+	.t.fL.fItems.t configure -state disabled
+
 	$w delete 1.0 end
 	$w edit reset
 	$w edit modified 0
@@ -259,12 +263,19 @@ proc unitUpdate {wcb} {
 	set gui::prevUnit $name
 
 	set data [db eval {
-		SELECT orders, id
+		SELECT orders, id, items
 		FROM units WHERE regionId=$regionId AND name=$name
 		ORDER BY id
 	}]
 	set orders [lindex $data 0]
 	set gui::prevId [lindex $data 1]
+	set items [lindex $data 2]
+
+	.t.fL.fItems.t configure -state normal
+	foreach i $items {
+		.t.fL.fItems.t insert end "[join $i]\n"
+	}
+	.t.fL.fItems.t configure -state disabled
 
 	foreach o $orders {
 		.t.fL.tOrd insert end "$o\n"
@@ -596,8 +607,21 @@ pack .t.fR.screen  -side right  -fill both -expand 1
 
 ### left frame
 pack [frame .t.fL] -side left -anchor nw
+
+# top, region description
 pack [text .t.fL.tDesc -width 42 -height 9] -side top
+
+# next, unit combobox
 pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45] -side top
+
+# next, unit items (text + scrollbar)
+pack [frame .t.fL.fItems] -side top
+pack [text .t.fL.fItems.t -width 40 -height 10 -state disabled \
+-yscrollcommand ".t.fL.fItems.vs set"] -side left
+
+pack [scrollbar .t.fL.fItems.vs -command ".t.fL.fItems.t yview" -orient vertical] -side left -fill y
+
+# next, orders box
 pack [text .t.fL.tOrd -width 42 -height 9 -undo 1] -side top
 
 ### bindings
