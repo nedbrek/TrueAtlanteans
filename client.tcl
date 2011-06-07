@@ -28,19 +28,23 @@ set ::monthNames {
 }
 
 set ::terrainColors {
-	desert     #f0d800
-	forest     #00c000
-	jungle     #205020
-	mountain   #704018
-	mystforest #004000
-	ocean      #000090
-	plain      #ffffc0
-	swamp      #a0a040
-	wasteland  #d88040
+	cavern      #f0d800
+	desert      #f0d800
+	forest      #00c000
+	jungle      #205020
+	mountain    #704018
+	mystforest  #004000
+	ocean       #000090
+	plain       #ffffc0
+	swamp       #a0a040
+	underforest #00c000
+	wasteland   #d88040
 }
 
 namespace eval gui {
 	set currentTurn 0
+
+	set viewLevel 1
 
 	set prevUnit ""
 	set prevId   ""
@@ -126,10 +130,15 @@ if {0} {
 proc drawDB {w db} {
 	$w delete all
 
+	set zlevel $gui::viewLevel
+	if {$zlevel == 1} {set zlevel ""}
+
 	set data [$db eval {
 			SELECT x, y, type, detail.turn
 			FROM terrain left outer join detail
-			USING(x,y) GROUP BY terrain.x, terrain.y
+			USING(x,y,z)
+			WHERE z=@zlevel
+			GROUP BY terrain.x, terrain.y, terrain.z
 	}]
 
 	foreach {x y type ct} $data {
@@ -151,11 +160,14 @@ proc drawDB {w db} {
 proc updateDb {db tdata} {
 	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
 
+	$db eval {BEGIN TRANSACTION}
+
 	set regions [dGet $tdata Regions]
 	foreach r $regions {
 		set loc [dGet $r Location]
 		set x [lindex $loc 0]
 		set y [lindex $loc 1]
+		set z [lindex $loc 2]
 		set ttype [dGet $r Terrain]
 		if {$ttype eq "nexus"} {continue}
 
@@ -164,7 +176,7 @@ proc updateDb {db tdata} {
 
 		$db eval {
 			INSERT OR REPLACE INTO terrain VALUES
-			($x, $y, $ttype, $city, $region);
+			(@x, @y, @z, @ttype, @city, @region);
 		}
 
 		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]
@@ -174,9 +186,9 @@ proc updateDb {db tdata} {
 		set tax     [dGet $r MaxTax]
 		$db eval {
 			INSERT OR REPLACE INTO detail
-			(x, y, turn, weather, wages, pop, race, tax)
+			(x, y, z, turn, weather, wages, pop, race, tax)
 			VALUES(
-			$x, $y, $turnNo, $weather, $wages, $pop, $race, $tax
+			@x, @y, @z, @turnNo, @weather, @wages, @pop, @race, @tax
 			);
 		}
 
@@ -193,7 +205,7 @@ proc updateDb {db tdata} {
 				INSERT INTO units
 				(regionId, name, desc, detail, orders, items)
 				VALUES(
-				$regionId, $name, $desc, $detail, $orders, $items
+				@regionId, @name, @desc, @detail, @orders, @items
 				);
 			}
 
@@ -204,15 +216,19 @@ proc updateDb {db tdata} {
 			set loc [dGet $e Location]
 			set x [lindex $loc 0]
 			set y [lindex $loc 1]
+			set z [lindex $loc 2]
+
 			set ttype [dGet $e Terrain]
 			set city [dGet $e Town]
 			set region [dGet $e Region]
 			$db eval {
 				INSERT OR REPLACE INTO terrain VALUES
-				($x, $y, $ttype, $city, $region);
+				(@x, @y, @z, @ttype, @city, @region);
 			}
 		}
 	}
+
+	$db eval {END TRANSACTION}
 }
 
 #	set cx [$w canvasx $x]
@@ -222,9 +238,10 @@ proc updateDb {db tdata} {
 proc orderBoxReset {w} {
 	if {$gui::prevUnit ne "" && [$w edit modified]} {
 		set orders [split [string trimright [$w get 1.0 end]] "\n"]
-		db eval [subst {
-			UPDATE units SET orders='$orders' WHERE id='$gui::prevId'
-		}]
+		db eval {
+			UPDATE units SET orders=@orders
+			WHERE id=$gui::prevId
+		}
 	}
 
 	.t.fL.fItems.t configure -state normal
@@ -252,7 +269,7 @@ proc unitUpdate {wcb} {
 	set detail [db eval {
 		SELECT id, turn
 		FROM detail
-		WHERE x=$x and y=$y
+		WHERE x=@x and y=@y
 		ORDER BY turn DESC LIMIT 1
 	}]
 	if {[lindex $detail 1] != $gui::currentTurn} { return }
@@ -264,7 +281,8 @@ proc unitUpdate {wcb} {
 
 	set data [db eval {
 		SELECT orders, id, items
-		FROM units WHERE regionId=$regionId AND name=$name
+		FROM units
+		WHERE regionId=@regionId AND name=@name
 		ORDER BY id
 	}]
 	set orders [lindex $data 0]
@@ -291,7 +309,8 @@ proc displayRegion {x y} {
 
 	set data [db eval {
 		SELECT type, city, region
-		FROM terrain WHERE x=$x AND y=$y;
+		FROM terrain
+		WHERE x=@x AND y=@y
 	}]
 
 	set terrain [lGet $data 0]
@@ -311,12 +330,13 @@ proc displayRegion {x y} {
 	set rdata [db eval {
 		SELECT turn, weather, wages, pop, race, tax, id
 		FROM detail
-		WHERE x=$x and y=$y
+		WHERE x=@x and y=@y
 		ORDER BY turn DESC LIMIT 1
 	}]
 
 	# clear current unit, in case there is none
 	.t.fL.cbMyUnits set ""
+	.t.fL.cbMyUnits configure -values ""
 	if {[llength $rdata] == 0} { return }
 
 	$t insert end "Data from turn: [lGet $rdata 0]\n"
@@ -332,7 +352,6 @@ proc displayRegion {x y} {
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 
 	# unit processing
-	.t.fL.cbMyUnits configure -values ""
 
 	# don't show units from the past
 	if {[lindex $rdata 0] != $gui::currentTurn} { return }
@@ -340,7 +359,8 @@ proc displayRegion {x y} {
 	set regionId [lindex $rdata 6]
 	set units [db eval {
 		SELECT name, detail
-		FROM units WHERE regionId=$regionId
+		FROM units
+		WHERE regionId=@regionId
 		ORDER BY id
 	}]
 
@@ -417,10 +437,11 @@ proc createGame {filename} {
 		CREATE TABLE terrain(
 		x not null,
 		y not null,
+		z not null,
 		type not null,
 		city not null,
 		region not null,
-		  unique(x,y));
+		  unique(x,y,z));
 	}
 
 	# detailed table: (x, y) -> turn info gathered, wants?, sells?, weather(cur,
@@ -430,13 +451,14 @@ proc createGame {filename} {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			x not null,
 			y not null, 
+			z not null,
 			turn not null,
 			weather not null,
 			wages not null,
 			pop not null,
 			race not null,
 			tax not null,
-			unique(x,y,turn)
+			unique(x,y,z,turn)
 		);
 	}
 
@@ -454,6 +476,18 @@ proc createGame {filename} {
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
 		);
+	}
+}
+
+proc dnLevel {} {
+	incr gui::viewLevel
+	drawDB .t.fR.screen db
+}
+
+proc upLevel {} {
+	if {$gui::viewLevel > 1} {
+		incr gui::viewLevel -1
+		drawDB .t.fR.screen db
 	}
 }
 
@@ -600,6 +634,9 @@ set w [canvas .t.fR.screen -bg white -xscrollcommand ".t.fR.canvasX set" \
 # right-click menu
 menu .mRight -tearoff 0
 .mRight add command -label "Center" -command {rightCenter}
+.mRight add separator
+.mRight add command -label "Down Level" -command {dnLevel}
+.mRight add command -label "Up Level" -command {upLevel}
 
 pack .t.fR.canvasX -side bottom -fill x
 pack .t.fR.canvasY -side right  -fill y
