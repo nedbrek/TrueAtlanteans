@@ -102,13 +102,24 @@ proc doRegionOrders {f regionVar xy} {
 proc parseRegion {v} {
 	set lm [split $v " "]
 
+	# check for underworld
+	if {[regexp {<underworld>} $v]} {
+		# merge elements 1 and 2
+		set t [join [lrange $lm 1 2]]
+		set lm [lreplace $lm 1 2 $t]
+	}
+
 	# Terrain
 	set ret [dict create Terrain [lindex $lm 0]]
 
 	# Location
 	set loc [lindex $lm 1]
-	regexp {\(([[:digit:]]+),([[:digit:]]+)\)} $loc -> x y
-	dict set ret Location [list $x $y]
+	regexp {\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]+)?} \
+	   $loc -> x y z
+
+	set l [list $x $y]
+	if {$z ne ""} {lappend l $z}
+	dict set ret Location $l
 
 	# Region
 	dict set ret Region [string trimright [lindex $lm 3] ","]
@@ -159,10 +170,10 @@ proc parseRegion {v} {
 # return index of first item (after flags)
 proc unitItemsIdx {fields} {
 	# field 0 - name (and report type)
-	# field 1 - faction
+	# field 1 - faction, sometimes...
 	# fields 2+ flags
-	set i 2
-	while {![string is integer [lindex [lindex $fields $i] 0]]} {
+	set i 1
+	while {![regexp {\[[[:alnum:]]{4}\]} [lindex $fields $i]]} {
 		incr i
 	}
 	return $i
@@ -222,9 +233,17 @@ proc getRegion {f} {
 		if {$e eq ""} continue
 		lappend eout [lindex $e 0]
 		set terrain  [lindex $e 2]
+
+		if {[regexp {<underworld>} $e]} {
+			set t [join [lrange $e 3 4]]
+			set e [lreplace $e 3 4 $t]
+		}
+
 		set loc      [lindex $e 3]
-		regexp {\(([[:digit:]]+),([[:digit:]]+)\)} $loc -> x y
+		regexp {\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]+)?} \
+		   $loc -> x y z
 		set lxy [list $x $y]
+		if {$z ne ""} {lappend lxy $z}
 
 		set ci [lsearch $e "contains"]
 		if {$ci == -1} {
@@ -297,7 +316,7 @@ proc parseFile {f} {
 	}
 
 	set v [getSection $f]
-	while {[lindex $v 0] ne "Last"} {
+	while {[lindex $v 0] ne "Empire"} {
 		set v [getSection $f]
 	}
 
@@ -338,11 +357,13 @@ proc parseFile {f} {
 }
 
 ################
-if {$argc != 1} {
-	puts "Usage $argv0 <filename>"
-	exit
-}
+if {1} {
+	if {$argc != 1} {
+		puts "Usage $argv0 <filename>"
+		exit
+	}
 
-set f [open [lindex $argv 0]]
-parseFile $f
+	set f [open [lindex $argv 0]]
+	parseFile $f
+}
 
