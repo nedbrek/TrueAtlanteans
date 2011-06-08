@@ -553,6 +553,31 @@ proc doAdd {} {
 	drawDB .t.fR.screen db
 }
 
+proc saveOrders {} {
+	set ofile [tk_getSaveFile]
+	if {$ofile eq ""} { return }
+
+	set f [open $ofile "w"]
+
+	set d own
+	set res [db eval {
+		SELECT units.name, units.orders
+		FROM detail JOIN units
+		ON detail.id=cast(units.regionId as integer)
+		WHERE detail.turn=@gui::currentTurn AND units.detail=@d
+	}]
+
+	foreach {u ol} $res {
+		if {$ol eq ""} continue
+
+		regexp {\(([[:digit:]]+)\)} $u -> unitNum
+		puts $f "unit $unitNum"
+		puts $f "[join $ol "\n"]\n"
+	}
+
+	close $f
+}
+
 proc rightCenter {} {
 	recenter .t.fR.screen $gui::rightX $gui::rightY
 }
@@ -612,10 +637,12 @@ menu .mTopMenu.mFile -tearoff 0
 
 .mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
 
-.mTopMenu.mFile add command -label "New"        -command newGame -underline 0 -accelerator "Ctrl+N"
-.mTopMenu.mFile add command -label "Open"       -command doOpen  -underline 0 -accelerator "Ctrl+O"
-.mTopMenu.mFile add command -label "Add Report" -command doAdd   -underline 0
-.mTopMenu.mFile add command -label "Exit"       -command exit    -underline 1 -accelerator "Ctrl+Q"
+.mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
+.mTopMenu.mFile add command -label "Open"        -command doOpen  -underline 0 -accelerator "Ctrl+O"
+.mTopMenu.mFile add command -label "Add Report"  -command doAdd   -underline 0
+.mTopMenu.mFile add command -label "Save Orders" -command saveOrders -underline 0
+.mTopMenu.mFile add separator
+.mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
 
 .t configure -menu .mTopMenu
 
