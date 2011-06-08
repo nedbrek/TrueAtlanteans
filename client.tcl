@@ -314,6 +314,8 @@ proc unitUpdate {wcb} {
 proc displayRegion {x y} {
 	orderBoxReset .t.fL.tOrd
 
+	.t.fL.lProd configure -text ""
+
 	set t .t.fL.tDesc
 	$t delete 1.0 end
 
@@ -338,7 +340,7 @@ proc displayRegion {x y} {
 
 	# pull the latest turn data
 	set rdata [db eval {
-		SELECT turn, weather, wages, pop, race, tax, id
+		SELECT turn, weather, wages, pop, race, tax, id, products
 		FROM detail
 		WHERE x=@x and y=@y
 		ORDER BY turn DESC LIMIT 1
@@ -360,6 +362,8 @@ proc displayRegion {x y} {
 
 	set wages [lindex $rdata 2]
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
+
+	.t.fL.lProd configure -text [join [lindex $rdata 7]]
 
 	# unit processing
 
@@ -687,6 +691,8 @@ pack [frame .t.fL] -side left -anchor nw
 
 # top, region description
 pack [text .t.fL.tDesc -width 42 -height 9] -side top
+
+pack [label .t.fL.lProd -wraplength 300] -side top
 
 # next, unit combobox
 pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45] -side top
