@@ -157,6 +157,23 @@ proc drawDB {w db} {
 	$w itemconfigure unexplored -stipple gray50
 }
 
+proc doExits {db exits} {
+		foreach {d e} $exits {
+			set loc [dGet $e Location]
+			set x [lindex $loc 0]
+			set y [lindex $loc 1]
+			set z [lindex $loc 2]
+
+			set ttype [dGet $e Terrain]
+			set city [dGet $e Town]
+			set region [dGet $e Region]
+			$db eval {
+				INSERT OR REPLACE INTO terrain VALUES
+				(@x, @y, @z, @ttype, @city, @region);
+			}
+		}
+}
+
 proc updateDb {db tdata} {
 	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
 
@@ -164,6 +181,9 @@ proc updateDb {db tdata} {
 
 	set regions [dGet $tdata Regions]
 	foreach r $regions {
+
+		doExits $db [dGet $r Exits]
+
 		set loc [dGet $r Location]
 		set x [lindex $loc 0]
 		set y [lindex $loc 1]
@@ -209,22 +229,6 @@ proc updateDb {db tdata} {
 				);
 			}
 
-		}
-
-		set exits [dGet $r Exits]
-		foreach {d e} $exits {
-			set loc [dGet $e Location]
-			set x [lindex $loc 0]
-			set y [lindex $loc 1]
-			set z [lindex $loc 2]
-
-			set ttype [dGet $e Terrain]
-			set city [dGet $e Town]
-			set region [dGet $e Region]
-			$db eval {
-				INSERT OR REPLACE INTO terrain VALUES
-				(@x, @y, @z, @ttype, @city, @region);
-			}
 		}
 	}
 
