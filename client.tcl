@@ -204,11 +204,17 @@ proc updateDb {db tdata} {
 		set pop     [dGet $r Population]
 		set race    [dGet $r Race]
 		set tax     [dGet $r MaxTax]
+		set wants   [dGet $r Wants]
+		set sells   [dGet $r Sells]
+		set prod    [dGet $r Products]
 		$db eval {
 			INSERT OR REPLACE INTO detail
-			(x, y, z, turn, weather, wages, pop, race, tax)
+			(x, y, z, turn, weather, wages, pop, race, tax, wants,
+			 sells, products)
+
 			VALUES(
-			@x, @y, @z, @turnNo, @weather, @wages, @pop, @race, @tax
+			@x, @y, @z, @turnNo, @weather, @wages, @pop, @race, @tax, @wants,
+			@sells, @prod
 			);
 		}
 
@@ -462,6 +468,9 @@ proc createGame {filename} {
 			pop not null,
 			race not null,
 			tax not null,
+			wants not null,
+			sells not null,
+			products not null,
 			unique(x,y,z,turn)
 		);
 	}
