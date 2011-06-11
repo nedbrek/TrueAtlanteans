@@ -566,6 +566,7 @@ proc doAdd {} {
 	loadData $ofile
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
+	set gui::viewLevel 1
 
 	drawDB .t.fR.screen db
 }
