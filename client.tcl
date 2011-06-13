@@ -312,13 +312,19 @@ proc unitUpdate {wcb} {
 }
 
 proc displayRegion {x y} {
+	# clean up
 	orderBoxReset .t.fL.tOrd
 
 	.t.fL.lProd configure -text ""
 
+	# clear current unit, in case there is none
+	.t.fL.cbMyUnits set ""
+	.t.fL.cbMyUnits configure -values ""
+
 	set t .t.fL.tDesc
 	$t delete 1.0 end
 
+	# pull region terrain info
 	set data [db eval {
 		SELECT type, city, region
 		FROM terrain
@@ -340,15 +346,13 @@ proc displayRegion {x y} {
 
 	# pull the latest turn data
 	set rdata [db eval {
-		SELECT turn, weather, wages, pop, race, tax, id, products
+		SELECT turn, weather, wages, pop, race, tax, id, products, sells
 		FROM detail
 		WHERE x=@x and y=@y
 		ORDER BY turn DESC LIMIT 1
 	}]
 
-	# clear current unit, in case there is none
-	.t.fL.cbMyUnits set ""
-	.t.fL.cbMyUnits configure -values ""
+	# if no detail info, done
 	if {[llength $rdata] == 0} { return }
 
 	$t insert end "Data from turn: [lGet $rdata 0]\n"
@@ -364,6 +368,8 @@ proc displayRegion {x y} {
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 
 	.t.fL.lProd configure -text [join [lindex $rdata 7]]
+
+	set sells [lindex $rdata 8]
 
 	# unit processing
 
