@@ -158,20 +158,20 @@ proc drawDB {w db} {
 }
 
 proc doExits {db exits} {
-		foreach {d e} $exits {
-			set loc [dGet $e Location]
-			set x [lindex $loc 0]
-			set y [lindex $loc 1]
-			set z [lindex $loc 2]
+	foreach {d e} $exits {
+		set loc [dGet $e Location]
+		set x [lindex $loc 0]
+		set y [lindex $loc 1]
+		set z [lindex $loc 2]
 
-			set ttype [dGet $e Terrain]
-			set city [dGet $e Town]
-			set region [dGet $e Region]
-			$db eval {
-				INSERT OR REPLACE INTO terrain VALUES
-				(@x, @y, @z, @ttype, @city, @region);
-			}
+		set ttype [dGet $e Terrain]
+		set city [dGet $e Town]
+		set region [dGet $e Region]
+		$db eval {
+			INSERT OR REPLACE INTO terrain VALUES
+			(@x, @y, @z, @ttype, @city, @region);
 		}
+	}
 }
 
 proc updateDb {db tdata} {
@@ -485,7 +485,7 @@ proc createGame {filename} {
 		);
 	}
 
-	# unit table: (regionId -> name description detailType (own or foreign) orders
+	# unit table: (regionId -> name description detail (own or foreign) orders
 	::db eval {
 		CREATE TABLE units (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -642,6 +642,18 @@ proc recenter {w x y} {
 	}
 }
 
+proc switchFocus {w} {
+	set curFocus [focus]
+	if {$curFocus eq ""} {return}
+
+	set sf [split $curFocus "."]
+	set sw [split $w        "."]
+
+	if {[lindex $sf 1] eq [lindex $sw 1]} {
+		focus $w
+	}
+}
+
 rename exit origExit
 proc exit {} {
 	if {[info exists ::db]} {
@@ -717,8 +729,9 @@ pack [text .t.fL.tOrd -width 42 -height 9 -undo 1] -side top
 ### bindings
 ## canvas
 # canvas normally doesn't want focus
-bind $w <Enter> {focus %W}
-bind .t.fL.tDesc <Enter> {focus %W}
+bind $w <Enter> {switchFocus %W}
+bind .t.fL.tDesc <Enter> {switchFocus %W}
+bind .t.fL.tOrd  <Enter> {switchFocus %W}
 
 # bind mousewheel to vertical scrolling
 bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
