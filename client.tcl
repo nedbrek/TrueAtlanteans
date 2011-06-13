@@ -137,7 +137,7 @@ proc drawDB {w db} {
 			SELECT x, y, type, detail.turn
 			FROM terrain left outer join detail
 			USING(x,y,z)
-			WHERE z=@zlevel
+			WHERE z=$zlevel
 			GROUP BY terrain.x, terrain.y, terrain.z
 	}]
 
@@ -169,7 +169,7 @@ proc doExits {db exits} {
 		set region [dGet $e Region]
 		$db eval {
 			INSERT OR REPLACE INTO terrain VALUES
-			(@x, @y, @z, @ttype, @city, @region);
+			($x, $y, $z, $ttype, $city, $region);
 		}
 	}
 }
@@ -196,7 +196,7 @@ proc updateDb {db tdata} {
 
 		$db eval {
 			INSERT OR REPLACE INTO terrain VALUES
-			(@x, @y, @z, @ttype, @city, @region);
+			($x, $y, $z, $ttype, $city, $region);
 		}
 
 		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]
@@ -213,8 +213,8 @@ proc updateDb {db tdata} {
 			 sells, products)
 
 			VALUES(
-			@x, @y, @z, @turnNo, @weather, @wages, @pop, @race, @tax, @wants,
-			@sells, @prod
+			$x, $y, $z, $turnNo, $weather, $wages, $pop, $race, $tax, $wants,
+			$sells, $prod
 			);
 		}
 
@@ -231,7 +231,7 @@ proc updateDb {db tdata} {
 				INSERT INTO units
 				(regionId, name, desc, detail, orders, items)
 				VALUES(
-				@regionId, @name, @desc, @detail, @orders, @items
+				$regionId, $name, $desc, $detail, $orders, $items
 				);
 			}
 
@@ -249,7 +249,7 @@ proc orderBoxReset {w} {
 	if {$gui::prevUnit ne "" && [$w edit modified]} {
 		set orders [split [string trimright [$w get 1.0 end]] "\n"]
 		db eval {
-			UPDATE units SET orders=@orders
+			UPDATE units SET orders=$orders
 			WHERE id=$gui::prevId
 		}
 	}
@@ -279,7 +279,7 @@ proc unitUpdate {wcb} {
 	set detail [db eval {
 		SELECT id, turn
 		FROM detail
-		WHERE x=@x and y=@y
+		WHERE x=$x and y=$y
 		ORDER BY turn DESC LIMIT 1
 	}]
 	if {[lindex $detail 1] != $gui::currentTurn} { return }
@@ -292,7 +292,7 @@ proc unitUpdate {wcb} {
 	set data [db eval {
 		SELECT orders, id, items
 		FROM units
-		WHERE regionId=@regionId AND name=@name
+		WHERE regionId=$regionId AND name=$name
 		ORDER BY id
 	}]
 	set orders [lindex $data 0]
@@ -328,7 +328,7 @@ proc displayRegion {x y} {
 	set data [db eval {
 		SELECT type, city, region
 		FROM terrain
-		WHERE x=@x AND y=@y
+		WHERE x=$x AND y=$y
 	}]
 
 	set terrain [lGet $data 0]
@@ -348,7 +348,7 @@ proc displayRegion {x y} {
 	set rdata [db eval {
 		SELECT turn, weather, wages, pop, race, tax, id, products, sells
 		FROM detail
-		WHERE x=@x and y=@y
+		WHERE x=$x and y=$y
 		ORDER BY turn DESC LIMIT 1
 	}]
 
@@ -380,7 +380,7 @@ proc displayRegion {x y} {
 	set units [db eval {
 		SELECT name, detail
 		FROM units
-		WHERE regionId=@regionId
+		WHERE regionId=$regionId
 		ORDER BY id
 	}]
 
@@ -455,9 +455,9 @@ proc createGame {filename} {
 	# terrain table: (x, y) -> terrain type
 	::db eval {
 		CREATE TABLE terrain(
-		x not null,
-		y not null,
-		z not null,
+		x TEXT not null,
+		y TEXT not null,
+		z TEXT not null,
 		type not null,
 		city not null,
 		region not null,
@@ -469,9 +469,9 @@ proc createGame {filename} {
 	::db eval {
 		CREATE TABLE detail (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			x not null,
-			y not null, 
-			z not null,
+			x TEXT not null,
+			y TEXT not null, 
+			z TEXT not null,
 			turn not null,
 			weather not null,
 			wages not null,
@@ -583,12 +583,11 @@ proc saveOrders {} {
 
 	set f [open $ofile "w"]
 
-	set d own
 	set res [db eval {
 		SELECT units.name, units.orders
 		FROM detail JOIN units
-		ON detail.id=cast(units.regionId as integer)
-		WHERE detail.turn=@gui::currentTurn AND units.detail=@d
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
 	}]
 
 	foreach {u ol} $res {
