@@ -126,12 +126,18 @@ if {0} {
 	}
 }
 
+proc getZlevel {} {
+	set zlevel $gui::viewLevel
+	if {$zlevel == 1} {set zlevel ""}
+
+	return $zlevel
+}
+
 # draw all the regions in the db data
 proc drawDB {w db} {
 	$w delete all
 
-	set zlevel $gui::viewLevel
-	if {$zlevel == 1} {set zlevel ""}
+	set zlevel [getZlevel]
 
 	set data [$db eval {
 			SELECT x, y, type, detail.turn
@@ -325,10 +331,11 @@ proc displayRegion {x y} {
 	$t delete 1.0 end
 
 	# pull region terrain info
+	set zlevel [getZlevel]
 	set data [db eval {
 		SELECT type, city, region
 		FROM terrain
-		WHERE x=$x AND y=$y
+		WHERE x=$x AND y=$y AND z=$zlevel
 	}]
 
 	set terrain [lGet $data 0]
@@ -561,6 +568,7 @@ proc doOpen {} {
 	}
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
+	set gui::viewLevel 1
 
 	drawDB .t.fR.screen db
 }
@@ -572,9 +580,39 @@ proc doAdd {} {
 	loadData $ofile
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
-	set gui::viewLevel 1
 
 	drawDB .t.fR.screen db
+}
+
+proc findIdleUnits {} {
+	set res [db eval {
+		SELECT units.name, detail.x, detail.y, detail.z
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		   AND units.orders=''
+	}]
+
+	if {![winfo exists .tIdleUnits]} {
+		toplevel .tIdleUnits
+		pack [frame   .tIdleUnits.fTop] -side top
+
+		scrollbar .tIdleUnits.fTop.vs -command ".tIdleUnits.fTop.tl yview"
+
+		pack [listbox .tIdleUnits.fTop.tl -width 40 -height 40 \
+-yscrollcommand ".tIdleUnits.fTop.vs set"] -side left -expand 1 -fill both
+
+		pack .tIdleUnits.fTop.vs -side left -fill y
+	}
+
+	.tIdleUnits.fTop.tl delete 0 end
+	foreach {n x y z} $res {
+		if {$z eq ""} {
+			.tIdleUnits.fTop.tl insert end "$n ($x,$y)"
+		} else {
+			.tIdleUnits.fTop.tl insert end "$n ($x,$y,$z)"
+		}
+	}
 }
 
 proc saveOrders {} {
