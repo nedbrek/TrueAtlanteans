@@ -219,9 +219,12 @@ proc getRegion {f} {
 
 	# entertainment
 	set v [getSection $f]
-
-	# products
-	set v [getSection $f]
+	if {[lindex $v 0] eq "Entertainment"} {
+		# products
+		set v [getSection $f]
+	}
+	set v [string map {"\n" ""} $v]
+	dict set region Products [split [string trimright $v "."] ","]
 
 	# exits
 	set v [getSection $f]
@@ -311,14 +314,10 @@ proc getRegion {f} {
 proc parseFile {f} {
 	# initial headers
 	set v [getSection $f]
-	while {$v ne "Atlantis Report For:"} {
-		set v [getSection $f]
-	}
+	# Atlantis Report For:
 
 	set v [getSection $f]
-	while {[lindex $v 0] ne "Empire"} {
-		set v [getSection $f]
-	}
+	# Faction Name (number) (War n,Trade n, Magic n)
 
 	set v [getSection $f]
 	puts "Month [string map {"," ""} $v]"
