@@ -233,12 +233,13 @@ proc updateDb {db tdata} {
 			set detail [dGet $u Report]
 			set orders [dGet $u Orders]
 			set items  [dGet $u Items]
+			set skills [dGet $u Skills]
 
 			$db eval {
 				INSERT INTO units
-				(regionId, name, desc, detail, orders, items)
+				(regionId, name, desc, detail, orders, items, skills)
 				VALUES(
-				$regionId, $name, $desc, $detail, $orders, $items
+				$regionId, $name, $desc, $detail, $orders, $items, $skills
 				);
 			}
 
@@ -283,10 +284,11 @@ proc unitUpdate {wcb} {
 	set hexTag [lindex $tags $i]
 	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
 
+	set zlevel [getZlevel]
 	set detail [db eval {
 		SELECT id, turn
 		FROM detail
-		WHERE x=$x and y=$y
+		WHERE x=$x AND y=$y AND z=$zlevel
 		ORDER BY turn DESC LIMIT 1
 	}]
 	if {[lindex $detail 1] != $gui::currentTurn} { return }
@@ -297,20 +299,33 @@ proc unitUpdate {wcb} {
 	set gui::prevUnit $name
 
 	set data [db eval {
-		SELECT orders, id, items
+		SELECT orders, id, items, skills
 		FROM units
 		WHERE regionId=$regionId AND name=$name
 		ORDER BY id
 	}]
-	set orders [lindex $data 0]
+	set orders      [lindex $data 0]
 	set gui::prevId [lindex $data 1]
-	set items [lindex $data 2]
+	set items       [lindex $data 2]
+	set skills      [lindex $data 3]
 
-	.t.fL.fItems.t configure -state normal
-	foreach i $items {
-		.t.fL.fItems.t insert end "[join $i]\n"
+	set t .t.fL.fItems.t
+	$t configure -state normal
+
+	$t insert end "Skills: "
+	if {$skills eq ""} {
+		$t insert end "<none>\n"
+	} else {
+		foreach s $skills {
+			$t insert end "[join $s]\n"
+		}
 	}
-	.t.fL.fItems.t configure -state disabled
+	$t insert end "--------\n"
+
+	foreach i $items {
+		$t insert end "[join $i]\n"
+	}
+	$t configure -state disabled
 
 	foreach o $orders {
 		.t.fL.tOrd insert end "$o\n"
@@ -453,7 +468,7 @@ proc loadData {filename} {
 }
 
 proc createGame {filename} {
-	wm title .t "True Atlantians - [file tail $filename]"
+	wm title .t "True Atlanteans - [file tail $filename]"
 
 	if {[info exists ::db]} {
 		::db close
@@ -503,6 +518,7 @@ proc createGame {filename} {
 			detail not null,
 			orders not null,
 			items not null,
+			skills not null,
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
@@ -753,6 +769,10 @@ pack [label .t.fL.lProd -wraplength 300] -side top
 
 # next, unit combobox
 pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45] -side top
+if {$tcl_platform(os) eq "Linux"} {
+	# for some reason, the combox is much wider on Linux
+	.t.fL.cbMyUnits configure -width 36
+}
 
 # next, unit items (text + scrollbar)
 pack [frame .t.fL.fItems] -side top
