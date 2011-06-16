@@ -37,6 +37,7 @@ set ::terrainColors {
 	ocean       #000090
 	plain       #ffffc0
 	swamp       #a0a040
+	tunnels     #704018
 	underforest #00c000
 	wasteland   #d88040
 }
@@ -355,7 +356,7 @@ proc displayRegion {x y} {
 	set rdata [db eval {
 		SELECT turn, weather, wages, pop, race, tax, id, products, sells
 		FROM detail
-		WHERE x=$x and y=$y
+		WHERE x=$x AND y=$y AND z=$zlevel
 		ORDER BY turn DESC LIMIT 1
 	}]
 
