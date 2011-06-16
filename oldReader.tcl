@@ -191,6 +191,20 @@ proc repairItemList {l} {
 	return $ret
 }
 
+proc fixSkills {skills} {
+	set ret ""
+	foreach s $skills {
+		set name [lrange $s 0 end-3]
+		set abbr [string map {"[" "" "]" ""} [lindex $s end-2]]
+		set lvl  [lindex $s end-1]
+		set pts  [string map {"(" "" ")" ""} [lindex $s end]]
+
+		lappend ret [list $name $abbr $lvl $pts]
+	}
+
+	return $ret
+}
+
 proc getRegion {f} {
 	set v [getSection $f]
 	if {$v eq "Orders Template (Long Format):"} {
@@ -293,9 +307,16 @@ proc getRegion {f} {
 			set items [lrange $group0 $itemIdx end]
 			set items [repairItemList $items]
 
-			# group 3 - skills
-
 			set u [dict create Name $n Desc {} Report $quality Items $items]
+
+			# group 3 - skills
+			if {$quality eq own} {
+				set group3 [string map {"\n" " "} [lindex $groups 3]]
+				set skills [split [lrange $group3 1 end] ","]
+
+				dict set u Skills [fixSkills $skills]
+			}
+
 			dict lappend region Units $u
 		}
 
