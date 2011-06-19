@@ -271,18 +271,27 @@ proc orderBoxReset {w} {
 	$w edit modified 0
 }
 
+proc getSelectionXY {} {
+	set tags [.t.fR.screen gettags active]
+	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
+
+	if {$i == -1} {return ""}
+
+	set hexTag [lindex $tags $i]
+	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
+
+	return [list $x $y]
+}
+
 proc unitUpdate {wcb} {
 	orderBoxReset .t.fL.tOrd
 
 	set w .t.fR.screen
 
-	set tags [$w gettags active]
-	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
-
-	if {$i == -1} {return}
-
-	set hexTag [lindex $tags $i]
-	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
+	set xy [getSelectionXY]
+	if {$xy eq ""} {return}
+	set x [lindex $xy 0]
+	set y [lindex $xy 1]
 
 	set zlevel [getZlevel]
 	set detail [db eval {
@@ -601,6 +610,62 @@ proc doAdd {} {
 	drawDB .t.fR.screen db
 }
 
+proc calcTaxers {} {
+	set xy [getSelectionXY]
+	if {$xy eq ""} {return}
+	set x [lindex $xy 0]
+	set y [lindex $xy 1]
+
+	set zlevel [getZlevel]
+	set maxTax [db eval {
+		SELECT tax
+		FROM detail
+		WHERE x=$x AND y=$y AND z=$zlevel
+		ORDER BY turn DESC LIMIT 1
+	}]
+	tk_messageBox -message "[expr ($maxTax+49)/50] taxmen"
+}
+
+proc countTaxers {} {
+	db eval {SELECT COUNT(orders) FROM
+		detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.orders like '%tax%'
+	}
+}
+
+proc findForeignUnits {} {
+	set res [db eval {
+		SELECT units.name, detail.x, detail.y, detail.z
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail<>'own'
+	}]
+
+	set t .tForeignUnits
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		pack [frame $t.fTop] -side top
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tl yview"
+
+		pack [listbox $t.fTop.tl -width 40 -height 40 \
+-yscrollcommand "$t.fTop.vs set"] -side left -expand 1 -fill both
+
+		pack $t.fTop.vs -side left -fill y
+	}
+
+	$t.fTop.tl delete 0 end
+	foreach {n x y z} $res {
+		if {$z eq ""} {
+			$t.fTop.tl insert end "$n ($x,$y)"
+		} else {
+			$t.fTop.tl insert end "$n ($x,$y,$z)"
+		}
+	}
+}
+
 proc findIdleUnits {} {
 	set res [db eval {
 		SELECT units.name, detail.x, detail.y, detail.z
@@ -612,7 +677,7 @@ proc findIdleUnits {} {
 
 	if {![winfo exists .tIdleUnits]} {
 		toplevel .tIdleUnits
-		pack [frame   .tIdleUnits.fTop] -side top
+		pack [frame .tIdleUnits.fTop] -side top
 
 		scrollbar .tIdleUnits.fTop.vs -command ".tIdleUnits.fTop.tl yview"
 
@@ -754,6 +819,8 @@ menu .mRight -tearoff 0
 .mRight add separator
 .mRight add command -label "Down Level" -command {dnLevel}
 .mRight add command -label "Up Level" -command {upLevel}
+.mRight add separator
+.mRight add command -label "Calc Taxers" -command {calcTaxers}
 
 pack .t.fR.canvasX -side bottom -fill x
 pack .t.fR.canvasY -side right  -fill y
