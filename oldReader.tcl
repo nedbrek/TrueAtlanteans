@@ -100,20 +100,19 @@ proc doRegionOrders {f regionVar xy} {
 }
 
 proc parseRegion {v} {
-	set lm [split $v " "]
-
-	# check for underworld
-	if {[regexp {<underworld>} $v]} {
-		# merge elements 1 and 2
-		set t [join [lrange $lm 1 2]]
-		set lm [lreplace $lm 1 2 $t]
+	# crack the region definition into chunks
+	# terrain (one word) location (x,y[,z] <underworld>?) in Region contains...
+	set r [regexp {([^() ]+) (\([[:digit:],]+[^)]*\)) in (.*)} $v -> \
+	  terrain loc rest]
+	if {$r != 1} {
+		puts "Unable to parse region '$v'"
+		exit
 	}
 
 	# Terrain
-	set ret [dict create Terrain [lindex $lm 0]]
+	set ret [dict create Terrain $terrain]
 
 	# Location
-	set loc [lindex $lm 1]
 	regexp {\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]+)?} \
 	   $loc -> x y z
 
@@ -121,44 +120,46 @@ proc parseRegion {v} {
 	if {$z ne ""} {lappend l $z}
 	dict set ret Location $l
 
+	set rest [string map {"\n" " "} [string trimright $rest "."]]
+	set lm [split $rest ","]
+
 	# Region
-	dict set ret Region [string trimright [lindex $lm 3] ","]
+	dict set ret Region [lindex $lm 0]
 
 	# Check for town
-	set i 4
+	set i 1
+	set lmi [lindex $lm $i]
 	set town ""
-	if {[lindex $lm $i] eq "contains"} {
-		incr i
-		set town [lindex $lm $i]
+	if {[lindex $lmi 0] eq "contains"} {
+		incr i ;# pull peasants from next i
 
-		incr i
-		while {![regexp {\[.*\]} [lindex $lm $i]]} {
-			append town " " [lindex $lm $i]
-			incr i
+		set town [lindex $lmi 1]
+
+		set j 2
+		while {![regexp {\[.*\]} [lindex $lmi $j]]} {
+			append town " " [lindex $lmi $j]
+			incr j
 		}
 
-		set fullType [lindex $lm $i]
-		incr i
+		set fullType [lindex $lmi $j]
 		set type [string map {\[ "" \] "" , ""} $fullType]
 		lappend town $type
 	}
 
 	dict set ret Town $town
 
-	# Population
-	dict set ret Population [lindex $lm $i]
+	# Population, Race
+	set lmi [lindex $lm $i]
+	if {$lmi eq ""} {return $ret} ;# done
 	incr i
-	incr i ;# peasants
 
-	# Race
-	set race [lindex $lm $i]
-	if {![regexp {\(.*\)} $race]} {
-		incr i
-		append race " " [lindex $lm $i]
+	regexp {([[:digit:]]+) +peasants +\(([^)]+)\)} $lmi -> pop race
+	if {![info exists pop]} {
+		puts "Could not parse region race token '$lmi' in region $v"
+		exit
 	}
-	set raceFinal [string map {\( "" \) "" , ""} $race]
-	dict set ret Race $raceFinal
-	incr i
+	dict set ret Population $pop
+	dict set ret Race $race
 
 	# Max Taxes
 	dict set ret MaxTax [string map {\$ "" . ""} [lindex $lm $i]]
