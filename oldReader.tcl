@@ -175,6 +175,10 @@ proc unitItemsIdx {fields} {
 	set i 1
 	while {![regexp {\[[[:alnum:]]{4}\]} [lindex $fields $i]]} {
 		incr i
+		if {$i > [llength $fields]} {
+			puts "Error in $fields"
+			exit
+		}
 	}
 	return $i
 }
@@ -248,6 +252,13 @@ proc getRegion {f} {
 	set eout ""
 	foreach e $exits {
 		if {$e eq ""} continue
+		if {![string is list $e]} {
+			puts "odd '$e'"
+			puts "exits '$exits'"
+			puts "region '$region'"
+			exit
+		}
+
 		lappend eout [lindex $e 0]
 		set terrain  [lindex $e 2]
 
@@ -259,6 +270,14 @@ proc getRegion {f} {
 		set loc      [lindex $e 3]
 		regexp {\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]+)?} \
 		   $loc -> x y z
+
+		if {![info exists x]} {
+			puts "loc '$loc'"
+			puts "e '$e'"
+			puts "region '$region'"
+			exit
+		}
+
 		set lxy [list $x $y]
 		if {$z ne ""} {lappend lxy $z}
 
@@ -310,7 +329,7 @@ proc getRegion {f} {
 			set u [dict create Name $n Desc {} Report $quality Items $items]
 
 			# group 3 - skills
-			if {$quality eq own} {
+			if {$quality eq "own"} {
 				set group3 [string map {"\n" " "} [lindex $groups 3]]
 				set skills [split [lrange $group3 1 end] ","]
 
@@ -377,7 +396,7 @@ proc parseFile {f} {
 }
 
 ################
-if {1} {
+if {![info exists debug]} {
 	if {$argc != 1} {
 		puts "Usage $argv0 <filename>"
 		exit
