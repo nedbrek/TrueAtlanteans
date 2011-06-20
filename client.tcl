@@ -141,19 +141,51 @@ proc drawDB {w db} {
 	set zlevel [getZlevel]
 
 	set data [$db eval {
-			SELECT x, y, type, detail.turn
+			SELECT x, y, type, city, detail.turn, detail.id
 			FROM terrain left outer join detail
 			USING(x,y,z)
 			WHERE z=$zlevel
 			GROUP BY terrain.x, terrain.y, terrain.z
+			ORDER BY detail.turn
 	}]
 
-	foreach {x y type ct} $data {
+	foreach {x y type city ct rid} $data {
 		if {$type eq "nexus"} {continue}
+
+		if {[info exists drawn($x,$y)]} {continue} 
+		set drawn($x,$y) ""
 
 		set hexId [plot_hex_num $w $x $y]
 
 		$w itemconfigure $hexId -fill [dict get $::terrainColors $type]
+
+		set c [$w coords $hexId]
+		set x [lindex $c 0]
+		set y [lindex $c 1]
+
+		# draw city icon
+		if {$city ne ""} {
+			$w create text [expr $x+$::n] [expr $y+$::nrad3] -text "*" -tags icon
+		}
+
+		# show unit flags
+		if {$ct == $gui::currentTurn} {
+			set res [db eval {
+				SELECT detail
+				FROM units
+				WHERE regionId=$rid
+				GROUP BY detail
+			}]
+
+			if {[lsearch $res "own"] != -1} {
+				$w create text [expr $x] [expr $y+2*$::nrad3] -text "@" \
+				  -anchor sw -tags icon
+			}
+			if {[lsearch $res "foreign"] != -1} {
+				$w create text [expr $x+2*$::n] [expr $y+2*$::nrad3] -text "!" \
+				  -anchor se -fill red -tags icon
+			}
+		}
 
 		# tag unexplored hexes
 		if {$ct eq ""} {
@@ -457,6 +489,7 @@ proc hexClick {w x y} {
 	$w itemconfigure active -outline red
 	$w itemconfigure active -width 4
 	$w raise active
+	$w raise icon
 
 	set tags [$w itemcget $hexId -tags]
 	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
