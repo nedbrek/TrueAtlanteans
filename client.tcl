@@ -350,7 +350,7 @@ proc unitUpdate {wcb} {
 	set gui::prevUnit $name
 
 	set data [db eval {
-		SELECT orders, id, items, skills
+		SELECT orders, id, items, skills, detail
 		FROM units
 		WHERE regionId=$regionId AND name=$name
 		ORDER BY id
@@ -359,6 +359,7 @@ proc unitUpdate {wcb} {
 	set gui::prevId [lindex $data 1]
 	set items       [lindex $data 2]
 	set skills      [lindex $data 3]
+	set detail      [lindex $data 4]
 
 	set t .t.fL.fItems.t
 	$t configure -state normal
@@ -382,6 +383,12 @@ proc unitUpdate {wcb} {
 		.t.fL.tOrd insert end "$o\n"
 	}
 	.t.fL.tOrd edit modified 0
+
+	if {$detail eq "own"} {
+		.t.fL.tOrd configure -state normal
+	} else {
+		.t.fL.tOrd configure -state disabled
+	}
 }
 
 proc displayRegion {x y} {
@@ -455,18 +462,23 @@ proc displayRegion {x y} {
 		SELECT name, detail
 		FROM units
 		WHERE regionId=$regionId
-		ORDER BY id
+		ORDER BY detail DESC
 	}]
 
 	# set up units combox
 	set unitList {}
+	set state "start"
 	foreach {name detail} $units {
 		if {$detail eq "own"} {
-			lappend unitList $name
-		} else {
-			# other people's units
+			set state "own"
+		} elseif {$state ne "start"} {
+			set state "start"
+			lappend unitList "-----"
 		}
+
+		lappend unitList $name
 	}
+
 	.t.fL.cbMyUnits configure -values $unitList
 	if {[llength $unitList] != 0} {
 		.t.fL.cbMyUnits current 0
