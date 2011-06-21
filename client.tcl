@@ -213,6 +213,23 @@ proc doExits {db exits} {
 	}
 }
 
+proc dbInsertUnit {db regionId u} {
+	set name   [dGet $u Name]
+	set desc   [dGet $u Desc]
+	set detail [dGet $u Report]
+	set orders [dGet $u Orders]
+	set items  [dGet $u Items]
+	set skills [dGet $u Skills]
+
+	$db eval {
+		INSERT INTO units
+		(regionId, name, desc, detail, orders, items, skills)
+		VALUES(
+		$regionId, $name, $desc, $detail, $orders, $items, $skills
+		);
+	}
+}
+
 proc updateDb {db tdata} {
 	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
 
@@ -260,21 +277,14 @@ proc updateDb {db tdata} {
 		set regionId [$db last_insert_rowid]
 		set units [dGet $r Units]
 		foreach u $units {
-			set name   [dGet $u Name]
-			set desc   [dGet $u Desc]
-			set detail [dGet $u Report]
-			set orders [dGet $u Orders]
-			set items  [dGet $u Items]
-			set skills [dGet $u Skills]
+			dbInsertUnit $db $regionId $u
+		}
 
-			$db eval {
-				INSERT INTO units
-				(regionId, name, desc, detail, orders, items, skills)
-				VALUES(
-				$regionId, $name, $desc, $detail, $orders, $items, $skills
-				);
+		set objects [dGet $r Objects]
+		foreach o $objects {
+			foreach u [dGet $o Units] {
+				dbInsertUnit $db $regionId $u
 			}
-
 		}
 	}
 
