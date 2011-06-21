@@ -210,6 +210,37 @@ proc fixSkills {skills} {
 	return $ret
 }
 
+proc parseUnit {v} {
+	# what sort of report is this
+	set quality own
+	if {[lindex $v 0] == "-"} {
+		set quality foreign
+	}
+
+	# get unit name
+	set comma [string first "," $v]
+	set n [string range $v 2 $comma-1]
+
+	set groups [split $v "."]
+
+	set group0 [split [lindex $groups 0] ","]
+	set itemIdx [unitItemsIdx $group0]
+	set items [lrange $group0 $itemIdx end]
+	set items [repairItemList $items]
+
+	set u [dict create Name $n Desc {} Report $quality Items $items]
+
+	# group 3 - skills
+	if {$quality eq "own"} {
+		set group3 [string map {"\n" " "} [lindex $groups 3]]
+		set skills [split [lrange $group3 1 end] ","]
+
+		dict set u Skills [fixSkills $skills]
+	}
+
+	return $u
+}
+
 proc getRegion {f} {
 	set v [getSection $f]
 	if {$v eq "Orders Template (Long Format):"} {
@@ -301,44 +332,69 @@ proc getRegion {f} {
 	dict set region Exits $eout
 
 	# units
+	set hadBuilding 0
 	set oldNextLine $::nextLine
 	set filePtr [tell $f]
 	set v [getSection $f]
-	while {[lindex $v 0] == "-" ||
-	       [lindex $v 0] == "*" ||
-	       [lindex $v 0] == "+"} {
+	while {[lindex $v 0] eq "-" ||
+	       [lindex $v 0] eq "*" ||
+	       [lindex $v 0] eq "+"} {
 
-		# skip building reports
-		if {[lindex $v 0] != "+"} {
-			# what sort of report is this
-			set quality own
-			if {[lindex $v 0] == "-"} {
-				set quality foreign
+		# check that building reports are last
+		if {[lindex $v 0] eq "+"} {
+			set hadBuilding 1
+
+			set lines [split [string trimright $v "."] "."]
+			set hdr [lindex $lines 0]
+			regexp {\+ ([^:]+) : (.*)} $hdr -> oname odesc
+			set object [dict create Name $oname]
+
+			if {[llength $lines] == 1} {
+				dict lappend region Objects $object
+
+				set oldNextLine $::nextLine
+				set filePtr [tell $f]
+
+				set v [getSection $f]
+
+				continue
 			}
 
-			# get unit name
-			set comma [string first "," $v]
-			set n [string range $v 2 $comma-1]
+			set i 1
+			set j 2
+			while {$j < [llength $lines]} {
+				while {$j < [llength $lines] &&
+				       [lindex [lindex $lines $j] 0] ne "*" &&
+				       [lindex [lindex $lines $j] 0] ne "-"} {
+					incr j
+				}
 
-			set groups [split $v "."]
+				set v1 [join [lrange $lines $i $j-1] "."]
+				set u [parseUnit $v1]
 
-			set group0 [split [lindex $groups 0] ","]
-			set itemIdx [unitItemsIdx $group0]
-			set items [lrange $group0 $itemIdx end]
-			set items [repairItemList $items]
+				dict lappend object Units $u
 
-			set u [dict create Name $n Desc {} Report $quality Items $items]
-
-			# group 3 - skills
-			if {$quality eq "own"} {
-				set group3 [string map {"\n" " "} [lindex $groups 3]]
-				set skills [split [lrange $group3 1 end] ","]
-
-				dict set u Skills [fixSkills $skills]
+				set i $j
+				incr j
 			}
 
-			dict lappend region Units $u
+			dict lappend region Objects $object
+
+			set oldNextLine $::nextLine
+			set filePtr [tell $f]
+
+			set v [getSection $f]
+			continue
 		}
+
+		if {$hadBuilding} {
+			puts "Error building intermixed with units in '$v'"
+			exit
+		}
+
+		set u [parseUnit $v]
+
+		dict lappend region Units $u
 
 		set oldNextLine $::nextLine
 		set filePtr [tell $f]
