@@ -241,6 +241,19 @@ proc parseUnit {v} {
 	return $u
 }
 
+# convert a list of sales items {num long short price}
+# into a list with two items {{num long short} price}
+proc fixSales {sells} {
+	set ret ""
+	foreach s $sells {
+		set price [lindex $s end]
+		set s [regsub {[[:digit:]]+$} $s ""]
+		lappend ret [list $s $price]
+	}
+
+	return $ret
+}
+
 proc getRegion {f} {
 	set v [getSection $f]
 	if {$v eq "Orders Template (Long Format):"} {
@@ -262,10 +275,12 @@ proc getRegion {f} {
 
 	# wants
 	set v [getSection $f]
-	dict set region Units {}
 
 	# for sale
 	set v [getSection $f]
+	set sell [string map {"\n" " " "\$" "" "at" ""} [string trimright $v "."]]
+	set sell [split [regsub "For Sale:" $sell ""] ","]
+	dict set region Sells [fixSales $sell]
 
 	# entertainment
 	set v [getSection $f]
@@ -273,8 +288,8 @@ proc getRegion {f} {
 		# products
 		set v [getSection $f]
 	}
-	set v [string map {"\n" ""} $v]
-	dict set region Products [split [string trimright $v "."] ","]
+	set v [string map {"\n" " "} [string trimright $v "."]]
+	dict set region Products [split [regsub "Products:" $v ""] ","]
 
 	# exits
 	set v [getSection $f]
