@@ -55,6 +55,7 @@ namespace eval gui {
 }
 
 ##############################################################################
+### general utilities
 proc dGet {d k} {
 	if {![dict exists $d $k]} { return "" }
 
@@ -65,12 +66,23 @@ proc lGet {l i} {
 	return [string trim [lindex $l $i]]
 }
 
+##############################################################################
+### Atlantis specific utilities
+proc getZlevel {} {
+	set zlevel $gui::viewLevel
+	if {$zlevel == 1} {set zlevel ""}
+
+	return $zlevel
+}
+
 proc calcTurnNo {m y} {
 	set mN [lsearch $::monthNames $m]
 
 	return [expr ($y-1)*12 + $mN + 1]
 }
 
+##############################################################################
+### drawing
 # use 1,2,rad3 triangles
 proc setN {newN} {
 	# length of a hexside in pixels
@@ -118,20 +130,6 @@ proc plot_hex_num {obj x y} {
 	lappend tags [format "hex_%d_%d" $x $y]
 	$obj itemconfigure $hexId -tags $tags
 	return $hexId
-}
-
-if {0} {
-	db eval {SELECT x, y, type FROM terrain} res {
-		puts -nonewline "x = $res(x) y = $res(y) "
-		puts "type $res(type)"
-	}
-}
-
-proc getZlevel {} {
-	set zlevel $gui::viewLevel
-	if {$zlevel == 1} {set zlevel ""}
-
-	return $zlevel
 }
 
 # draw all the regions in the db data
@@ -196,6 +194,8 @@ proc drawDB {w db} {
 	$w itemconfigure unexplored -stipple gray50
 }
 
+##############################################################################
+### database
 proc doExits {db exits} {
 	foreach {d e} $exits {
 		set loc [dGet $e Location]
@@ -291,10 +291,8 @@ proc updateDb {db tdata} {
 	$db eval {END TRANSACTION}
 }
 
-#	set cx [$w canvasx $x]
-#	set cy [$w canvasy $y]
-#	set hexId [$w find closest $cx $cy]
-
+##############################################################################
+### gui
 proc orderBoxReset {w} {
 	if {$gui::prevUnit ne "" && [$w edit modified]} {
 		set orders [split [string trimright [$w get 1.0 end]] "\n"]
@@ -486,26 +484,20 @@ proc displayRegion {x y} {
 	}
 }
 
-# process user click on hex
-proc hexClick {w x y} {
-	# where is the click
-	set hexId [$w find withtag current]
-	if {$hexId eq ""} {return}
+# make region x and y selected in w
+proc selectRegion {w x y} {
+	# see if hex is active
+	set curTags [$w gettags [format "hex_%d_%d" $x $y]]
+	set i [lsearch $curTags "active"]
+	if {$i != -1} {return}
 
-	# what was the old active hex
-	set curTags [$w gettags $hexId]
-
-	# was it already active, then done
-	set i [lsearch $curTags active]
-	if {$i != -1} { return }
-
-	# restore normalcy
+	# deselect current active
 	$w itemconfigure active -outline black
 	$w itemconfigure active -width 1
 
-	# move "active" tag from old to current
+	# move active tag
 	$w dtag active
-	$w addtag active withtag current
+	$w addtag active withtag [format "hex_%d_%d" $x $y]
 
 	# show active
 	$w itemconfigure active -outline red
@@ -513,16 +505,44 @@ proc hexClick {w x y} {
 	$w raise active
 	$w raise icon
 
-	set tags [$w itemcget $hexId -tags]
+	displayRegion $x $y
+}
+
+# process user click on hex
+proc hexClick {w x y} {
+	# where is the click
+	set hexId [$w find withtag current]
+	if {$hexId eq ""} {return}
+
+	# was it already active, then done
+	set tags [$w gettags $hexId]
+
+	set i [lsearch $tags "active"]
+	if {$i != -1} { return }
+
 	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
 	if {$i == -1} { return }
-
 	set hexTag [lindex $tags $i]
 	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> hx hy
 
-	displayRegion $hx $hy
+	selectRegion $w $hx $hy
 }
 
+proc switchFocus {w} {
+	set curFocus [focus]
+	if {$curFocus eq ""} {return}
+
+	set sf [split $curFocus "."]
+	set sw [split $w        "."]
+
+	if {[lindex $sf 1] eq [lindex $sw 1]} {
+		focus $w
+	}
+}
+
+##############################################################################
+### menu callbacks
+# helper for "Add Report"
 proc loadData {filename} {
 	set tfile [open $filename]
 	set tdata [read $tfile]
@@ -531,6 +551,7 @@ proc loadData {filename} {
 	updateDb db [regsub -all {\n} $tdata " "]
 }
 
+# helper for "New Game"
 proc createGame {filename} {
 	wm title .t "True Atlanteans - [file tail $filename]"
 
@@ -620,8 +641,6 @@ proc zoomOut {} {
 	drawDB .t.fR.screen db
 }
 
-#	set ofile [tk_getOpenFile -initialdir .]
-# menu callbacks
 proc newGame {} {
 	set ofile [tk_getSaveFile]
 	if {$ofile eq ""} { return }
@@ -665,6 +684,7 @@ proc doAdd {} {
 	drawDB .t.fR.screen db
 }
 
+# calculate the number of men needed to fully tax a hex
 proc calcTaxers {} {
 	set xy [getSelectionXY]
 	if {$xy eq ""} {return}
@@ -681,24 +701,7 @@ proc calcTaxers {} {
 	tk_messageBox -message "[expr ($maxTax+49)/50] taxmen"
 }
 
-proc countTaxers {} {
-	db eval {SELECT COUNT(orders) FROM
-		detail JOIN units
-		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.orders like '%tax%'
-	}
-}
-
-proc findForeignUnits {} {
-	set res [db eval {
-		SELECT units.name, detail.x, detail.y, detail.z
-		FROM detail JOIN units
-		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail<>'own'
-	}]
-
-	set t .tForeignUnits
-
+proc makeUnitListbox {t res} {
 	if {![winfo exists $t]} {
 		toplevel $t
 		pack [frame $t.fTop] -side top
@@ -721,6 +724,17 @@ proc findForeignUnits {} {
 	}
 }
 
+proc findForeignUnits {} {
+	set res [db eval {
+		SELECT units.name, detail.x, detail.y, detail.z
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail<>'own'
+	}]
+
+	makeUnitListbox .tForeignUnits $res
+}
+
 proc findIdleUnits {} {
 	set res [db eval {
 		SELECT units.name, detail.x, detail.y, detail.z
@@ -730,26 +744,7 @@ proc findIdleUnits {} {
 		   AND units.orders=''
 	}]
 
-	if {![winfo exists .tIdleUnits]} {
-		toplevel .tIdleUnits
-		pack [frame .tIdleUnits.fTop] -side top
-
-		scrollbar .tIdleUnits.fTop.vs -command ".tIdleUnits.fTop.tl yview"
-
-		pack [listbox .tIdleUnits.fTop.tl -width 40 -height 40 \
--yscrollcommand ".tIdleUnits.fTop.vs set"] -side left -expand 1 -fill both
-
-		pack .tIdleUnits.fTop.vs -side left -fill y
-	}
-
-	.tIdleUnits.fTop.tl delete 0 end
-	foreach {n x y z} $res {
-		if {$z eq ""} {
-			.tIdleUnits.fTop.tl insert end "$n ($x,$y)"
-		} else {
-			.tIdleUnits.fTop.tl insert end "$n ($x,$y,$z)"
-		}
-	}
+	makeUnitListbox .tIdleUnits $res
 }
 
 proc saveOrders {} {
@@ -816,18 +811,6 @@ proc recenter {w x y} {
 	}
 }
 
-proc switchFocus {w} {
-	set curFocus [focus]
-	if {$curFocus eq ""} {return}
-
-	set sf [split $curFocus "."]
-	set sw [split $w        "."]
-
-	if {[lindex $sf 1] eq [lindex $sw 1]} {
-		focus $w
-	}
-}
-
 rename exit origExit
 proc exit {} {
 	if {[info exists ::db]} {
@@ -837,6 +820,7 @@ proc exit {} {
 }
 
 ##############################################################################
+### build the GUI
 toplevel .t
 #bind .t <Destroy> {exit}
 wm title .t "True Atlantians - <no game open>"
