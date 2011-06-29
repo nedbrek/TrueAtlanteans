@@ -530,7 +530,7 @@ proc displayRegion {x y} {
 
 	# pull the latest turn data
 	set rdata [db eval {
-		SELECT turn, weather, wages, pop, race, tax, id, products, sells
+		SELECT turn, weather, wages, pop, race, tax, id, products, sells, wants
 		FROM detail
 		WHERE x=$x AND y=$y AND z=$zlevel
 		ORDER BY turn DESC LIMIT 1
@@ -555,6 +555,7 @@ proc displayRegion {x y} {
 
 	# market
 	set sells [lindex $rdata 8]
+	set wants [lindex $rdata 9]
 	if {[llength $sells] == 0} {
 		.t.fL.fMarket.tv insert {} 0 -text "Nothing for sale" -open $gui::forSaleOpen
 	} else {
@@ -562,6 +563,16 @@ proc displayRegion {x y} {
 	}
 
 	foreach {i c} $sells {
+		.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
+	}
+
+	if {[llength $wants] == 0} {
+		.t.fL.fMarket.tv insert {} end -text "Wanted: nothing"
+	} else {
+		set tvi [.t.fL.fMarket.tv insert {} end -text "Wanted"]
+	}
+
+	foreach {i c} $wants {
 		.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
 	}
 
