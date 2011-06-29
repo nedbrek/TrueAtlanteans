@@ -42,6 +42,26 @@ set ::terrainColors {
 	wasteland   #d88040
 }
 
+set ::men {
+	BARB
+	DDWA
+	GBLN
+	GELF
+	GNOM
+	HDWA
+	HELF
+	HILA
+	HOBB
+	LEAD
+	NOMA
+	PLAI
+	SELF
+	TELF
+	TMAN
+	VIKI
+	WELF
+}
+
 namespace eval gui {
 	set currentTurn 0
 
@@ -79,6 +99,52 @@ proc calcTurnNo {m y} {
 	set mN [lsearch $::monthNames $m]
 
 	return [expr ($y-1)*12 + $mN + 1]
+}
+
+# return the total number of men in an item list
+proc countMen {il} {
+	set count 0
+	foreach i $il {
+		set abbr [string trim [lindex $i 2] {[]}]
+		if {[lsearch $::men $abbr] != -1} {
+			incr count [lindex $i 0]
+		}
+	}
+	return $count
+}
+
+# return true if current orders contain 'str'
+# e.g. ordersMatch $ol "tax"
+# ordersMatch $ol "produce"
+# (useful for reports on keeping in faction limits)
+proc ordersMatch {ol str} {
+	# handle delayed orders
+	set inTurn 0
+	foreach o $ol {
+		# if in turn block
+		if {$inTurn > 0} {
+			# only endturn matters
+			if {[string match -nocase "endturn" $o]} {
+				incr inTurn -1
+			}
+
+			continue
+		}
+
+		# look for start of turn block
+		if {[regexp -nocase {^@?turn\M} $o]} {
+			incr inTurn
+			continue
+		}
+
+		# check for match
+		if {[regexp -nocase "^$str\\M" $o]} {
+			return 1
+		}
+	}
+
+	# no match
+	return 0
 }
 
 ##############################################################################
@@ -196,6 +262,32 @@ proc drawDB {w db} {
 
 ##############################################################################
 ### database
+# (database available function)
+# return amount of tax revenue in hex given by 'rid'
+# (capped by maxTax extracted from detail table)
+proc curTax {rid maxTax} {
+	# ocean hexes have null maxTax
+	if {$maxTax eq ""} { return 0 }
+
+	# pull all the units in the region
+	set res [db eval {
+		SELECT items,orders
+		FROM units
+		WHERE regionId=$rid
+	}]
+
+	# count number of men taxing
+	set taxers 0
+	foreach {il ol} $res {
+		if {[ordersMatch $ol "tax"]} {
+			incr taxers [countMen $il]
+		}
+	}
+
+	# can't tax more than maxTax
+	return [expr min($taxers*50, $maxTax)]
+}
+
 proc doExits {db exits} {
 	foreach {d e} $exits {
 		set loc [dGet $e Location]
@@ -323,7 +415,7 @@ proc getSelectionXY {} {
 	return [list $x $y]
 }
 
-proc unitUpdate {wcb} {
+proc showUnit {name} {
 	orderBoxReset .t.fL.tOrd
 
 	set w .t.fR.screen
@@ -344,7 +436,6 @@ proc unitUpdate {wcb} {
 
 	set regionId [lindex $detail 0]
 
-	set name [$wcb get]
 	set gui::prevUnit $name
 
 	set data [db eval {
@@ -387,6 +478,11 @@ proc unitUpdate {wcb} {
 	} else {
 		.t.fL.tOrd configure -state disabled
 	}
+}
+
+proc unitUpdate {wcb} {
+	set name [$wcb get]
+	showUnit $name
 }
 
 proc displayRegion {x y} {
@@ -633,6 +729,8 @@ proc createGame {filename} {
 			  ON UPDATE CASCADE
 		);
 	}
+
+	::db function curTax curTax
 }
 
 proc dnLevel {} {
@@ -691,6 +789,8 @@ proc doOpen {} {
 		unset ::db
 	}
 
+	::db function curTax curTax
+
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set gui::viewLevel 1
 
@@ -725,6 +825,22 @@ proc calcTaxers {} {
 	tk_messageBox -message "[expr ($maxTax+49)/50] taxmen"
 }
 
+proc selectUnitFromList {w} {
+	set i [lindex [$w curselection] 0]
+	set str [$w get $i]
+	regexp {^(.+) \(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]*)\)$} \
+	  $str -> name x y z
+	set zlevel [getZlevel]
+	if {$zlevel ne $z} {
+		if {$z eq ""} {set z 1}
+		set gui::viewLevel $z
+		drawDB .t.fR.screen db
+	}
+	selectRegion .t.fR.screen $x $y
+	.t.fL.cbMyUnits set $name
+	showUnit $name
+}
+
 proc makeUnitListbox {t res} {
 	if {![winfo exists $t]} {
 		toplevel $t
@@ -736,6 +852,8 @@ proc makeUnitListbox {t res} {
 -yscrollcommand "$t.fTop.vs set"] -side left -expand 1 -fill both
 
 		pack $t.fTop.vs -side left -fill y
+
+		bind $t.fTop.tl <Double-1> {selectUnitFromList %W}
 	}
 
 	$t.fTop.tl delete 0 end
@@ -769,6 +887,21 @@ proc findIdleUnits {} {
 	}]
 
 	makeUnitListbox .tIdleUnits $res
+}
+
+proc reportTax {} {
+	set res [db eval {
+		SELECT x,y,z,curTax(id,tax) as ct
+		FROM detail
+		WHERE turn=$gui::currentTurn
+		ORDER BY ct DESC
+	}]
+
+	foreach {x y z t} $res {
+		if {$t} {
+			puts "($x,$y,$z) $t"
+		}
+	}
 }
 
 proc saveOrders {} {
