@@ -484,6 +484,15 @@ proc displayRegion {x y} {
 	}
 }
 
+proc findType {w ids type} {
+	foreach i $ids {
+		if {[$w type $i] eq $type} {
+			return $i
+		}
+	}
+	return ""
+}
+
 # make region x and y selected in w
 proc selectRegion {w x y} {
 	# see if hex is active
@@ -513,6 +522,21 @@ proc hexClick {w x y} {
 	# where is the click
 	set hexId [$w find withtag current]
 	if {$hexId eq ""} {return}
+
+	# what if the use clicks on a icon
+	if {[$w type $hexId] ne "polygon"} {
+		# find the hex with the icon
+		set c [$w bbox $hexId]
+		set x1 [expr [lindex $c 0]+2]
+		set y1 [expr [lindex $c 1]+2]
+		set x2 [expr [lindex $c 2]-2]
+		set y2 [expr [lindex $c 3]-2]
+		set hexes [$w find overlapping $x1 $y1 $x2 $y2]
+		set hexId [findType $w $hexes "polygon"]
+		if {$hexId eq ""} {
+			return
+		}
+	}
 
 	# was it already active, then done
 	set tags [$w gettags $hexId]
