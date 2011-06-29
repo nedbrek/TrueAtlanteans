@@ -248,7 +248,7 @@ proc fixSales {sells} {
 	foreach s $sells {
 		set price [lindex $s end]
 		set s [regsub {[[:digit:]]+$} $s ""]
-		lappend ret [list $s $price]
+		lappend ret [string trim $s] $price
 	}
 
 	return $ret
@@ -278,7 +278,7 @@ proc getRegion {f} {
 
 	# for sale
 	set v [getSection $f]
-	set sell [string map {"\n" " " "\$" "" "at" ""} [string trimright $v "."]]
+	set sell [string map {"\n" " " "\$" "" " at " " "} [string trimright $v "."]]
 	set sell [split [regsub "For Sale:" $sell ""] ","]
 	dict set region Sells [fixSales $sell]
 
