@@ -275,6 +275,11 @@ proc getRegion {f} {
 
 	# wants
 	set v [getSection $f]
+	set wants [string map {"\n" " " "\$" "" " at " " "} [string trimright $v "."]]
+	set wants [split [regsub " Wanted: " $wants ""] ","]
+	if {$wants ne "none"} {
+		dict set region Wants [fixSales $wants]
+	}
 
 	# for sale
 	set v [getSection $f]
