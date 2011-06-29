@@ -31,6 +31,7 @@ set ::terrainColors {
 	cavern      #f0d800
 	desert      #f0d800
 	forest      #00c000
+	hill        #a04018
 	jungle      #205020
 	mountain    #704018
 	mystforest  #004000
@@ -72,6 +73,7 @@ namespace eval gui {
 
 	set rightX 0
 	set rightY 0
+	set forSaleOpen 0
 }
 
 ##############################################################################
@@ -491,6 +493,13 @@ proc displayRegion {x y} {
 
 	.t.fL.lProd configure -text ""
 
+	set mt .t.fL.fMarket.tv
+	set marketChildren [$mt children {}]
+	if {[llength $marketChildren]} {
+		set gui::forSaleOpen [$mt item [lindex $marketChildren 0] -open]
+	}
+	$mt delete $marketChildren
+
 	# clear current unit, in case there is none
 	.t.fL.cbMyUnits set ""
 	.t.fL.cbMyUnits configure -values ""
@@ -544,7 +553,17 @@ proc displayRegion {x y} {
 
 	.t.fL.lProd configure -text [join [lindex $rdata 7]]
 
+	# market
 	set sells [lindex $rdata 8]
+	if {[llength $sells] == 0} {
+		.t.fL.fMarket.tv insert {} 0 -text "Nothing for sale" -open $gui::forSaleOpen
+	} else {
+		set tvi [.t.fL.fMarket.tv insert {} 0 -text "For sale" -open $gui::forSaleOpen]
+	}
+
+	foreach {i c} $sells {
+		.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
+	}
 
 	# unit processing
 
@@ -985,8 +1004,10 @@ wm title .t "True Atlantians - <no game open>"
 ### top menu
 menu .mTopMenu -tearoff 0
 menu .mTopMenu.mFile -tearoff 0
+menu .mTopMenu.mReports -tearoff 0
 
 .mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
+.mTopMenu add cascade -label "Reports" -menu .mTopMenu.mReports -underline 0
 
 .mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
 .mTopMenu.mFile add command -label "Open"        -command doOpen  -underline 0 -accelerator "Ctrl+O"
@@ -994,6 +1015,9 @@ menu .mTopMenu.mFile -tearoff 0
 .mTopMenu.mFile add command -label "Save Orders" -command saveOrders -underline 0
 .mTopMenu.mFile add separator
 .mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
+
+.mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
+.mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
 
 .t configure -menu .mTopMenu
 
@@ -1030,6 +1054,12 @@ pack [text .t.fL.tDesc -width 42 -height 9] -side top
 
 pack [label .t.fL.lProd -wraplength 300] -side top
 
+pack [frame .t.fL.fMarket] -side top -expand 1 -fill x
+pack [ttk::treeview .t.fL.fMarket.tv -show tree \
+-yscrollcommand ".t.fL.fMarket.vs set"] -side left -expand 1 -fill x
+pack [scrollbar .t.fL.fMarket.vs -command ".t.fL.fMarket.tv yview" \
+-orient vertical] -side left -fill y
+
 # next, unit combobox
 pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45] -side top
 if {$tcl_platform(os) eq "Linux"} {
@@ -1042,7 +1072,8 @@ pack [frame .t.fL.fItems] -side top
 pack [text .t.fL.fItems.t -width 40 -height 10 -state disabled \
 -yscrollcommand ".t.fL.fItems.vs set"] -side left
 
-pack [scrollbar .t.fL.fItems.vs -command ".t.fL.fItems.t yview" -orient vertical] -side left -fill y
+pack [scrollbar .t.fL.fItems.vs -command ".t.fL.fItems.t yview" \
+-orient vertical] -side left -fill y
 
 # next, orders box
 pack [text .t.fL.tOrd -width 42 -height 9 -undo 1] -side top
