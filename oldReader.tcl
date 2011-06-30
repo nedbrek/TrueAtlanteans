@@ -174,7 +174,7 @@ proc unitItemsIdx {fields} {
 	# field 1 - faction, sometimes...
 	# fields 2+ flags
 	set i 1
-	while {![regexp {\[[[:alnum:]]{4}\]} [lindex $fields $i]]} {
+	while {![regexp {\[[[:alnum:]]{3,4}\]} [lindex $fields $i]]} {
 		incr i
 		if {$i > [llength $fields]} {
 			puts "Error in $fields"
@@ -268,8 +268,13 @@ proc getRegion {f} {
 	dict set region WeatherOld $old
 	dict set region WeatherNew $new
 
-	# wages
+	# check for Nexus
 	set v [getSection $f]
+	if {[regexp {Nexus is a} $v]} {
+		set v [getSection $f]
+	}
+
+	# wages
 	dict set region Wage    [string map {\$ ""} [lindex $v 1]]
 	dict set region MaxWage [string map {\$ "" \) "" . ""} [lindex $v 3]]
 
@@ -289,12 +294,12 @@ proc getRegion {f} {
 
 	# entertainment
 	set v [getSection $f]
-	if {[lindex $v 0] eq "Entertainment"} {
+	if {[regexp {Entertainment} $v]} {
 		# products
 		set v [getSection $f]
 	}
 	set v [string map {"\n" " "} [string trimright $v "."]]
-	dict set region Products [split [regsub "Products:" $v ""] ","]
+	dict set region Products [split [regsub " Products: " $v ""] ","]
 
 	# exits
 	set v [getSection $f]
@@ -356,6 +361,12 @@ proc getRegion {f} {
 	set oldNextLine $::nextLine
 	set filePtr [tell $f]
 	set v [getSection $f]
+	if {[regexp {There is a Gate here} $v]} {
+		set oldNextLine $::nextLine
+		set filePtr [tell $f]
+		set v [getSection $f]
+	}
+
 	while {[lindex $v 0] eq "-" ||
 	       [lindex $v 0] eq "*" ||
 	       [lindex $v 0] eq "+"} {
