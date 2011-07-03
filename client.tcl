@@ -260,6 +260,7 @@ proc drawDB {w db} {
 	}
 
 	$w itemconfigure unexplored -stipple gray50
+	$w configure -scrollregion [$w bbox all]
 }
 
 ##############################################################################
@@ -919,17 +920,54 @@ proc findIdleUnits {} {
 	makeUnitListbox .tIdleUnits $res
 }
 
+proc selectRegionFromList {w} {
+	set i [lindex [$w curselection] 0]
+	set str [$w get $i]
+	regexp {^\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]*)\) } \
+	  $str -> x y z
+
+	set zlevel [getZlevel]
+	if {$zlevel ne $z} {
+		if {$z eq ""} {set z 1}
+		set gui::viewLevel $z
+		drawDB .t.fR.screen db
+	}
+
+	selectRegion .t.fR.screen $x $y
+}
+
 proc reportTax {} {
 	set res [db eval {
-		SELECT x,y,z,curTax(id,tax) as ct
+		SELECT x,y,z,curTax(id,tax) as ct,tax
 		FROM detail
-		WHERE turn=$gui::currentTurn
+		WHERE turn=$gui::currentTurn AND ct > 0
 		ORDER BY ct DESC
 	}]
 
-	foreach {x y z t} $res {
-		if {$t} {
-			puts "($x,$y,$z) $t"
+	set t .tTaxRegions
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tl yview"
+
+		pack [listbox $t.fTop.tl -width 40 -height 40 \
+-yscrollcommand "$t.fTop.vs set"] -side left -expand 1 -fill both
+
+		pack $t.fTop.vs -side left -fill y
+
+		bind $t.fTop.tl <Double-1> {selectRegionFromList %W}
+	}
+	wm title $t "Tax Report ([expr [llength $res]/5] regions)"
+
+	$t.fTop.tl delete 0 end
+	foreach {x y z tx max} $res {
+		set delta [expr $max - $tx]
+		if {$z eq ""} {
+			$t.fTop.tl insert end "($x,$y) - $tx ($max - $delta)"
+		} else {
+			$t.fTop.tl insert end "($x,$y,$z) - $tx ($max - $delta)"
 		}
 	}
 }
