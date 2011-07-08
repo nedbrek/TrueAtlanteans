@@ -217,7 +217,7 @@ proc col2x {col} {
 }
 
 proc row2y {row} {
-	set oddRow [expr $row & 1]
+	set oddRow [expr int($row+.5) & 1]
 	set yNum   [expr $row / 2]
 	set yOff 0
 	if {$oddRow} {
@@ -253,13 +253,13 @@ proc drawDB {w db} {
 			ORDER BY detail.turn
 	}]
 
-	foreach {x y type city ct rid} $data {
+	foreach {col row type city ct rid} $data {
 		if {$type eq "nexus"} {continue}
 
-		if {[info exists drawn($x,$y)]} {continue} 
-		set drawn($x,$y) ""
+		if {[info exists drawn($col,$row)]} {continue} 
+		set drawn($col,$row) ""
 
-		set hexId [plot_hex_num $w $x $y]
+		set hexId [plot_hex_num $w $col $row]
 
 		$w itemconfigure $hexId -fill [dict get $::terrainColors $type]
 
@@ -294,6 +294,17 @@ proc drawDB {w db} {
 		# tag unexplored hexes
 		if {$ct eq ""} {
 			$w addtag unexplored withtag $hexId
+		}
+
+		# pull buildings
+		set objects [db eval {
+			SELECT desc FROM objects
+			WHERE regionId=$rid
+		}]
+		foreach desc $objects {
+			if {[regexp -nocase {^Road (.+)} $desc -> dir]} {
+				drawRoad $dir $row $col
+			}
 		}
 	}
 
