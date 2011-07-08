@@ -180,6 +180,37 @@ proc plot_hex_full {obj x y} {
 	return $hexId
 }
 
+proc drawRoad {dir row col} {
+	set w .t.fR.screen
+	set x [col2x $col]
+	set y [row2y $row]
+
+	switch -nocase $dir {
+		n {
+			set id [$w create line [expr $x + $::n  ] [expr $y             ] [expr $x + $::n] [expr $y + $::nrad3]]
+		}
+		s {
+			set id [$w create line [expr $x + $::n  ] [expr $y + 2*$::nrad3] [expr $x + $::n] [expr $y + $::nrad3]]
+		}
+		nw {
+			set id [$w create line [expr $x - $::n/2] [expr $y + $::nrad3/2] [expr $x + $::n] [expr $y + $::nrad3]]
+		}
+		ne {
+			set id [$w create line [expr $x + 2.5*$::n] [expr $y + $::nrad3/2] [expr $x + $::n] [expr $y + $::nrad3]]
+		}
+		sw {
+			set id [$w create line [expr $x - $::n/2] [expr $y + 1.5*$::nrad3] [expr $x + $::n] [expr $y + $::nrad3]]
+		}
+		se {
+			set id [$w create line [expr $x + 2.5*$::n] [expr $y + 1.5*$::nrad3] [expr $x + $::n] [expr $y + $::nrad3]]
+		}
+	}
+
+	$w addtag road withtag $id
+	$w addtag icon withtag $id
+	$w itemconfigure $id -width 2
+}
+
 # calculate the x and y coord of the top-left of the hex
 proc col2x {col} {
 	return [expr ($col * 3 * $::n) + $::n]
