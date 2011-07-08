@@ -451,7 +451,9 @@ proc parseFile {f} {
 	# Faction Name (number) (War n,Trade n, Magic n)
 
 	set v [getSection $f]
-	puts "Month [string map {"," ""} $v]"
+	set v [string map {"," ""} $v]
+	set turn [dict create Month [lindex $v 0]]
+	dict set turn [lindex $v 1] [lindex $v 2]
 
 	# skip all the events
 	set v [getSection $f]
@@ -483,17 +485,23 @@ proc parseFile {f} {
 	}
 
 	# done
-	puts "Regions [list $regions]"
+	dict set turn Regions $regions
+	return $turn
 }
 
 ################
 if {![info exists debug]} {
-	if {$argc != 1} {
+	if {$argc < 1} {
 		puts "Usage $argv0 <filename>"
 		exit
 	}
 
-	set f [open [lindex $argv 0]]
-	parseFile $f
+	foreach fname $argv {
+		set f [open $fname]
+		set chn [open [format {%s%s} "c" [file tail $fname]] "w"]
+		puts $chn [parseFile $f]
+		close $f
+		close $chn
+	}
 }
 
