@@ -33,6 +33,7 @@ set ::terrainColors {
 	forest      #00c000
 	hill        #a04018
 	jungle      #205020
+	lake        #0000ff
 	mountain    #704018
 	mystforest  #004000
 	ocean       #000090
@@ -140,7 +141,7 @@ proc ordersMatch {ol str} {
 		}
 
 		# check for match
-		if {[regexp -nocase "^$str\\M" $o]} {
+		if {[regexp -nocase "^@?$str\\M" $o]} {
 			return 1
 		}
 	}
