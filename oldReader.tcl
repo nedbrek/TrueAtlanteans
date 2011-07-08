@@ -200,7 +200,7 @@ proc fixSkills {skills} {
 	set ret ""
 	foreach s $skills {
 		set name [lrange $s 0 end-3]
-		set abbr [string map {"[" "" "]" ""} [lindex $s end-2]]
+		set abbr [string map {"\[" "" "]" ""} [lindex $s end-2]]
 		set lvl  [lindex $s end-1]
 		set pts  [string map {"(" "" ")" ""} [lindex $s end]]
 
@@ -379,6 +379,9 @@ proc getRegion {f} {
 			set hdr [lindex $lines 0]
 			regexp {\+ ([^:]+) : (.*)} $hdr -> oname odesc
 			set object [dict create Name $oname]
+
+			set objFlags [split [string trimright $odesc "."] ","]
+			dict set object ObjectName [lindex $objFlags 0]
 
 			if {[llength $lines] == 1} {
 				dict lappend region Objects $object
