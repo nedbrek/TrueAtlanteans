@@ -324,6 +324,7 @@ proc dbInsertUnit {db regionId u} {
 		$regionId, $name, $desc, $detail, $orders, $items, $skills
 		);
 	}
+	return [$db last_insert_rowid]
 }
 
 proc updateDb {db tdata} {
@@ -378,8 +379,24 @@ proc updateDb {db tdata} {
 
 		set objects [dGet $r Objects]
 		foreach o $objects {
+			set oname [dGet $o Name]
+			set odesc [dGet $o ObjectName]
+			$db eval {
+				INSERT OR REPLACE INTO objects
+				(regionId, name, desc)
+				VALUES(
+				$regionId, $oname, $odesc
+				)
+			}
+			set objectId [$db last_insert_rowid]
+
 			foreach u [dGet $o Units] {
-				dbInsertUnit $db $regionId $u
+				set unitRow [dbInsertUnit $db $regionId $u]
+				$db eval {
+					INSERT OR REPLACE INTO object_unit_map
+					(objectId, unitId)
+					VALUES($objectId, $unitRow)
+				}
 			}
 		}
 	}
@@ -553,6 +570,18 @@ proc displayRegion {x y} {
 	set wages [lindex $rdata 2]
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 
+	set regionId [lindex $rdata 6]
+
+	# pull buildings
+	set objects [db eval {
+		SELECT name, desc FROM objects
+		WHERE regionId=$regionId
+	}]
+	foreach {name desc} $objects {
+		$t insert end "$name - $desc\n"
+	}
+
+	# region resources for production
 	.t.fL.lProd configure -text [join [lindex $rdata 7]]
 
 	# market
@@ -583,7 +612,6 @@ proc displayRegion {x y} {
 	# don't show units from the past
 	if {[lindex $rdata 0] != $gui::currentTurn} { return }
 
-	set regionId [lindex $rdata 6]
 	set units [db eval {
 		SELECT name, detail
 		FROM units
@@ -759,6 +787,32 @@ proc createGame {filename} {
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
+		);
+	}
+
+	::db eval {
+		CREATE TABLE objects (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			regionId INTEGER not null,
+			name not null,
+			desc not null,
+			FOREIGN KEY (regionId) REFERENCES detail(id)
+				ON DELETE CASCADE
+				ON UPDATE CASCADE
+		);
+	}
+
+	::db eval {
+		CREATE TABLE object_unit_map (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			objectId INTEGER not null,
+			unitId INTEGER not null,
+			FOREIGN KEY (objectId) REFERENCES objects(id)
+				ON DELETE CASCADE
+				ON UPDATE CASCADE,
+			FOREIGN KEY (unitId) REFERENCES units(id)
+				ON DELETE CASCADE
+				ON UPDATE CASCADE
 		);
 	}
 
