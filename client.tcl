@@ -180,20 +180,26 @@ proc plot_hex_full {obj x y} {
 	return $hexId
 }
 
+# calculate the x and y coord of the top-left of the hex
+proc col2x {col} {
+	return [expr ($col * 3 * $::n) + $::n]
+}
+
+proc row2y {row} {
+	set oddRow [expr $row & 1]
+	set yNum   [expr $row / 2]
+	set yOff 0
+	if {$oddRow} {
+		set yOff $::nrad3
+	}
+
+	return [expr $yNum * 2 * $::nrad3 + $yOff]
+}
+
 # plot the hex (x,y) (where x and y are integers 0..i)
 # adds the tag hex_x_y
 proc plot_hex_num {obj x y} {
-	global n nrad3
-
-	set oddRow [expr $y & 1]
-	set yNum [expr $y / 2]
-	set yOff 0
-	if {$oddRow} {
-		set yOff $nrad3
-	}
-
-	set hexId [plot_hex_full $obj [expr ($x * 3 * $n) + $n] \
-	           [expr $yNum * 2 * $nrad3 + $yOff]]
+	set hexId [plot_hex_full $obj [col2x $x] [row2y $y]]
 
 	set tags [$obj itemcget $hexId -tags]
 	lappend tags [format "hex_%d_%d" $x $y]
