@@ -176,7 +176,7 @@ proc plot_hex_full {obj x y} {
 [expr $x + 2 * $n] [expr $y + 2 * $nrad3] \
       $x           [expr $y + 2 * $nrad3] \
 [expr $x -     $n] [expr $y +     $nrad3] \
--outline black -tags hex]
+-outline darkgray -outlinestipple gray25 -tags hex]
 
 	return $hexId
 }
@@ -706,7 +706,8 @@ proc selectRegion {w x y} {
 	if {$i != -1} {return}
 
 	# deselect current active
-	$w itemconfigure active -outline black
+	$w itemconfigure active -outline darkgray
+	$w itemconfigure active -outlinestipple gray25
 	$w itemconfigure active -width 1
 
 	# move active tag
@@ -715,6 +716,7 @@ proc selectRegion {w x y} {
 
 	# show active
 	$w itemconfigure active -outline red
+	$w itemconfigure active -outlinestipple ""
 	$w itemconfigure active -width 4
 	$w raise active
 	$w raise icon
