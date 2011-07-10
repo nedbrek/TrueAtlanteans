@@ -396,7 +396,7 @@ proc getRegion {f} {
 
 			set i 1
 			set j 2
-			while {$j < [llength $lines]} {
+			while {$i < [llength $lines]} {
 				while {$j < [llength $lines] &&
 				       [lindex [lindex $lines $j] 0] ne "*" &&
 				       [lindex [lindex $lines $j] 0] ne "-"} {
