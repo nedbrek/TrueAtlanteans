@@ -1173,6 +1173,7 @@ menu .mTopMenu.mReports -tearoff 0
 
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
+.mTopMenu.mReports add command -label "Taxers" -command reportTax -underline 0
 
 .t configure -menu .mTopMenu
 
