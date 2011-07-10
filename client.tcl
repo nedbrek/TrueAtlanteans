@@ -1142,6 +1142,16 @@ proc recenter {w x y} {
 	}
 }
 
+proc loadGlob {patt} {
+	set files [glob $patt]
+	foreach f $files {
+		loadData $f
+	}
+
+	set gui::currentTurn [db eval {select max(turn) from detail}]
+	drawDB .t.fR.screen db
+}
+
 rename exit origExit
 proc exit {} {
 	if {[info exists ::db]} {
