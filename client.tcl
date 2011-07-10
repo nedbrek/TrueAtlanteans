@@ -40,6 +40,7 @@ set ::terrainColors {
 	plain       #ffffc0
 	swamp       #a0a040
 	tunnels     #704018
+	tundra      #00ffff
 	underforest #00c000
 	wasteland   #d88040
 }
