@@ -473,6 +473,7 @@ proc orderBoxReset {w} {
 	$w edit modified 0
 }
 
+# return the x and y coordinates of the hex under the mouse
 proc getSelectionXY {} {
 	set tags [.t.fR.screen gettags active]
 	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
@@ -485,11 +486,14 @@ proc getSelectionXY {} {
 	return [list $x $y]
 }
 
+# make the unit with 'name' active from the combox
 proc showUnit {name} {
 	orderBoxReset .t.fL.tOrd
 
 	set w .t.fR.screen
 
+	# retrieve unit in this hex
+	## start with regionId
 	set xy [getSelectionXY]
 	if {$xy eq ""} {return}
 	set x [lindex $xy 0]
@@ -504,6 +508,7 @@ proc showUnit {name} {
 	}]
 	if {[lindex $detail 1] != $gui::currentTurn} { return }
 
+	## got it, use it to retrieve the unit
 	set regionId [lindex $detail 0]
 
 	set gui::prevUnit $name
@@ -520,6 +525,7 @@ proc showUnit {name} {
 	set skills      [lindex $data 3]
 	set detail      [lindex $data 4]
 
+	# fill the items box (stick skills in too)
 	set t .t.fL.fItems.t
 	$t configure -state normal
 
@@ -537,12 +543,15 @@ proc showUnit {name} {
 		$t insert end "[join $i]\n"
 	}
 	$t configure -state disabled
+	# done with items
 
+	# populate orders box
 	foreach o $orders {
 		.t.fL.tOrd insert end "$o\n"
 	}
 	.t.fL.tOrd edit modified 0
 
+	# don't let people modify foreign unit orders
 	if {$detail eq "own"} {
 		.t.fL.tOrd configure -state normal
 	} else {
@@ -550,11 +559,7 @@ proc showUnit {name} {
 	}
 }
 
-proc unitUpdate {wcb} {
-	set name [$wcb get]
-	showUnit $name
-}
-
+# update the left frame with all the region details
 proc displayRegion {x y} {
 	# clean up
 	orderBoxReset .t.fL.tOrd
@@ -608,15 +613,15 @@ proc displayRegion {x y} {
 	if {[llength $rdata] == 0} { return }
 
 	$t insert end "Data from turn: [lGet $rdata 0]\n"
+	set weather [lindex $rdata 1]
+	set wages   [lindex $rdata 2]
 
 	$t insert end "[lGet $rdata 3] peasants "
 	$t insert end "([lGet $rdata 4]), \$[lGet $rdata 5].\n"
 	$t insert end "------------------------------------\n"
-	set weather [lindex $rdata 1]
 	$t insert end "The weather was [lGet $weather 0] last month;\n"
 	$t insert end "it will be [lGet $weather 1] next month.\n"
 
-	set wages [lindex $rdata 2]
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 
 	set regionId [lindex $rdata 6]
@@ -658,7 +663,7 @@ proc displayRegion {x y} {
 
 	# unit processing
 
-	# don't show units from the past
+	## don't show units from the past
 	if {[lindex $rdata 0] != $gui::currentTurn} { return }
 
 	set units [db eval {
@@ -668,7 +673,7 @@ proc displayRegion {x y} {
 		ORDER BY detail DESC
 	}]
 
-	# set up units combox
+	## set up units combox
 	set unitList {}
 	set state "start"
 	foreach {name detail} $units {
@@ -685,10 +690,11 @@ proc displayRegion {x y} {
 	.t.fL.cbMyUnits configure -values $unitList
 	if {[llength $unitList] != 0} {
 		.t.fL.cbMyUnits current 0
-		unitUpdate .t.fL.cbMyUnits
+		showUnit [.t.fL.cbMyUnits get]
 	}
 }
 
+# find the first of 'ids' with canvas item 'type'
 proc findType {w ids type} {
 	foreach i $ids {
 		if {[$w type $i] eq $type} {
@@ -759,6 +765,7 @@ proc hexClick {w x y} {
 	selectRegion $w $hx $hy
 }
 
+# only switch focus if the widgets are part of the same toplevel
 proc switchFocus {w} {
 	set curFocus [focus]
 	if {$curFocus eq ""} {return}
@@ -1271,7 +1278,7 @@ bind .t.fR.screen <KP_Add> zoomIn
 
 ## orders
 # update orders on unit dropdown change
-bind .t.fL.cbMyUnits <<ComboboxSelected>> [list unitUpdate %W]
+bind .t.fL.cbMyUnits <<ComboboxSelected>> {showUnit [%W get]}
 
 # redo should be default on Windows, but needed on Linux
 bind .t.fL.tOrd <Control-y> {%W edit redo}
