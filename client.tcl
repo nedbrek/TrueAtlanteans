@@ -303,7 +303,13 @@ proc drawDB {w db} {
 
 		# draw city icon
 		if {$city ne ""} {
-			$w create text [expr $x+$::n] [expr $y+$::nrad3] -text "*" -tags icon
+			switch [lindex $city end] {
+				village {set cityIcon "-"}
+				town    {set cityIcon "+"}
+				city    {set cityIcon "*"}
+				default {puts "Unknown city type: $city"}
+			}
+			$w create text [expr $x+$::n] [expr $y+$::nrad3] -text $cityIcon -tags icon
 		}
 
 		# show unit flags
@@ -323,6 +329,36 @@ proc drawDB {w db} {
 				$w create text [expr $x+2*$::n] [expr $y+2*$::nrad3] -text "!" \
 				  -anchor se -fill red -tags icon
 			}
+
+			set res [db eval {
+				SELECT orders
+				FROM units
+				WHERE regionId=$rid
+			}]
+
+			set hasTax  0
+			set hasProd 0
+			foreach ol $res {
+				if {!$hasTax && [ordersMatch $ol "tax"] != -1} {
+					set hasTax 1
+				}
+
+				if {!$hasProd && [ordersMatch $ol "produce"] != -1} {
+					set hasProd 1
+				}
+				if {!$hasProd && [ordersMatch $ol "build"] != -1} {
+					set hasProd 1
+				}
+			}
+
+			if {$hasTax} {
+				$w create text [expr $x-$::n] [expr $y+$::nrad3] -text "\$" \
+				  -anchor w -fill darkgreen -tags icon
+			}
+			if {$hasProd} {
+				$w create text [expr $x] [expr $y] -text "P" \
+				  -anchor nw -tags icon
+			}
 		}
 
 		# tag unexplored hexes
@@ -335,10 +371,20 @@ proc drawDB {w db} {
 			SELECT desc FROM objects
 			WHERE regionId=$rid
 		}]
+		set hasOtherBuild 0
 		foreach desc $objects {
 			if {[regexp -nocase {^Road (.+)} $desc -> dir]} {
 				drawRoad $dir $row $col
+			} elseif {$desc eq "Shaft"} {
+				$w create text [expr $x+2.5*$::n] [expr $y+$::nrad3] -text "H" \
+				  -anchor e -tags icon
+			} elseif {!$hasOtherBuild} {
+				set hasOtherBuild 1
 			}
+		}
+		if {$hasOtherBuild} {
+			$w create text [expr $x+2*$::n] [expr $y] -text "B" \
+			  -anchor ne -tags icon
 		}
 	}
 
