@@ -65,6 +65,30 @@ set ::men {
 	WELF
 }
 
+# map from product to skill
+set ::production {
+	GRAI FARM
+	LIVE RANC
+	FISH FISH
+	WOOD LUMB
+	IRON MINI
+	MITH MINI
+	STON QUAR
+	HERB HERB
+	LASS HERB
+	HORS HORS
+	CAME CAME
+	GEM  GCUT
+	PARM ARMO
+	CARM ARMO
+	BHAM WEAP
+	MSTA WEAP
+	MSWO WEAP
+	SPEA WEAP
+	SWOR WEAP
+	XBOW WEAP
+}
+
 namespace eval gui {
 	set currentTurn 0
 
@@ -88,6 +112,13 @@ proc dGet {d k} {
 
 proc lGet {l i} {
 	return [string trim [lindex $l $i]]
+}
+
+# return the union of lists 'a' and 'b'
+proc lunion {a b} {
+	foreach el $a {set ary($el) ""}
+	foreach el $b {set ary($el) ""}
+	return [array names ary]
 }
 
 ##############################################################################
@@ -117,14 +148,16 @@ proc countMen {il} {
 	return $count
 }
 
-# return true if current orders contain 'str'
+# return index if current orders contain 'str' (-1 on no match)
 # e.g. ordersMatch $ol "tax"
 # ordersMatch $ol "produce"
 # (useful for reports on keeping in faction limits)
 proc ordersMatch {ol str} {
 	# handle delayed orders
 	set inTurn 0
+	set idx -1
 	foreach o $ol {
+		incr idx
 		# if in turn block
 		if {$inTurn > 0} {
 			# only endturn matters
@@ -143,12 +176,12 @@ proc ordersMatch {ol str} {
 
 		# check for match
 		if {[regexp -nocase "^@?$str\\M" $o]} {
-			return 1
+			return $idx
 		}
 	}
 
 	# no match
-	return 0
+	return -1
 }
 
 ##############################################################################
@@ -315,6 +348,45 @@ proc drawDB {w db} {
 
 ##############################################################################
 ### database
+proc buildProductDict {maxProducts} {
+	set ret ""
+	foreach p $maxProducts {
+		set key [string trim [lindex $p end] {[]}]
+		set val [lindex $p 0]
+		dict set ret $key $val
+	}
+	return $ret
+}
+
+# return a list of producers in hex given by 'rid'
+# (capped by the maximums in maxProducts)
+proc curProduce {rid maxProducts} {
+	# pull all the units in the region
+	set res [db eval {
+		SELECT items,orders,skills
+		FROM units
+		WHERE regionId=$rid
+	}]
+
+	set maxProdDict [buildProductDict $maxProducts]
+	set ret ""
+	# foreach result
+	foreach {il ol sl} $res {
+		set idx [ordersMatch $ol "produce"]
+		if {$idx != -1} {
+			set o [lindex $ol $idx]
+			set product [string toupper [lindex $o 1]]
+			if {![dict exists $::production $product]} {
+				puts "No product $product"
+			}
+			set numMen [countMen $il]
+			dict set ret $product $numMen
+		}
+	}
+
+	return $maxProdDict
+}
+
 # (database available function)
 # return amount of tax revenue in hex given by 'rid'
 # (capped by maxTax extracted from detail table)
@@ -332,7 +404,7 @@ proc curTax {rid maxTax} {
 	# count number of men taxing
 	set taxers 0
 	foreach {il ol} $res {
-		if {[ordersMatch $ol "tax"]} {
+		if {[ordersMatch $ol "tax"] != -1} {
 			incr taxers [countMen $il]
 		}
 	}
@@ -875,6 +947,7 @@ proc createGame {filename} {
 	}
 
 	::db function curTax curTax
+	::db function curProduce curProduce
 }
 
 proc dnLevel {} {
@@ -934,6 +1007,7 @@ proc doOpen {} {
 	}
 
 	::db function curTax curTax
+	::db function curProduce curProduce
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set gui::viewLevel 1
@@ -1082,6 +1156,113 @@ proc reportTax {} {
 		} else {
 			$t.fTop.tl insert end "($x,$y,$z) - $tx ($max - $delta)"
 		}
+	}
+}
+
+proc safeLsortIdxS {col a b} {
+	set la [lindex $a $col]
+	set lb [lindex $b $col]
+	if {$la eq ""} {
+		return [expr {$lb eq "" ? 0 : -1}]
+	}
+	if {$lb eq ""} {
+		return 1
+	}
+	set c [string compare $la $lb]
+	if {$c == 0} {
+		set la1 [lindex $a $col+1]
+		set lb1 [lindex $b $col+1]
+		return [expr {$la1 - $lb1}]
+	}
+	return $c
+}
+
+proc safeLsortIdxI {col a b} {
+	set la [lindex $a $col]
+	set lb [lindex $b $col]
+	if {$la eq ""} {
+		return [expr {$lb eq "" ? 0 : -1}]
+	}
+	if {$lb eq ""} {
+		return 1
+	}
+	return [expr $la - $lb]
+}
+
+proc sortProdList {col isInt} {
+	set t .tProduceRegions
+	set childList [$t.fTop.tv children {}]
+	foreach i $childList {
+		set terrain [$t.fTop.tv item $i -text]
+		lappend vals [concat $terrain [$t.fTop.tv item $i -values]]
+	}
+
+	set command safeLsortIdxI
+	if {!$isInt} {
+		set command safeLsortIdxS
+	}
+	lappend command $col
+
+	set vals2 [lsort -decreasing -command $command $vals]
+
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+	foreach v $vals2 {
+		$t.fTop.tv insert {} end -text [lindex $v 0] -values [lrange $v 1 end]
+	}
+}
+
+# build the production report window
+proc reportProd {} {
+	# pull all production values
+	set res [db eval {
+		SELECT x,y,z,curProduce(id, products) as cp
+		FROM detail
+		WHERE turn=$gui::currentTurn
+	}]
+
+	# build the window
+	set t .tProduceRegions
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	}
+
+	# populate it
+	# (every hex has a variable number of production columns)
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+	set maxCol 3
+	foreach {x y z prod} $res {
+		set terrain [db eval {SELECT type from terrain
+			WHERE x=$x AND y=$y AND z=$z}]
+		$t.fTop.tv insert {} end -text $terrain -values [list $x $y $z {*}$prod]
+		set maxCol [expr max($maxCol, 3+[llength $prod])]
+	}
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= $maxCol} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	# x,y,z
+	$t.fTop.tv column 1 -width 34
+	$t.fTop.tv column 2 -width 34
+	$t.fTop.tv column 3 -width 34
+	$t.fTop.tv heading 1 -text "x"
+	$t.fTop.tv heading 2 -text "y"
+	$t.fTop.tv heading 3 -text "z"
+
+	# production items
+	for {set i 4} {$i <= $maxCol} {incr i} {
+		$t.fTop.tv column $i -width 52
+		# allow sorting
+		$t.fTop.tv heading $i -command [list sortProdList $i [expr $i&1]]
 	}
 }
 
