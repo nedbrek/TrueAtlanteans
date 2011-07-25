@@ -74,6 +74,12 @@ set ::men {
 	WELF
 }
 
+set ::boats {
+	Longboat
+	Clipper
+	Galleon
+}
+
 # map from product to skill
 set ::production {
 	GRAI FARM
@@ -387,6 +393,8 @@ proc drawDB {w db} {
 			} elseif {$desc eq "Shaft"} {
 				$w create text [expr $x+2.5*$::n] [expr $y+$::nrad3] -text "H" \
 				  -anchor e -tags icon
+			} elseif {[lsearch $::boats $desc] != -1} {
+				# draw ship icon
 			} elseif {!$hasOtherBuild} {
 				set hasOtherBuild 1
 			}
