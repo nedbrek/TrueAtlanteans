@@ -657,7 +657,7 @@ proc showUnit {name} {
 			$t insert end "[join $s]\n"
 		}
 	}
-	$t insert end "--------\n"
+	$t insert end "-------- [countMen $items] men\n"
 
 	foreach i $items {
 		$t insert end "[join $i]\n"
