@@ -1,5 +1,11 @@
 set ::nextLine ""
 
+proc dGet {d k} {
+	if {![dict exists $d $k]} { return "" }
+
+	return [string trim [dict get $d $k]]
+}
+
 proc getSection {f} {
 	set ret $::nextLine
 
@@ -33,6 +39,10 @@ proc getSection {f} {
 
 proc searchListOfDict {l i key val} {
 	set d [lindex $l $i]
+	if {![dict exists $d $key]} {
+		puts "Could not find $key in $d (l($i))"
+		return 0
+	}
 	set v [dict get $d $key]
 
 	return [expr {$v eq $val}]
@@ -81,20 +91,23 @@ proc doRegionOrders {f regionVar xy} {
 	# try and get name
 	regexp {^;(.* \([[:digit:]]+\)), } $nameLine -> unitName
 
-	set units [dict get $r Units]
+	set units [dGet $r Units]
 	set j 0
-	while {![searchListOfDict $units $j "Name" $unitName]} {
+	while {$j < [llength $units] &&
+	       ![searchListOfDict $units $j "Name" $unitName]} {
 		incr j
 	}
 
-	# put the orders into the unit list
-	set u [lindex $units $j]
-	dict set u "Orders" $orders
-	set units [lreplace $units $j $j $u]
+	if {$j < [llength $units]} {
+		# put the orders into the unit list
+		set u [lindex $units $j]
+		dict set u "Orders" $orders
+		set units [lreplace $units $j $j $u]
 
-	# update region
-	dict set r Units $units
-	set regions [lreplace $regions $i $i $r]
+		# update region
+		dict set r Units $units
+		set regions [lreplace $regions $i $i $r]
+	}
 
 	return $xy
 }
@@ -502,6 +515,7 @@ if {![info exists debug]} {
 		puts $chn [parseFile $f]
 		close $f
 		close $chn
+		set ::nextLine ""
 	}
 }
 
