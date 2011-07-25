@@ -1501,10 +1501,12 @@ bind $w <3> {
 }
 
 # bind zoom keys
-bind .t.fR.screen <minus> zoomOut
-bind .t.fR.screen <KP_Subtract> zoomOut
-bind .t.fR.screen <plus> zoomIn
-bind .t.fR.screen <KP_Add> zoomIn
+bind $w <minus>       zoomOut
+bind $w <KP_Subtract> zoomOut
+bind $w <plus>        zoomIn
+bind $w <KP_Add>      zoomIn
+
+bind $w <F5> {drawDB %W db} ;# refresh
 
 ## orders
 # update orders on unit dropdown change
