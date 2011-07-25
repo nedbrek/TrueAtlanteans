@@ -3,6 +3,7 @@ package require sqlite3
 
 wm withdraw .
 
+### gui constants
 set ::zoomLevels {
 	 3
 	 6
@@ -10,21 +11,6 @@ set ::zoomLevels {
 	20
 	27
 	45
-}
-
-set ::monthNames {
-	January
-	February
-	March
-	April
-	May
-	June
-	July
-	August
-	September
-	October
-	November
-	December
 }
 
 set ::terrainColors {
@@ -44,6 +30,31 @@ set ::terrainColors {
 	tundra      #00ffff
 	underforest #00c000
 	wasteland   #d88040
+}
+
+### game constants
+set ::monthNames {
+	January
+	February
+	March
+	April
+	May
+	June
+	July
+	August
+	September
+	October
+	November
+	December
+}
+
+set ::directions {
+	Southeast
+	South
+	Southwest
+	North
+	Northeast
+	Northwest
 }
 
 set ::men {
@@ -476,21 +487,33 @@ proc curTax {rid maxTax} {
 	return [expr min($taxers*50, $maxTax)]
 }
 
+# helper for updateDb
+# process the exits field
+# returns a list of all exit directions (for wall processing)
 proc doExits {db exits} {
+	set dirs ""
+
+	#foreach direction and exit info
 	foreach {d e} $exits {
+		lappend dirs $d ;# save the exit direction
+
+		# pull the terrain info from the exit info
 		set loc [dGet $e Location]
 		set x [lindex $loc 0]
 		set y [lindex $loc 1]
 		set z [lindex $loc 2]
 
-		set ttype [dGet $e Terrain]
-		set city [dGet $e Town]
+		set ttype  [dGet $e Terrain]
+		set city   [dGet $e Town]
 		set region [dGet $e Region]
+
 		$db eval {
 			INSERT OR REPLACE INTO terrain VALUES
 			($x, $y, $z, $ttype, $city, $region);
 		}
 	}
+
+	return $dirs
 }
 
 proc dbInsertUnit {db regionId u} {
@@ -519,7 +542,7 @@ proc updateDb {db tdata} {
 	set regions [dGet $tdata Regions]
 	foreach r $regions {
 
-		doExits $db [dGet $r Exits]
+		set dirs [doExits $db [dGet $r Exits]]
 
 		set loc [dGet $r Location]
 		set x [lindex $loc 0]
@@ -547,11 +570,11 @@ proc updateDb {db tdata} {
 		$db eval {
 			INSERT OR REPLACE INTO detail
 			(x, y, z, turn, weather, wages, pop, race, tax, wants,
-			 sells, products)
+			 sells, products, exitDirs)
 
 			VALUES(
 			$x, $y, $z, $turnNo, $weather, $wages, $pop, $race, $tax, $wants,
-			$sells, $prod
+			$sells, $prod, $dirs
 			);
 		}
 
@@ -963,6 +986,7 @@ proc createGame {filename} {
 			wants not null,
 			sells not null,
 			products not null,
+			exitDirs not null,
 			unique(x,y,z,turn)
 		);
 	}
