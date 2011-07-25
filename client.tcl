@@ -29,6 +29,7 @@ set ::monthNames {
 
 set ::terrainColors {
 	cavern      #f0d800
+	deepforest  #00c000
 	desert      #f0d800
 	forest      #00c000
 	hill        #a04018
