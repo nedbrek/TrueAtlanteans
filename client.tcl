@@ -587,6 +587,7 @@ proc orderBoxReset {w} {
 	.t.fL.fItems.t delete 1.0 end
 	.t.fL.fItems.t configure -state disabled
 
+	$w configure -state normal
 	$w delete 1.0 end
 	$w edit reset
 	$w edit modified 0
