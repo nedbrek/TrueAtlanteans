@@ -47,21 +47,29 @@ set ::terrainColors {
 }
 
 set ::men {
+	AMAZ
 	BARB
 	DDWA
+	DMAN
+	DRLF
 	GBLN
 	GELF
+	GNOL
 	GNOM
 	HDWA
 	HELF
 	HILA
 	HOBB
+	IDWA
 	LEAD
+	LIZA
+	MINO
 	NOMA
 	PLAI
 	SELF
 	TELF
 	TMAN
+	UDWA
 	VIKI
 	WELF
 }
