@@ -1315,7 +1315,8 @@ proc reportProd {} {
 }
 
 proc saveOrders {} {
-	set ofile [tk_getSaveFile]
+	set filename [format {orders%d.txt} $gui::currentTurn]
+	set ofile [tk_getSaveFile -initialfile $filename ]
 	if {$ofile eq ""} { return }
 
 	set f [open $ofile "w"]
