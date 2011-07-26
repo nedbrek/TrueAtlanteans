@@ -568,12 +568,13 @@ proc dbInsertUnit {db regionId u} {
 	set orders [dGet $u Orders]
 	set items  [dGet $u Items]
 	set skills [dGet $u Skills]
+	set flags  [dGet $u Flags]
 
 	$db eval {
 		INSERT INTO units
-		(regionId, name, desc, detail, orders, items, skills)
+		(regionId, name, desc, detail, orders, items, skills, flags)
 		VALUES(
-		$regionId, $name, $desc, $detail, $orders, $items, $skills
+		$regionId, $name, $desc, $detail, $orders, $items, $skills, $flags
 		);
 	}
 	return [$db last_insert_rowid]
@@ -1047,6 +1048,7 @@ proc createGame {filename} {
 			orders not null,
 			items not null,
 			skills not null,
+			flags not null,
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
