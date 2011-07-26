@@ -57,6 +57,16 @@ set ::directions {
 	Northwest
 }
 
+set ::unitFlags {
+	GUARD   g
+	AVOID   a
+	BEHIND  b
+	HOLDING h
+	AUTOTAX t
+	NOAID   i
+	NOCROSS x
+}
+
 set ::men {
 	AMAZ
 	BARB
@@ -719,7 +729,7 @@ proc showUnit {name} {
 	set gui::prevUnit $name
 
 	set data [db eval {
-		SELECT orders, id, items, skills, detail
+		SELECT orders, id, items, skills, detail, flags
 		FROM units
 		WHERE regionId=$regionId AND name=$name
 		ORDER BY id
@@ -729,10 +739,32 @@ proc showUnit {name} {
 	set items       [lindex $data 2]
 	set skills      [lindex $data 3]
 	set detail      [lindex $data 4]
+	set flags       [lindex $data 5]
 
 	# fill the items box (stick skills in too)
 	set t .t.fL.fItems.t
 	$t configure -state normal
+
+	$t insert end "Flags: "
+	foreach {f l} $::unitFlags {
+		set v [dGet $flags $f]
+		if {$v eq "1"} {
+			$t insert end $l
+		}
+	}
+	set v [dGet $flags REVEAL]
+	if {$v eq "UNIT"} {
+		$t insert end "r"
+	} elseif {$v eq "FACTION"} {
+		$t insert end "R"
+	}
+	set v [dGet $flags CONSUME]
+	if {$v eq "UNIT"} {
+		$t insert end "c"
+	} elseif {$v eq "FACTION"} {
+		$t insert end "C"
+	}
+	$t insert end "\n"
 
 	$t insert end "Skills: "
 	if {$skills eq ""} {
