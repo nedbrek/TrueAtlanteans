@@ -298,6 +298,39 @@ proc plot_hex_num {obj x y} {
 	return $hexId
 }
 
+proc drawExitWall {w d x y} {
+	switch $d {
+		South {
+			set id [$w create line [expr $x] [expr $y + 2*$::nrad3] [expr $x + 2*$::n] [expr $y + 2*$::nrad3]]
+		}
+
+		Southeast {
+			set id [$w create line [expr $x + 2*$::n] [expr $y + 2*$::nrad3] [expr $x + 3*$::n] [expr $y + $::nrad3]]
+		}
+
+		Southwest {
+			set id [$w create line [expr $x - $::n] [expr $y + $::nrad3] [expr $x] [expr $y + 2*$::nrad3]]
+		}
+
+		North {
+			set id [$w create line [expr $x] [expr $y] [expr $x + 2*$::n] [expr $y]]
+		}
+
+		Northeast {
+			set id [$w create line [expr $x + 2*$::n] [expr $y] [expr $x + 3*$::n] [expr $y + $::nrad3]]
+		}
+
+		Northwest {
+			set id [$w create line [expr $x - $::n] [expr $y + $::nrad3] [expr $x] [expr $y]]
+		}
+	}
+
+	$w addtag wall withtag $id
+	$w addtag icon withtag $id
+	$w itemconfigure $id -width 4
+	$w itemconfigure $id -fill darkgray
+}
+
 # draw all the regions in the db data
 proc drawDB {w db} {
 	$w delete all
@@ -305,7 +338,7 @@ proc drawDB {w db} {
 	set zlevel [getZlevel]
 
 	set data [$db eval {
-			SELECT x, y, type, city, detail.turn, detail.id
+			SELECT x, y, type, city, detail.turn, detail.id, detail.exitDirs
 			FROM terrain left outer join detail
 			USING(x,y,z)
 			WHERE z=$zlevel
@@ -313,7 +346,7 @@ proc drawDB {w db} {
 			ORDER BY detail.turn
 	}]
 
-	foreach {col row type city ct rid} $data {
+	foreach {col row type city ct rid exitDirs} $data {
 		if {$type eq "nexus"} {continue}
 
 		if {[info exists drawn($col,$row)]} {continue} 
@@ -326,6 +359,15 @@ proc drawDB {w db} {
 		set c [$w coords $hexId]
 		set x [lindex $c 0]
 		set y [lindex $c 1]
+
+		# draw missing exit walls
+		if {$exitDirs ne ""} {
+			foreach d $::directions {
+				if {[lsearch $exitDirs $d] == -1} {
+					drawExitWall $w $d $x $y
+				}
+			}
+		}
 
 		# draw city icon
 		if {$city ne ""} {
