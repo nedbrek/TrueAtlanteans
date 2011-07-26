@@ -371,11 +371,14 @@ proc drawDB {w db} {
 
 		# draw city icon
 		if {$city ne ""} {
-			switch [lindex $city end] {
+			switch [lGet $city end] {
 				village {set cityIcon "-"}
 				town    {set cityIcon "+"}
 				city    {set cityIcon "*"}
-				default {puts "Unknown city type: $city"}
+				default {
+					puts "Unknown city type: '[lindex $city end]'"
+					set cityIcon "*"
+				}
 			}
 			$w create text [expr $x+$::n] [expr $y+$::nrad3] -text $cityIcon -tags icon
 		}
