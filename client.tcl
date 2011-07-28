@@ -750,14 +750,14 @@ proc showUnit {name} {
 	foreach {f l} $::unitFlags {
 		set v [dGet $flags $f]
 		if {$v eq "1"} {
-			$t insert end $l
+			$t insert end "$l "
 		}
 	}
 	set v [dGet $flags REVEAL]
 	if {$v eq "UNIT"} {
-		$t insert end "r"
+		$t insert end "r "
 	} elseif {$v eq "FACTION"} {
-		$t insert end "R"
+		$t insert end "R "
 	}
 	set v [dGet $flags CONSUME]
 	if {$v eq "UNIT"} {
