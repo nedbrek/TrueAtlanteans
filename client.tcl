@@ -86,6 +86,7 @@ set ::men {
 	LIZA
 	MINO
 	NOMA
+	ORC
 	PLAI
 	SELF
 	TELF
