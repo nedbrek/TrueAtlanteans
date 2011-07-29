@@ -388,7 +388,7 @@ proc drawDB {w db} {
 				city    {set cityIcon "*"}
 				default {
 					puts "Unknown city type: '[lindex $city end]'"
-					set cityIcon "*"
+					set cityIcon "?"
 				}
 			}
 			$w create text [expr $x+$::n] [expr $y+$::nrad3] -text $cityIcon -tags icon
@@ -396,7 +396,7 @@ proc drawDB {w db} {
 
 		# show unit flags
 		if {$ct == $gui::currentTurn} {
-			set res [db eval {
+			set res [$db eval {
 				SELECT detail
 				FROM units
 				WHERE regionId=$rid
@@ -412,7 +412,7 @@ proc drawDB {w db} {
 				  -anchor se -fill red -tags icon
 			}
 
-			set res [db eval {
+			set res [$db eval {
 				SELECT orders
 				FROM units
 				WHERE regionId=$rid
@@ -449,7 +449,7 @@ proc drawDB {w db} {
 		}
 
 		# pull buildings
-		set objects [db eval {
+		set objects [$db eval {
 			SELECT desc FROM objects
 			WHERE regionId=$rid
 		}]
