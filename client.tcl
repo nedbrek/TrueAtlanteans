@@ -945,6 +945,18 @@ proc findType {w ids type} {
 	return ""
 }
 
+proc makeNormal {w tag} {
+	$w itemconfigure $tag -outline darkgray
+	$w itemconfigure $tag -outlinestipple gray25
+	$w itemconfigure $tag -width 1
+}
+
+proc makeNotDone {w tag} {
+	$w itemconfigure $tag -outline blue
+	$w itemconfigure $tag -outlinestipple ""
+	$w itemconfigure $tag -width 2
+}
+
 # make region x and y selected in w
 proc selectRegion {w x y} {
 	# see if hex is active
@@ -955,16 +967,12 @@ proc selectRegion {w x y} {
 	# deselect current active
 	set oldTags [$w gettags active]
 	if {$oldTags ne ""} {
-		if {[lsearch $oldTags "notdone"]} {
+		if {[lsearch $oldTags "notdone"] != -1} {
 			# not done hex
-			$w itemconfigure active -outline blue
-			$w itemconfigure active -outlinestipple ""
-			$w itemconfigure active -width 2
+			makeNotDone $w active
 		} else {
 			# normal hex
-			$w itemconfigure active -outline darkgray
-			$w itemconfigure active -outlinestipple gray25
-			$w itemconfigure active -width 1
+			makeNormal $w active
 		}
 	}
 
@@ -1222,8 +1230,26 @@ proc drawMarkers {w db} {
 	}
 
 
-	$w itemconfigure notdone -outline blue
-	$w itemconfigure notdone -outlinestipple ""
+	makeNotDone $w notdone
+}
+
+proc clearNotDone {w x y} {
+	# update db
+	set zlevel [getZlevel]
+	db eval {
+		UPDATE active_markers SET done=1
+		WHERE x=$x AND y=$y AND z=$zlevel
+	}
+
+	# delete the tag
+	set hexTag [format "hex_%d_%d" $x $y]
+	$w dtag $hexTag notdone
+
+	# update the map
+	set curTags [$w gettags $hexTag]
+	if {[lsearch $curTags "active"] == -1} {
+		makeNormal $w $hexTag
+	}
 }
 
 # mark all the hexes where we currently have units
@@ -1254,6 +1280,15 @@ proc markActive {} {
 	}
 
 	drawMarkers .t.fR.screen db
+}
+
+proc clearNotDoneCur {w} {
+	set xy [getSelectionXY]
+	if {$xy eq ""} {return}
+	set x [lindex $xy 0]
+	set y [lindex $xy 1]
+
+	clearNotDone $w $x $y
 }
 
 # calculate the number of men needed to fully tax a hex
@@ -1604,7 +1639,7 @@ menu .mTopMenu.mReports -tearoff 0
 .mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
 
 # view menu
-.mTopMenu.mFile add command -label "Mark active hexes" -command markActive -underline 0
+.mTopMenu.mView add command -label "Mark active hexes" -command markActive -underline 0
 
 # reports menu
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
@@ -1696,6 +1731,8 @@ bind $w <plus>        zoomIn
 bind $w <KP_Add>      zoomIn
 
 bind $w <F5> {drawDB %W db} ;# refresh
+
+bind $w <d> {clearNotDoneCur %W}
 
 ## orders
 # update orders on unit dropdown change
