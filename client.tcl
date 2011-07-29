@@ -473,6 +473,9 @@ proc drawDB {w db} {
 	}
 
 	$w itemconfigure unexplored -stipple gray50
+
+	drawMarkers $w $db
+
 	$w configure -scrollregion [$w bbox all]
 }
 
@@ -950,9 +953,20 @@ proc selectRegion {w x y} {
 	if {$i != -1} {return}
 
 	# deselect current active
-	$w itemconfigure active -outline darkgray
-	$w itemconfigure active -outlinestipple gray25
-	$w itemconfigure active -width 1
+	set oldTags [$w gettags active]
+	if {$oldTags ne ""} {
+		if {[lsearch $oldTags "notdone"]} {
+			# not done hex
+			$w itemconfigure active -outline blue
+			$w itemconfigure active -outlinestipple ""
+			$w itemconfigure active -width 2
+		} else {
+			# normal hex
+			$w itemconfigure active -outline darkgray
+			$w itemconfigure active -outlinestipple gray25
+			$w itemconfigure active -width 1
+		}
+	}
 
 	# move active tag
 	$w dtag active
@@ -1192,6 +1206,54 @@ proc doAdd {} {
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 
 	drawDB .t.fR.screen db
+}
+
+proc drawMarkers {w db} {
+	set zlevel [getZlevel]
+	set res [$db eval {
+		SELECT x,y,done FROM active_markers
+		WHERE z=$zlevel
+	}]
+
+	foreach {x y done} $res {
+		if {$done} {continue}
+
+		$w addtag notdone withtag [format "hex_%d_%d" $x $y]
+	}
+
+
+	$w itemconfigure notdone -outline blue
+	$w itemconfigure notdone -outlinestipple ""
+}
+
+# mark all the hexes where we currently have units
+proc markActive {} {
+	# forget the past
+	db eval {DROP TABLE IF EXISTS active_markers}
+
+	# create the marker table
+	db eval {
+		CREATE TABLE active_markers(
+			x TEXT not null,
+			y TEXT not null,
+			z TEXT not null,
+			done not null,
+			unique(x,y,z)
+		)
+	}
+
+	# populate it with coordinates where we have units right now
+	db eval {
+		INSERT INTO active_markers
+		(x,y,z,done)
+			SELECT detail.x, detail.y, detail.z, 0
+			FROM detail JOIN units
+			ON detail.id=units.regionId
+			WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+			GROUP BY detail.x, detail.y, detail.z
+	}
+
+	drawMarkers .t.fR.screen db
 }
 
 # calculate the number of men needed to fully tax a hex
@@ -1526,11 +1588,14 @@ wm title .t "True Atlantians - <no game open>"
 ### top menu
 menu .mTopMenu -tearoff 0
 menu .mTopMenu.mFile -tearoff 0
+menu .mTopMenu.mView -tearoff 0
 menu .mTopMenu.mReports -tearoff 0
 
 .mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
+.mTopMenu add cascade -label "View" -menu .mTopMenu.mView -underline 0
 .mTopMenu add cascade -label "Reports" -menu .mTopMenu.mReports -underline 0
 
+# file menu
 .mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
 .mTopMenu.mFile add command -label "Open"        -command doOpen  -underline 0 -accelerator "Ctrl+O"
 .mTopMenu.mFile add command -label "Add Report"  -command doAdd   -underline 0
@@ -1538,6 +1603,10 @@ menu .mTopMenu.mReports -tearoff 0
 .mTopMenu.mFile add separator
 .mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
 
+# view menu
+.mTopMenu.mFile add command -label "Mark active hexes" -command markActive -underline 0
+
+# reports menu
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
 .mTopMenu.mReports add command -label "Taxers" -command reportTax -underline 0
