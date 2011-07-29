@@ -1,5 +1,16 @@
 set ::nextLine ""
 
+set ::unitFlags {
+	{on guard} {GUARD 1}
+	{avoiding} {AVOID 1}
+	{behind} {BEHIND 1}
+	{holding} {HOLD 1}
+	{receiving no aid} {NOAID 1}
+	{consuming faction's food} {CONSUME FACTION}
+	{consuming unit's food} {CONSUME UNIT}
+	{revealing faction} {REVEAL FACTION}
+}
+
 proc dGet {d k} {
 	if {![dict exists $d $k]} { return "" }
 
@@ -238,10 +249,31 @@ proc parseUnit {v} {
 
 	set group0 [split [lindex $groups 0] ","]
 	set itemIdx [unitItemsIdx $group0]
+
+	set uflags ""
+	set flags [lrange $group0 1 $itemIdx-1]
+	foreach f $flags {
+		set f [string trim $f]
+		set f [regsub { +} $f " "]
+
+		if {[regexp {.*\([[:digit:]]+\)$} $f] == 1} {
+			continue
+		}
+
+		set i [dict exists $::unitFlags $f]
+		if {$i == 0} {
+			puts "Unknown flag '$f'"
+			dict set ::unitFlags $f ""
+		} else {
+			dict set uflags {*}[dict get $::unitFlags $f]
+		}
+	}
+
 	set items [lrange $group0 $itemIdx end]
 	set items [repairItemList $items]
 
 	set u [dict create Name $n Desc {} Report $quality Items $items]
+	dict set u Flags $uflags
 
 	# group 3 - skills
 	if {$quality eq "own"} {
