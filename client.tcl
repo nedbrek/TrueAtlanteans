@@ -961,6 +961,8 @@ proc makeNotDone {w tag} {
 proc selectRegion {w x y} {
 	# see if hex is active
 	set curTags [$w gettags [format "hex_%d_%d" $x $y]]
+	if {$curTags eq ""} {return}
+
 	set i [lsearch $curTags "active"]
 	if {$i != -1} {return}
 
@@ -988,6 +990,46 @@ proc selectRegion {w x y} {
 	$w raise icon
 
 	displayRegion $x $y
+}
+
+proc arrow {w dir} {
+	set xy [getSelectionXY]
+	if {$xy eq ""} {return}
+	set x [lindex $xy 0]
+	set y [lindex $xy 1]
+
+	switch $dir {
+		up { incr y -2 }
+		dn { incr y  2 }
+
+		ul { incr x -1; incr y -1 }
+		ur { incr x  1; incr y -1 }
+
+		lr { incr x 1; incr y 1 }
+		ll { incr x -1; incr y 1 }
+
+		lt {
+			incr x -1
+
+			if {$x & 1} {
+				incr y -1
+			} else {
+				incr y 1
+			}
+		}
+
+		rt {
+			incr x
+
+			if {$x & 1} {
+				incr y -1
+			} else {
+				incr y 1
+			}
+		}
+	}
+
+	selectRegion $w $x $y
 }
 
 # process user click on hex
@@ -1729,6 +1771,20 @@ bind $w <minus>       zoomOut
 bind $w <KP_Subtract> zoomOut
 bind $w <plus>        zoomIn
 bind $w <KP_Add>      zoomIn
+
+# directional movement
+bind $w <KP_Up> {arrow %W up}
+bind $w <Up> {arrow %W up}
+bind $w <KP_Home> {arrow %W ul}
+bind $w <KP_Prior> {arrow %W ur}
+bind $w <KP_Left> {arrow %W lt}
+bind $w <KP_Right> {arrow %W rt}
+bind $w <Left> {arrow %W lt}
+bind $w <Right> {arrow %W rt}
+bind $w <KP_End> {arrow %W ll}
+bind $w <KP_Next> {arrow %W lr}
+bind $w <KP_Down> {arrow %W dn}
+bind $w <Down> {arrow %W dn}
 
 bind $w <F5> {drawDB %W db} ;# refresh
 
