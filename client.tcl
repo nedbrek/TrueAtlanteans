@@ -15,6 +15,7 @@ set ::zoomLevels {
 
 set ::terrainColors {
 	cavern      #f0d800
+	chasm       #d88040
 	deepforest  #00c000
 	desert      #f0d800
 	forest      #00c000
@@ -61,7 +62,7 @@ set ::unitFlags {
 	GUARD   g
 	AVOID   a
 	BEHIND  b
-	HOLDING h
+	HOLD    h
 	AUTOTAX t
 	NOAID   i
 	NOCROSS x
@@ -92,6 +93,7 @@ set ::men {
 	TELF
 	TMAN
 	UDWA
+	URUK
 	VIKI
 	WELF
 }
@@ -1178,6 +1180,16 @@ proc createGame {filename} {
 		);
 	}
 
+	::db eval {
+		CREATE TABLE active_markers(
+			x TEXT not null,
+			y TEXT not null,
+			z TEXT not null,
+			done not null,
+			unique(x,y,z)
+		)
+	}
+
 	::db function curTax curTax
 	::db function curProduce curProduce
 }
@@ -1297,7 +1309,7 @@ proc clearNotDone {w x y} {
 # mark all the hexes where we currently have units
 proc markActive {} {
 	# forget the past
-	db eval {DROP TABLE IF EXISTS active_markers}
+	db eval {DROP TABLE active_markers}
 
 	# create the marker table
 	db eval {
