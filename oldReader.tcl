@@ -9,6 +9,7 @@ set ::unitFlags {
 	{consuming faction's food} {CONSUME FACTION}
 	{consuming unit's food} {CONSUME UNIT}
 	{revealing faction} {REVEAL FACTION}
+	{taxing} {AUTOTAX 1}
 }
 
 proc dGet {d k} {
@@ -254,7 +255,7 @@ proc parseUnit {v} {
 	set flags [lrange $group0 1 $itemIdx-1]
 	foreach f $flags {
 		set f [string trim $f]
-		set f [regsub { +} $f " "]
+		set f [regsub -all { +} $f " "]
 
 		if {[regexp {.*\([[:digit:]]+\)$} $f] == 1} {
 			continue
@@ -334,8 +335,10 @@ proc getRegion {f} {
 	# for sale
 	set v [getSection $f]
 	set sell [string map {"\n" " " "\$" "" " at " " "} [string trimright $v "."]]
-	set sell [split [regsub "For Sale:" $sell ""] ","]
-	dict set region Sells [fixSales $sell]
+	set sell [split [regsub " For Sale: " $sell ""] ","]
+	if {$sell ne "none"} {
+		dict set region Sells [fixSales $sell]
+	}
 
 	# entertainment
 	set v [getSection $f]
