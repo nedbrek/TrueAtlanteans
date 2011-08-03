@@ -490,6 +490,69 @@ proc getRegion {f} {
 	return $region
 }
 
+proc parseItem {v} {
+	set l [split [string trimright $v "."] "."]
+	set sl0 [split [lindex $l 0] ","]
+
+	dict set d Name [lindex $sl0 0]
+	dict set d Weight [lindex [lindex $sl0 1] end]
+	# lindex 2 can swim
+
+	if {[llength $l] == 1} {
+	# simple item
+		dict set d Type item
+		return $d
+	}
+
+	set l1 [lindex $l 1]
+	if {[lindex $l1 0] ne "This"} {
+		# production item
+		dict set d Type item
+		dict set d Desc $l1
+		return $d
+	}
+	#else other items
+
+	if {[lindex $l1 1] eq "race"} {
+		dict set d Type race
+		dict set d Desc $l1
+		return $d
+	}
+
+	set type [lindex $l1 end]
+	dict set d Type $type
+	dict set d Desc [lrange $l 2 end]
+	switch $type {
+		monster {
+		}
+
+		armor {
+			dict set d Protect [lindex $l 2]
+			dict set d Produce [lindex $l 3]
+		}
+
+		tool {
+			dict set d Boost [lindex $l 2]
+			dict set d Produce [lindex $l 3]
+		}
+
+		good {
+			dict set d Bought  [lindex $l 2]
+			dict set d Sold    [lindex $l 3]
+			dict set d Produce [lindex $l 4]
+		}
+
+		mount {
+		}
+
+		weapon {
+			dict set d Skill [lindex $l 2]
+		}
+	}
+
+	return $d
+}
+
 proc parseFile {f} {
 	# initial headers
 	set v [getSection $f]
@@ -507,6 +570,21 @@ proc parseFile {f} {
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
 		set v [getSection $f]
+
+		if {$v eq "Item reports:"} {
+			set itemF [open "items.txt" a]
+
+			set v [getSection $f]
+
+			while {![regexp {^Declared Attitudes} $v] &&
+			       $v ne "Object reports:"} {
+				puts $itemF [parseItem $v]
+
+				set v [getSection $f]
+			}
+
+			close $itemF
+		}
 	}
 
 	# unclaimed silver
