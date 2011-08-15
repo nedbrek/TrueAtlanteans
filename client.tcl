@@ -1597,6 +1597,29 @@ proc reportProd {} {
 	}
 }
 
+proc ctProd {} {
+	set res [db eval {
+		SELECT units.name, units.orders, detail.x, detail.y, detail.z
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+	}]
+
+	foreach {u ol x y z} $res {
+		if {[ordersMatch $ol "produce"] != -1} {
+			set prod($x,$y,$z) 1
+			continue
+		}
+
+		if {[ordersMatch $ol "build"] != -1} {
+			set prod($x,$y,$z) 1
+			continue
+		}
+	}
+
+	return [llength [array names prod]]
+}
+
 proc saveOrders {} {
 	set filename [format {orders%d.txt} $gui::currentTurn]
 	set ofile [tk_getSaveFile -initialfile $filename ]
