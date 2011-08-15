@@ -549,6 +549,16 @@ proc curTax {rid maxTax} {
 	return [expr min($taxers*50, $maxTax)]
 }
 
+proc countItem {ils item} {
+	foreach il $ils {
+		if {[lindex $il 2] eq [format {[%s]} $item]} {
+			return [lindex $il 0]
+		}
+	}
+
+	return 0
+}
+
 # helper for updateDb
 # process the exits field
 # returns a list of all exit directions (for wall processing)
@@ -1193,6 +1203,7 @@ proc createGame {filename} {
 
 	::db function curTax curTax
 	::db function curProduce curProduce
+	::db function countItem countItem
 }
 
 proc dnLevel {} {
