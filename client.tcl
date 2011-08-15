@@ -74,6 +74,7 @@ set ::men {
 	DDWA
 	DMAN
 	DRLF
+	ESKI
 	GBLN
 	GELF
 	GNOL
