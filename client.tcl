@@ -93,6 +93,7 @@ set ::men {
 	PLAI
 	SELF
 	TELF
+	TITA
 	TMAN
 	UDWA
 	URUK
