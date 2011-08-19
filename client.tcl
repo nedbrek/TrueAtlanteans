@@ -66,6 +66,7 @@ set ::unitFlags {
 	AUTOTAX t
 	NOAID   i
 	NOCROSS x
+	SHARE   s
 }
 
 set ::men {
