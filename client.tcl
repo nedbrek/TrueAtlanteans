@@ -1,6 +1,8 @@
 package require Tk
 package require sqlite3
 
+source dbtools.tcl
+
 wm withdraw .
 
 ### gui constants
@@ -69,66 +71,10 @@ set ::unitFlags {
 	SHARE   s
 }
 
-set ::men {
-	AMAZ
-	BARB
-	DDWA
-	DMAN
-	DRLF
-	ESKI
-	GBLN
-	GELF
-	GNOL
-	GNOM
-	HDWA
-	HELF
-	HILA
-	HOBB
-	IDWA
-	LEAD
-	LIZA
-	MINO
-	NOMA
-	ORC
-	PLAI
-	SELF
-	TELF
-	TITA
-	TMAN
-	UDWA
-	URUK
-	VIKI
-	WELF
-}
-
 set ::boats {
 	Longboat
 	Clipper
 	Galleon
-}
-
-# map from product to skill
-set ::production {
-	GRAI FARM
-	LIVE RANC
-	FISH FISH
-	WOOD LUMB
-	IRON MINI
-	MITH MINI
-	STON QUAR
-	HERB HERB
-	LASS HERB
-	HORS HORS
-	CAME CAME
-	GEM  GCUT
-	PARM ARMO
-	CARM ARMO
-	BHAM WEAP
-	MSTA WEAP
-	MSWO WEAP
-	SPEA WEAP
-	SWOR WEAP
-	XBOW WEAP
 }
 
 namespace eval gui {
@@ -176,54 +122,6 @@ proc calcTurnNo {m y} {
 	set mN [lsearch $::monthNames $m]
 
 	return [expr ($y-1)*12 + $mN + 1]
-}
-
-# return the total number of men in an item list
-proc countMen {il} {
-	set count 0
-	foreach i $il {
-		set abbr [string trim [lindex $i 2] {[]}]
-		if {[lsearch $::men $abbr] != -1} {
-			incr count [lindex $i 0]
-		}
-	}
-	return $count
-}
-
-# return index if current orders contain 'str' (-1 on no match)
-# e.g. ordersMatch $ol "tax"
-# ordersMatch $ol "produce"
-# (useful for reports on keeping in faction limits)
-proc ordersMatch {ol str} {
-	# handle delayed orders
-	set inTurn 0
-	set idx -1
-	foreach o $ol {
-		incr idx
-		# if in turn block
-		if {$inTurn > 0} {
-			# only endturn matters
-			if {[string match -nocase "endturn" $o]} {
-				incr inTurn -1
-			}
-
-			continue
-		}
-
-		# look for start of turn block
-		if {[regexp -nocase {^@?turn\M} $o]} {
-			incr inTurn
-			continue
-		}
-
-		# check for match
-		if {[regexp -nocase "^@?$str\\M" $o]} {
-			return $idx
-		}
-	}
-
-	# no match
-	return -1
 }
 
 ##############################################################################
@@ -466,7 +364,7 @@ proc drawDB {w db} {
 				$w create text [expr $x+2.5*$::n] [expr $y+$::nrad3] -text "H" \
 				  -anchor e -tags icon
 			} elseif {[lsearch $::boats $desc] != -1} {
-				# draw ship icon
+				# TODO draw ship icon
 			} elseif {!$hasOtherBuild} {
 				set hasOtherBuild 1
 			}
@@ -486,81 +384,6 @@ proc drawDB {w db} {
 
 ##############################################################################
 ### database
-proc buildProductDict {maxProducts} {
-	set ret ""
-	foreach p $maxProducts {
-		set key [string trim [lindex $p end] {[]}]
-		set val [lindex $p 0]
-		dict set ret $key $val
-	}
-	return $ret
-}
-
-# return a list of producers in hex given by 'rid'
-# (capped by the maximums in maxProducts)
-proc curProduce {rid maxProducts} {
-	# pull all the units in the region
-	set res [db eval {
-		SELECT items,orders,skills
-		FROM units
-		WHERE regionId=$rid
-	}]
-
-	set maxProdDict [buildProductDict $maxProducts]
-	set ret ""
-	# foreach result
-	foreach {il ol sl} $res {
-		set idx [ordersMatch $ol "produce"]
-		if {$idx != -1} {
-			set o [lindex $ol $idx]
-			set product [string toupper [lindex $o 1]]
-			if {![dict exists $::production $product]} {
-				puts "No product $product"
-			}
-			set numMen [countMen $il]
-			dict set ret $product $numMen
-		}
-	}
-
-	return $maxProdDict
-}
-
-# (database available function)
-# return amount of tax revenue in hex given by 'rid'
-# (capped by maxTax extracted from detail table)
-proc curTax {rid maxTax} {
-	# ocean hexes have null maxTax
-	if {$maxTax eq ""} { return 0 }
-
-	# pull all the units in the region
-	set res [db eval {
-		SELECT items,orders
-		FROM units
-		WHERE regionId=$rid
-	}]
-
-	# count number of men taxing
-	set taxers 0
-	foreach {il ol} $res {
-		if {[ordersMatch $ol "tax"] != -1} {
-			incr taxers [countMen $il]
-		}
-	}
-
-	# can't tax more than maxTax
-	return [expr min($taxers*50, $maxTax)]
-}
-
-proc countItem {ils item} {
-	foreach il $ils {
-		if {[lindex $il 2] eq [format {[%s]} $item]} {
-			return [lindex $il 0]
-		}
-	}
-
-	return 0
-}
-
 # helper for updateDb
 # process the exits field
 # returns a list of all exit directions (for wall processing)
@@ -1106,108 +929,6 @@ proc loadData {filename} {
 	updateDb db [regsub -all {\n} $tdata " "]
 }
 
-# helper for "New Game"
-proc createGame {filename} {
-	wm title .t "True Atlanteans - [file tail $filename]"
-
-	if {[info exists ::db]} {
-		::db close
-	}
-	sqlite3 ::db $filename
-
-	# terrain table: (x, y) -> terrain type
-	::db eval {
-		CREATE TABLE terrain(
-		x TEXT not null,
-		y TEXT not null,
-		z TEXT not null,
-		type not null,
-		city not null,
-		region not null,
-		  unique(x,y,z));
-	}
-
-	# detailed table: (x, y) -> turn info gathered, wants?, sells?, weather(cur,
-	# next) wage(per, max), region, city
-	::db eval {
-		CREATE TABLE detail (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			x TEXT not null,
-			y TEXT not null, 
-			z TEXT not null,
-			turn not null,
-			weather not null,
-			wages not null,
-			pop not null,
-			race not null,
-			tax not null,
-			wants not null,
-			sells not null,
-			products not null,
-			exitDirs not null,
-			unique(x,y,z,turn)
-		);
-	}
-
-	# unit table: (regionId -> name description detail (own or foreign) orders
-	::db eval {
-		CREATE TABLE units (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			regionId INTEGER not null,
-			name not null,
-			desc not null,
-			detail not null,
-			orders not null,
-			items not null,
-			skills not null,
-			flags not null,
-			FOREIGN KEY (regionId) REFERENCES detail(id)
-			  ON DELETE CASCADE
-			  ON UPDATE CASCADE
-		);
-	}
-
-	::db eval {
-		CREATE TABLE objects (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			regionId INTEGER not null,
-			name not null,
-			desc not null,
-			FOREIGN KEY (regionId) REFERENCES detail(id)
-				ON DELETE CASCADE
-				ON UPDATE CASCADE
-		);
-	}
-
-	::db eval {
-		CREATE TABLE object_unit_map (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			objectId INTEGER not null,
-			unitId INTEGER not null,
-			FOREIGN KEY (objectId) REFERENCES objects(id)
-				ON DELETE CASCADE
-				ON UPDATE CASCADE,
-			FOREIGN KEY (unitId) REFERENCES units(id)
-				ON DELETE CASCADE
-				ON UPDATE CASCADE
-		);
-	}
-
-	::db eval {
-		CREATE TABLE active_markers(
-			x TEXT not null,
-			y TEXT not null,
-			z TEXT not null,
-			done not null,
-			unique(x,y,z)
-		)
-	}
-
-	::db function curTax curTax
-	::db function curProduce curProduce
-	::db function countItem countItem
-}
-
 proc dnLevel {} {
 	incr gui::viewLevel
 	drawDB .t.fR.screen db
@@ -1242,7 +963,9 @@ proc newGame {} {
 	set ofile [tk_getSaveFile]
 	if {$ofile eq ""} { return }
 
-	createGame $ofile
+	wm title .t "True Atlanteans - [file tail $ofile]"
+
+	createDb $ofile
 	.t.fR.screen delete all
 }
 
@@ -1252,20 +975,10 @@ proc doOpen {} {
 
 	wm title .t "True Atlanteans - [file tail $ofile]"
 
-	if {[info exists ::db]} {
-		::db close
+	set errMsg [openDb $ofile]
+	if {$errMsg ne ""} {
+		tk_messageBox -message $errMsg
 	}
-	sqlite3 ::db $ofile
-	set res [db eval {SELECT name from sqlite_master}]
-	if {[lsearch $res terrain] == -1 ||
-	    [lsearch $res detail]  == -1} {
-		tk_messageBox -message "Error file $ofile is invalid"
-		::db close
-		unset ::db
-	}
-
-	::db function curTax curTax
-	::db function curProduce curProduce
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set gui::viewLevel 1
@@ -1297,14 +1010,13 @@ proc drawMarkers {w db} {
 		$w addtag notdone withtag [format "hex_%d_%d" $x $y]
 	}
 
-
 	makeNotDone $w notdone
 }
 
 proc clearNotDone {w x y} {
 	# update db
 	set zlevel [getZlevel]
-	db eval {
+	::db eval {
 		UPDATE active_markers SET done=1
 		WHERE x=$x AND y=$y AND z=$zlevel
 	}
@@ -1323,21 +1035,21 @@ proc clearNotDone {w x y} {
 # mark all the hexes where we currently have units
 proc markActive {} {
 	# forget the past
-	db eval {DROP TABLE active_markers}
+	::db eval {DROP TABLE active_markers}
 
 	# create the marker table
-	db eval {
+	::db eval {
 		CREATE TABLE active_markers(
 			x TEXT not null,
 			y TEXT not null,
 			z TEXT not null,
 			done not null,
-			unique(x,y,z)
+			  unique(x,y,z)
 		)
 	}
 
 	# populate it with coordinates where we have units right now
-	db eval {
+	::db eval {
 		INSERT INTO active_markers
 		(x,y,z,done)
 			SELECT detail.x, detail.y, detail.z, 0
@@ -1367,7 +1079,7 @@ proc calcTaxers {} {
 	set y [lindex $xy 1]
 
 	set zlevel [getZlevel]
-	set maxTax [db eval {
+	set maxTax [::db eval {
 		SELECT tax
 		FROM detail
 		WHERE x=$x AND y=$y AND z=$zlevel
@@ -1457,7 +1169,7 @@ proc selectRegionFromList {w} {
 }
 
 proc reportTax {} {
-	set res [db eval {
+	set res [::db eval {
 		SELECT x,y,z,curTax(id,tax) as ct,tax
 		FROM detail
 		WHERE turn=$gui::currentTurn AND ct > 0
@@ -1629,7 +1341,7 @@ proc saveOrders {} {
 
 	set f [open $ofile "w"]
 
-	set res [db eval {
+	set res [::db eval {
 		SELECT units.name, units.orders
 		FROM detail JOIN units
 		ON detail.id=units.regionId
