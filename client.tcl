@@ -1250,7 +1250,7 @@ proc doOpen {} {
 	set ofile [tk_getOpenFile]
 	if {$ofile eq ""} { return }
 
-	wm title .t "True Atlantians - [file tail $ofile]"
+	wm title .t "True Atlanteans - [file tail $ofile]"
 
 	if {[info exists ::db]} {
 		::db close
@@ -1709,7 +1709,7 @@ proc exit {} {
 ### build the GUI
 toplevel .t
 #bind .t <Destroy> {exit}
-wm title .t "True Atlantians - <no game open>"
+wm title .t "True Atlanteans - <no game open>"
 
 ### top menu
 menu .mTopMenu -tearoff 0
