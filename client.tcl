@@ -1270,6 +1270,7 @@ proc reportProd {} {
 
 	if {![winfo exists $t]} {
 		toplevel $t
+		wm title $t "Production Report"
 		pack [frame $t.fTop] -side top -expand 1 -fill both
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
@@ -1447,6 +1448,7 @@ menu .mTopMenu.mReports -tearoff 0
 # reports menu
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
+.mTopMenu.mReports add command -label "Production" -command reportProd -underline 0
 .mTopMenu.mReports add command -label "Taxers" -command reportTax -underline 0
 
 .t configure -menu .mTopMenu
