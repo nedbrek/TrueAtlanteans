@@ -1400,6 +1400,36 @@ proc recenter {w x y} {
 	}
 }
 
+proc formUnit {} {
+	# build the window
+	set t .tFormUnit
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "New Unit"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		grid [label $t.fTop.lName -text "Name"] -row 0 -column 0
+		grid [entry $t.fTop.eName] -row 0 -column 1 -sticky we
+
+		grid [label $t.fTop.lRace -text "Race"] -row 1 -column 0
+		grid [ttk::combobox $t.fTop.cbRaces -state readonly] -row 1 -column 1 -sticky we
+
+		grid [label $t.fTop.lCt -text "Count"] -row 2 -column 0
+		grid [ttk::spinbox $t.fTop.sCt -from 1 -to 100] -row 2 -column 1 -sticky we
+
+		grid [label $t.fTop.lOrders -text "Orders"] -row 3 -columnspan 2
+		grid [text $t.fTop.orders -height 24 -width 42] -row 4 -columnspan 2 -sticky nswe
+
+		grid columnconfigure $t.fTop 1 -weight 1
+
+		pack [frame $t.fButtons] -side bottom
+		pack [button $t.fButtons.bOk -text "Ok"] -side left
+		pack [button $t.fButtons.bCancel -text "Cancel"] -side right
+	}
+
+}
+
 proc loadGlob {patt} {
 	set files [glob $patt]
 	foreach f $files {
