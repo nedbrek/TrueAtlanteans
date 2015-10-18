@@ -562,11 +562,14 @@ proc parseFile {f} {
 	# Faction Name (number) (War n,Trade n, Magic n)
 
 	set v [getSection $f]
+	# <Month>, Year <number>
 	set v [string map {"," ""} $v]
 	set turn [dict create Month [lindex $v 0]]
 	dict set turn [lindex $v 1] [lindex $v 2]
 
-	# skip all the events
+	# extract items after events
+	set itemList [list]
+
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
 		set v [getSection $f]
@@ -578,7 +581,9 @@ proc parseFile {f} {
 
 			while {![regexp {^Declared Attitudes} $v] &&
 			       $v ne "Object reports:"} {
-				puts $itemF [parseItem $v]
+				set itemDesc [parseItem $v]
+				puts $itemF $itemDesc
+				lappend itemList $itemDesc
 
 				set v [getSection $f]
 			}
@@ -586,6 +591,7 @@ proc parseFile {f} {
 			close $itemF
 		}
 	}
+	dict set turn "Items" $itemList
 
 	# unclaimed silver
 
