@@ -867,7 +867,16 @@ proc arrow {w dir} {
 		}
 	}
 
+	# wrap around
+	set maxX [::db eval { SELECT max(cast(x as integer)) FROM terrain }]
+	if {$x == -1} { set x $maxX }
+	if {$x > $maxX} { set x 0 }
+
+	set curTags [$w gettags [format "hex_%d_%d" $x $y]]
+	if {$curTags eq ""} { return }
+
 	selectRegion $w $x $y
+	centerHex $w $x $y
 }
 
 # process user click on hex
@@ -1364,40 +1373,37 @@ proc rightCenter {} {
 	recenter .t.fR.screen $gui::rightX $gui::rightY
 }
 
-proc recenter {w x y} {
-	set width  [winfo width $w]
-	set height [winfo height $w]
+proc keyCenter {w} {
+	set xy [getSelectionXY]
+	if {$xy eq ""} { return }
 
-	set deltaX [expr double($x)/$width]
-	set deltaY [expr double($y)/$height]
+	centerHex $w [lindex $xy 0] [lindex $xy 1]
+}
 
-	if {$deltaX > 0.9} {
-		$w xview scroll 4 units
-	} elseif {$deltaX > 0.7} {
-		$w xview scroll 2 units
-	} elseif {$deltaX > 0.5} {
-		$w xview scroll 1 units
-	} elseif {$deltaX < 0.1} {
-		$w xview scroll -4 units
-	} elseif {$deltaX < 0.3} {
-		$w xview scroll -2 units
-	} elseif {$deltaX < 0.5} {
-		$w xview scroll -1 units
-	}
+proc centerHex {w x y} {
+	lassign [$w bbox [format "hex_%d_%d" $x $y]] x1 y1 x2 y2
 
-	if {$deltaY > 0.9} {
-		$w yview scroll 4 units
-	} elseif {$deltaY > 0.7} {
-		$w yview scroll 2 units
-	} elseif {$deltaY > 0.5} {
-		$w yview scroll 1 units
-	} elseif {$deltaY < 0.1} {
-		$w yview scroll -4 units
-	} elseif {$deltaY < 0.3} {
-		$w yview scroll -2 units
-	} elseif {$deltaY < 0.5} {
-		$w yview scroll -1 units
-	}
+	centerCanvas $w [expr {($x1+$x2)/2.}] [expr {($y1+$y2)/2.}]
+}
+
+proc recenter {w sx sy} {
+
+	# convert screen coords to canvas coords
+	set cx [$w canvasx $sx]
+	set cy [$w canvasy $sy]
+	centerCanvas $w $cx $cy
+}
+
+proc centerCanvas {w cx cy} {
+	lassign [$w cget -scrollregion] xmin ymin xmax ymax
+	lassign [$w yview] top btm
+	lassign [$w xview] left right
+
+	set xpos [expr {$cx / $xmax - ($right - $left) / 2.0}]
+	set ypos [expr {$cy / $ymax - ($btm - $top)    / 2.0}]
+
+	$w xview moveto $xpos
+	$w yview moveto $ypos
 }
 
 proc formUnit {} {
@@ -1582,6 +1588,7 @@ bind $w <Down> {arrow %W dn}
 bind $w <F5> {drawDB %W db} ;# refresh
 
 bind $w <d> {clearNotDoneCur %W}
+bind $w <c> {keyCenter %W}
 
 ## orders
 # update orders on unit dropdown change
