@@ -1199,11 +1199,13 @@ proc reportTax {} {
 		pack $t.fTop.vs -side left -fill y
 
 		bind $t.fTop.tl <Double-1> {selectRegionFromList %W}
+	} else {
+		$t.fTop.tl delete 0 end
 	}
-	wm title $t "Tax Report ([expr [llength $res]/5] regions)"
 
-	$t.fTop.tl delete 0 end
+	set totalTax 0
 	foreach {x y z tx max} $res {
+		incr totalTax $tx
 		set delta [expr $max - $tx]
 		if {$z eq ""} {
 			$t.fTop.tl insert end "($x,$y) - $tx ($max - $delta)"
@@ -1211,6 +1213,8 @@ proc reportTax {} {
 			$t.fTop.tl insert end "($x,$y,$z) - $tx ($max - $delta)"
 		}
 	}
+
+	wm title $t "Tax Report: $totalTax ([expr [llength $res]/5] regions)"
 }
 
 proc safeLsortIdxS {col a b} {
