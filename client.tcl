@@ -1580,12 +1580,16 @@ bind $w <KP_Up> {arrow %W up}
 bind $w <Up> {arrow %W up}
 bind $w <KP_Home> {arrow %W ul}
 bind $w <KP_Prior> {arrow %W ur}
+bind $w <Home> {arrow %W ul}
+bind $w <Prior> {arrow %W ur}
 bind $w <KP_Left> {arrow %W lt}
 bind $w <KP_Right> {arrow %W rt}
 bind $w <Left> {arrow %W lt}
 bind $w <Right> {arrow %W rt}
 bind $w <KP_End> {arrow %W ll}
 bind $w <KP_Next> {arrow %W lr}
+bind $w <End> {arrow %W ll}
+bind $w <Next> {arrow %W lr}
 bind $w <KP_Down> {arrow %W dn}
 bind $w <Down> {arrow %W dn}
 
