@@ -490,6 +490,11 @@ proc getRegion {f} {
 	return $region
 }
 
+proc parseObject {v} {
+	set l [split [string trimright $v "."] "."]
+	return $l
+}
+
 proc parseItem {v} {
 	set l [split [string trimright $v "."] "."]
 	set sl0 [split [lindex $l 0] ","]
@@ -589,6 +594,18 @@ proc parseFile {f} {
 			}
 
 			close $itemF
+		}
+
+		if {$v eq "Object reports:"} {
+			set objectF [open "objects.txt" a]
+
+			set v [getSection $f]
+			while {![regexp {^Declared Attitudes} $v]} {
+				set objDesc [parseObject $v]
+				puts $objectF $objDesc
+
+				set v [getSection $f]
+			}
 		}
 	}
 	dict set turn "Items" $itemList
