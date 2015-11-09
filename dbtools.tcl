@@ -151,6 +151,17 @@ proc createDb {filename} {
 		);
 	}
 
+	# item descriptions (desc is a dict)
+	::db eval {
+		CREATE TABLE items(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT not null,
+			abbr TEXT not null unique on conflict replace,
+			type TEXT not null,
+			desc TEXT not null
+		)
+	}
+
 	# active markers
 	::db eval {
 		CREATE TABLE active_markers(
@@ -184,5 +195,19 @@ proc openDb {ofile} {
 	::db function curProduce curProduce
 	::db function countItem countItem
 	return ""
+}
+
+proc insertItem {i} {
+	set nd [dict get $i "Name"]
+	regexp { *([^[]*)  *\[(.*)\]} $nd -> name abbr
+
+	set type [dict get $i "Type"]
+
+	set desc [dict remove $i "Name" "Type"]
+	::db eval {
+		INSERT INTO items
+		(name, abbr, type, desc)
+		VALUES($name, $abbr, $type, $desc)
+	}
 }
 

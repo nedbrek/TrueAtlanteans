@@ -506,6 +506,12 @@ proc updateDb {db tdata} {
 		}
 	}
 
+	# items are a list of dict
+	set items [dGet $tdata Items]
+	foreach item $items {
+		insertItem $item
+	}
+
 	$db eval {END TRANSACTION}
 }
 
