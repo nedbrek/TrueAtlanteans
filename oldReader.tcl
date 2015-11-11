@@ -490,6 +490,11 @@ proc getRegion {f} {
 	return $region
 }
 
+proc parseSkill {v} {
+	set l [split [string trimright $v "."] "."]
+	return $l
+}
+
 proc parseObject {v} {
 	set l [split [string trimright $v "."] "."]
 	return $l
@@ -578,6 +583,21 @@ proc parseFile {f} {
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
 		set v [getSection $f]
+
+		if {$v eq "Skill reports:"} {
+			set skillF [open "skills.txt" a]
+
+			set v [getSection $f]
+			while {![regexp {^Declared Attitudes} $v] &&
+			       $v ne "Object reports:" &&
+			       $v ne "Item reports:"} {
+
+				set skillDesc [parseSkill $v]
+				puts $skillF $skillDesc
+
+				set v [getSection $f]
+			}
+		}
 
 		if {$v eq "Item reports:"} {
 			set itemF [open "items.txt" a]
