@@ -342,7 +342,10 @@ proc getRegion {f} {
 
 	# entertainment
 	set v [getSection $f]
-	if {[regexp {Entertainment} $v]} {
+	if {[regexp {Entertainment available: \$([[:digit:]]+)\.} $v -> ente]} {
+
+		dict set region Entertainment $ente
+
 		# products
 		set v [getSection $f]
 	}
