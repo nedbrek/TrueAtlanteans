@@ -97,6 +97,7 @@ proc createDb {filename} {
 			pop not null,
 			race not null,
 			tax not null,
+			entertainment not null,
 			wants not null,
 			sells not null,
 			products not null,

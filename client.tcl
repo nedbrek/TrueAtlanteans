@@ -462,17 +462,18 @@ proc updateDb {db tdata} {
 		set pop     [dGet $r Population]
 		set race    [dGet $r Race]
 		set tax     [dGet $r MaxTax]
+		set ente    [dGet $r Entertainment]
 		set wants   [dGet $r Wants]
 		set sells   [dGet $r Sells]
 		set prod    [dGet $r Products]
 		$db eval {
 			INSERT OR REPLACE INTO detail
-			(x, y, z, turn, weather, wages, pop, race, tax, wants,
+			(x, y, z, turn, weather, wages, pop, race, tax, entertainment, wants,
 			 sells, products, exitDirs)
 
 			VALUES(
-			$x, $y, $z, $turnNo, $weather, $wages, $pop, $race, $tax, $wants,
-			$sells, $prod, $dirs
+			$x, $y, $z, $turnNo, $weather, $wages, $pop, $race, $tax, $ente,
+			$wants, $sells, $prod, $dirs
 			);
 		}
 
@@ -688,7 +689,7 @@ proc displayRegion {x y} {
 
 	# pull the latest turn data
 	set rdata [db eval {
-		SELECT turn, weather, wages, pop, race, tax, id, products, sells, wants
+		SELECT turn, weather, wages, pop, race, tax, entertainment, id, products, sells, wants
 		FROM detail
 		WHERE x=$x AND y=$y AND z=$zlevel
 		ORDER BY turn DESC LIMIT 1
@@ -708,8 +709,9 @@ proc displayRegion {x y} {
 	$t insert end "it will be [lGet $weather 1] next month.\n"
 
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
+	$t insert end "Entertainment: \$[lindex $rdata 6].\n"
 
-	set regionId [lindex $rdata 6]
+	set regionId [lindex $rdata 7]
 
 	# pull buildings
 	set objects [db eval {
@@ -721,11 +723,11 @@ proc displayRegion {x y} {
 	}
 
 	# region resources for production
-	.t.fL.lProd configure -text [join [lindex $rdata 7]]
+	.t.fL.lProd configure -text [join [lindex $rdata 8]]
 
 	# market
-	set sells [lindex $rdata 8]
-	set wants [lindex $rdata 9]
+	set sells [lindex $rdata 9]
+	set wants [lindex $rdata 10]
 	if {[llength $sells] == 0} {
 		.t.fL.fMarket.tv insert {} 0 -text "Nothing for sale" -open $gui::forSaleOpen
 	} else {
