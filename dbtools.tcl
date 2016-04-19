@@ -212,3 +212,19 @@ proc insertItem {i} {
 	}
 }
 
+proc taxProgressDetailed {} {
+	return [::db eval {
+		SELECT x, y, z, turn, curTax(id, tax)
+		FROM detail
+		ORDER BY turn
+	}]
+}
+
+proc taxProgress {} {
+	return [::db eval {
+		SELECT turn, sum(curTax(id, tax))
+		FROM detail
+		GROUP BY turn
+	}]
+}
+
