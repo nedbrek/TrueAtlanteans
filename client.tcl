@@ -1333,6 +1333,42 @@ proc reportProd {} {
 	}
 }
 
+proc searchUnits {} {
+	# build the window
+	set t .tSearchUnits
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Find Units"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	}
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 3} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv column 1 -width 34
+	$t.fTop.tv column 2 -width 34
+	$t.fTop.tv column 3 -width 34
+	$t.fTop.tv heading 1 -text "x"
+	$t.fTop.tv heading 2 -text "y"
+	$t.fTop.tv heading 3 -text "z"
+
+	# populate it
+	set res [getUnits "Courier %"]
+	foreach {x y z name} $res {
+		$t.fTop.tv insert {} end -text $name -values [list $x $y $z]
+	}
+}
+
 proc ctProd {} {
 	set res [db eval {
 		SELECT units.name, units.orders, detail.x, detail.y, detail.z
@@ -1492,6 +1528,7 @@ menu .mTopMenu.mReports -tearoff 0
 
 # view menu
 .mTopMenu.mView add command -label "Mark active hexes" -command markActive -underline 0
+.mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
 
 # reports menu
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0

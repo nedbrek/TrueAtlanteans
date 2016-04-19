@@ -228,3 +228,12 @@ proc taxProgress {} {
 	}]
 }
 
+proc getUnits {name} {
+	return [::db eval {
+		SELECT detail.x, detail.y, detail.z, units.name
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn and units.detail='own' and units.name LIKE $name
+	}]
+}
+
