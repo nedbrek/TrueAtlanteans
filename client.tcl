@@ -518,6 +518,15 @@ proc updateDb {db tdata} {
 
 ##############################################################################
 ### gui
+proc copyTree {w} {
+	clipboard clear
+	set items [$w selection]
+	foreach i $items {
+		clipboard append "[$w item $i -text]\t[concat [$w item $i -values] \t]\n"
+	}
+}
+bind Treeview <Control-c> {copyTree %W}
+
 proc orderBoxReset {w} {
 	if {$gui::prevUnit ne "" && [$w edit modified]} {
 		set orders [split [string trimright [$w get 1.0 end]] "\n"]
