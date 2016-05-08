@@ -33,6 +33,7 @@ set ::terrainColors {
 	tundra      #00ffff
 	underforest #00c000
 	wasteland   #d88040
+	grotto      #d88040
 }
 
 ### game constants
@@ -112,10 +113,13 @@ proc lunion {a b} {
 ##############################################################################
 ### Atlantis specific utilities
 proc getZlevel {} {
-	set zlevel $gui::viewLevel
-	if {$zlevel == 1} {set zlevel ""}
+	set zlevel [expr {$gui::viewLevel - 1}]
+	set zList [::db eval {select distinct z from terrain order by cast(z as integer)}]
+	if {$zlevel > [llength $zList]} {
+		return 1
+	}
 
-	return $zlevel
+	return [lindex $zList $zlevel]
 }
 
 proc calcTurnNo {m y} {

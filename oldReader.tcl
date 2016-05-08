@@ -124,6 +124,44 @@ proc doRegionOrders {f regionVar xy} {
 	return $xy
 }
 
+proc translateUndergroundName {zName} {
+	if {$zName eq ""} {
+		return 1
+	}
+
+	if {$zName eq "nexus"} {
+		return 0
+	}
+
+	set z 1
+	while {[regsub {^very } $zName "" tmp]} {
+		incr z
+		set zName $tmp
+	}
+	if {[regsub {^deep } $zName "" tmp]} {
+		incr z
+		set zName $tmp
+	}
+
+	if {$zName eq "underworld"} {
+		return [expr {$z + 1}]
+	}
+
+	if {$zName eq "underdeep"} {
+		return [expr {$z + 64}]
+	}
+
+	return [expr {$z + 128}]
+}
+
+proc parseLocation {loc} {
+	regexp {\(([[:digit:]]+),([[:digit:]]+),?([0-9a-zA-Z ]+)?} \
+	   $loc -> x y z
+
+	set l [list $x $y]
+	lappend l [translateUndergroundName $z]
+}
+
 proc parseRegion {v} {
 	# crack the region definition into chunks
 	# terrain (one word) location (x,y[,z] <underworld>?) in Region contains...
@@ -138,11 +176,7 @@ proc parseRegion {v} {
 	set ret [dict create Terrain $terrain]
 
 	# Location
-	regexp {\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]+)?} \
-	   $loc -> x y z
-
-	set l [list $x $y]
-	if {$z ne ""} {lappend l $z}
+	set l [parseLocation $loc]
 	dict set ret Location $l
 
 	set rest [string map {"\n" " "} [string trimright $rest "."]]
@@ -370,24 +404,8 @@ proc getRegion {f} {
 		lappend eout [lindex $e 0]
 		set terrain  [lindex $e 2]
 
-		if {[regexp {<underworld>} $e]} {
-			set t [join [lrange $e 3 4]]
-			set e [lreplace $e 3 4 $t]
-		}
-
-		set loc      [lindex $e 3]
-		regexp {\(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]+)?} \
-		   $loc -> x y z
-
-		if {![info exists x]} {
-			puts "loc '$loc'"
-			puts "e '$e'"
-			puts "region '$region'"
-			exit
-		}
-
-		set lxy [list $x $y]
-		if {$z ne ""} {lappend lxy $z}
+		set loc [lindex $e 3]
+		set lxy [parseLocation $loc]
 
 		set ci [lsearch $e "contains"]
 		if {$ci == -1} {
