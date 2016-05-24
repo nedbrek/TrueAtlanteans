@@ -52,8 +52,8 @@ proc getSection {f} {
 proc searchListOfDict {l i key val} {
 	set d [lindex $l $i]
 	if {![dict exists $d $key]} {
-		puts "Could not find $key in $d (l($i))"
-		return 0
+		puts "Could not find $key with $val in $d (l($i))"
+		exit 1
 	}
 	set v [dict get $d $key]
 
@@ -94,6 +94,9 @@ proc doRegionOrders {f regionVar xy} {
 
 	upvar $regionVar regions
 
+	if {[llength $xy] == 2} {
+		lappend xy 1
+	}
 	set i 0
 	while {![searchListOfDict $regions $i "Location" $xy]} {
 		incr i
