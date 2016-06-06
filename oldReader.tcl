@@ -10,6 +10,7 @@ set ::unitFlags {
 	{consuming unit's food} {CONSUME UNIT}
 	{revealing faction} {REVEAL FACTION}
 	{taxing} {AUTOTAX 1}
+	{sharing} {SHARE 1}
 }
 
 proc dGet {d k} {
