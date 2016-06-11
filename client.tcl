@@ -1376,12 +1376,14 @@ proc searchUnits {} {
 	$t.fTop.tv heading 3 -text "z"
 
 	# populate it
+	# TODO allow user to edit name
 	set res [getUnits "Courier %"]
 	foreach {x y z name} $res {
 		$t.fTop.tv insert {} end -text $name -values [list $x $y $z]
 	}
 }
 
+# return number of hexes where production is underway
 proc ctProd {} {
 	set res [db eval {
 		SELECT units.name, units.orders, detail.x, detail.y, detail.z
@@ -1468,33 +1470,103 @@ proc centerCanvas {w cx cy} {
 }
 
 proc formUnit {} {
+	# pull current hex info
+	set xy [getSelectionXY]
+	if {$xy eq ""} { return }
+	set x [lindex $xy 0]
+	set y [lindex $xy 1]
+	set zlevel [getZlevel]
+
+	## get most recent details
+	set rdata [db eval {
+		SELECT id, turn, sells
+		FROM detail
+		WHERE x=$x AND y=$y AND z=$zlevel
+		ORDER BY turn DESC LIMIT 1
+	}]
+	if {[llength $rdata] == 0} { return }
+
+	set regionId [lindex $rdata 0]
+	set turn [lindex $rdata 1]
+	set sells [lindex $rdata 2]
+	if {$turn != $gui::currentTurn} { return }
+
+	set maxRace 0
+	set raceList [list]
+	foreach {saleItem cost} $sells {
+		set race [string trim [lindex $saleItem end] {[]}]
+		if {[lsearch $::men $race] == -1} {
+			continue
+		}
+		set ct [lindex $saleItem 0]
+		lappend raceList [join [lrange $saleItem 1 end]]
+		set maxRace [expr {max($maxRace, $ct)}]
+	}
+	if {$maxRace == 0} { return }
+
+	# get units in hex
+	set rdata [db eval {
+		SELECT name, orders, flags
+		FROM units
+		WHERE regionId=$regionId AND detail="own"
+	}]
+
+	set maxAlias 0
+	set unitList [list]
+	set unitOrders [list]
+	set unitFlags [list]
+	foreach {name orders flags} $rdata {
+		lappend unitList $name
+		lappend unitOrders $orders
+		lappend unitFlags $flags
+
+		foreach o $orders {
+			if {[regexp -nocase "^@?form\\M" $o]} {
+				set maxAlias [expr {max($maxAlias, [lindex $o 1])}]
+			}
+		}
+	}
+
 	# build the window
 	set t .tFormUnit
 
 	if {![winfo exists $t]} {
 		toplevel $t
-		wm title $t "New Unit"
+		wm title $t "Create New Unit"
 		pack [frame $t.fTop] -side top -expand 1 -fill both
 
-		grid [label $t.fTop.lName -text "Name"] -row 0 -column 0
-		grid [entry $t.fTop.eName] -row 0 -column 1 -sticky we
+		grid [label $t.fTop.lParent -text "Parent"] -row 0 -column 0
+		grid [ttk::combobox $t.fTop.cbParent -state readonly] -row 0 -column 1 -sticky we
 
-		grid [label $t.fTop.lRace -text "Race"] -row 1 -column 0
-		grid [ttk::combobox $t.fTop.cbRaces -state readonly] -row 1 -column 1 -sticky we
+		grid [label $t.fTop.lAlias -text "Alias"] -row 1 -column 0
+		grid [ttk::spinbox $t.fTop.sAlias -from 1 -to 100] -row 1 -column 1 -sticky we
 
-		grid [label $t.fTop.lCt -text "Count"] -row 2 -column 0
-		grid [ttk::spinbox $t.fTop.sCt -from 1 -to 100] -row 2 -column 1 -sticky we
+		grid [label $t.fTop.lName -text "Name"] -row 2 -column 0
+		grid [entry $t.fTop.eName] -row 2 -column 1 -sticky we
 
-		grid [label $t.fTop.lOrders -text "Orders"] -row 3 -columnspan 2
-		grid [text $t.fTop.orders -height 24 -width 42] -row 4 -columnspan 2 -sticky nswe
+		grid [label $t.fTop.lRace -text "Race"] -row 3 -column 0
+		grid [ttk::combobox $t.fTop.cbRaces -state readonly] -row 3 -column 1 -sticky we
+
+		grid [label $t.fTop.lCt -text "Count"] -row 4 -column 0
+		grid [ttk::spinbox $t.fTop.sCt -from 1] -row 4 -column 1 -sticky we
+
+		grid [label $t.fTop.lOrders -text "Orders"] -row 5 -columnspan 2
+		grid [text $t.fTop.orders -height 24 -width 42] -row 6 -columnspan 2 -sticky nswe
 
 		grid columnconfigure $t.fTop 1 -weight 1
 
 		pack [frame $t.fButtons] -side bottom
 		pack [button $t.fButtons.bOk -text "Ok"] -side left
-		pack [button $t.fButtons.bCancel -text "Cancel"] -side right
+		pack [button $t.fButtons.bCancel -text "Cancel" -command [list destroy $t]] -side right
 	}
 
+	$t.fTop.cbParent configure -values $unitList
+	$t.fTop.cbParent current 0
+	$t.fTop.sAlias set [expr {$maxAlias + 1}]
+	$t.fTop.cbRaces configure -values $raceList
+	$t.fTop.cbRaces current 0
+	$t.fTop.sCt configure -to $maxRace
+	$t.fTop.sCt set 1
 }
 
 proc loadGlob {patt} {
@@ -1655,6 +1727,7 @@ bind $w <F5> {drawDB %W db} ;# refresh
 
 bind $w <d> {clearNotDoneCur %W}
 bind $w <c> {keyCenter %W}
+bind $w <n> {formUnit}
 
 ## orders
 # update orders on unit dropdown change
