@@ -1003,8 +1003,6 @@ proc doOpen {} {
 	set ofile [tk_getOpenFile]
 	if {$ofile eq ""} { return }
 
-	wm title .t "True Atlanteans - [file tail $ofile]"
-
 	set errMsg [openDb $ofile]
 	if {$errMsg ne ""} {
 		tk_messageBox -message $errMsg
@@ -1012,6 +1010,8 @@ proc doOpen {} {
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set gui::viewLevel 1
+
+	wm title .t "True Atlanteans - [file tail $ofile] Turn $gui::currentTurn"
 
 	drawDB .t.fR.screen db
 }
