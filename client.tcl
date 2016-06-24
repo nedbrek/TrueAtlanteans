@@ -1383,6 +1383,60 @@ proc searchUnits {} {
 	}
 }
 
+proc itemView {} {
+	# build the window
+	set t .tSearchItems
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Item Viewer"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	}
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv column 1 -width 65
+	$t.fTop.tv column 2 -width 79
+	$t.fTop.tv column 3 -width 34
+	$t.fTop.tv column #0 -stretch 0
+	$t.fTop.tv column 1 -stretch 0
+	$t.fTop.tv column 2 -stretch 0
+	$t.fTop.tv column 3 -stretch 0
+	$t.fTop.tv heading 1 -text "Abbr"
+	$t.fTop.tv heading 2 -text "Type"
+	$t.fTop.tv heading 3 -text "Wt"
+	$t.fTop.tv heading 4 -text "Desc"
+
+	# populate it
+	set res [db eval {
+		SELECT name, abbr, type, desc
+		FROM items
+	}]
+	foreach {name abbr type desc} $res {
+		set wt [dGet $desc Weight]
+		set d1 [dGet $desc Desc]
+		if {$type eq "item" || $type eq "race"} {
+			$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt $d1]
+		} else {
+			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [lindex $d1 1]]]
+			for {set i 0} {$i < [llength $d1]} {incr i} {
+				if {$i == 1} { continue }
+				$t.fTop.tv insert $id end -text "" -values [list "" "" "" [lindex $d1 $i]]
+			}
+		}
+	}
+}
+
 # return number of hexes where production is underway
 proc ctProd {} {
 	set res [db eval {
@@ -1614,6 +1668,7 @@ menu .mTopMenu.mReports -tearoff 0
 # view menu
 .mTopMenu.mView add command -label "Mark active hexes" -command markActive -underline 0
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
+.mTopMenu.mView add command -label "Items" -command itemView -underline 0
 
 # reports menu
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
