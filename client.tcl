@@ -1268,12 +1268,12 @@ proc safeLsortIdxI {col a b} {
 	return [expr $la - $lb]
 }
 
-proc sortProdList {col isInt} {
-	set t .tProduceRegions
-	set childList [$t.fTop.tv children {}]
+proc sortProdList {tv col isInt} {
+
+	set childList [$tv children {}]
 	foreach i $childList {
-		set terrain [$t.fTop.tv item $i -text]
-		lappend vals [concat $terrain [$t.fTop.tv item $i -values]]
+		set terrain [$tv item $i -text]
+		lappend vals [list $terrain {*}[$tv item $i -values]]
 	}
 
 	set command safeLsortIdxI
@@ -1284,14 +1284,14 @@ proc sortProdList {col isInt} {
 
 	set vals2 [lsort -decreasing -command $command $vals]
 
-	$t.fTop.tv delete [$t.fTop.tv children {}]
+	$tv delete [$tv children {}]
 	foreach v $vals2 {
-		$t.fTop.tv insert {} end -text [lindex $v 0] -values [lrange $v 1 end]
+		$tv insert {} end -text [lindex $v 0] -values [lrange $v 1 end]
 	}
 }
 
-# build the production report window
-proc reportProd {} {
+# build the resource report window
+proc reportResources {} {
 	# pull all production values
 	set res [db eval {
 		SELECT x,y,z,curProduce(id, products) as cp
@@ -1300,11 +1300,11 @@ proc reportProd {} {
 	}]
 
 	# build the window
-	set t .tProduceRegions
+	set t .tRegionResources
 
 	if {![winfo exists $t]} {
 		toplevel $t
-		wm title $t "Production Report"
+		wm title $t "Resource Report"
 		pack [frame $t.fTop] -side top -expand 1 -fill both
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
@@ -1342,7 +1342,7 @@ proc reportProd {} {
 	for {set i 4} {$i <= $maxCol} {incr i} {
 		$t.fTop.tv column $i -width 52
 		# allow sorting
-		$t.fTop.tv heading $i -command [list sortProdList $i [expr $i&1]]
+		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i [expr $i&1]]
 	}
 }
 
@@ -1380,6 +1380,12 @@ proc searchUnits {} {
 	set res [getUnits "Courier %"]
 	foreach {x y z name} $res {
 		$t.fTop.tv insert {} end -text $name -values [list $x $y $z]
+	}
+
+	# allow sorting
+	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
+	for {set i 1} {$i <= 3} {incr i} {
+		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i 1]
 	}
 }
 
@@ -1673,7 +1679,7 @@ menu .mTopMenu.mReports -tearoff 0
 # reports menu
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
-.mTopMenu.mReports add command -label "Production" -command reportProd -underline 0
+.mTopMenu.mReports add command -label "Resources" -command reportResources -underline 0
 .mTopMenu.mReports add command -label "Taxers" -command reportTax -underline 0
 
 .t configure -menu .mTopMenu
