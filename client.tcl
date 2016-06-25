@@ -1077,6 +1077,8 @@ proc doAdd {} {
 	loadData $ofile
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
+	set txt [wm title .t]
+	wm title .t "True Atlanteans - [lindex $txt 3] Turn $gui::currentTurn"
 
 	drawDB .t.fR.screen db
 }
