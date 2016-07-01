@@ -137,6 +137,10 @@ proc translateUndergroundName {zName} {
 		return 0
 	}
 
+	if {[string is integer $zName]} {
+		return [expr {int($zName)}]
+	}
+
 	set z 1
 	while {[regsub {^very } $zName "" tmp]} {
 		incr z
