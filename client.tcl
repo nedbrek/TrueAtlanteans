@@ -1251,6 +1251,9 @@ proc safeLsortIdxS {col a b} {
 	if {$c == 0} {
 		set la1 [lindex $a $col+1]
 		set lb1 [lindex $b $col+1]
+		if {$la1 eq "" || $lb1 eq ""} {
+			return 0
+		}
 		return [expr {$la1 - $lb1}]
 	}
 	return $c
@@ -1440,6 +1443,12 @@ proc itemView {} {
 				$t.fTop.tv insert $id end -text "" -values [list "" "" "" [lindex $d1 $i]]
 			}
 		}
+	}
+
+	# allow sorting
+	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
+	for {set i 1} {$i <= 4} {incr i} {
+		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i [expr {$i == 3}]]
 	}
 }
 
