@@ -34,6 +34,7 @@ set ::terrainColors {
 	underforest #00c000
 	wasteland   #d88040
 	grotto      #d88040
+	nexus       #ffffc0
 }
 
 ### game constants
@@ -265,7 +266,6 @@ proc drawDB {w db} {
 	}]
 
 	foreach {col row type city ct rid exitDirs} $data {
-		if {$type eq "nexus"} {continue}
 
 		if {[info exists drawn($col,$row)]} {continue} 
 		set drawn($col,$row) ""
@@ -451,7 +451,6 @@ proc updateDb {db tdata} {
 		set y [lindex $loc 1]
 		set z [lindex $loc 2]
 		set ttype [dGet $r Terrain]
-		if {$ttype eq "nexus"} {continue}
 
 		set city    [dGet $r Town]
 		set region  [dGet $r Region]
