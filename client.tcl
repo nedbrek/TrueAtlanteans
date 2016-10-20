@@ -250,6 +250,36 @@ proc drawExitWall {w d x y} {
 	$w itemconfigure $id -fill darkgray
 }
 
+proc drawNexus {w data} {
+	# draw nexus
+	foreach {col row type city ct rid exitDirs} $data {
+
+		set hexId [plot_hex_full $w [col2x [expr {$col+1}]] [row2y [expr {$row+3}]]]
+		set tags [$w itemcget $hexId -tags]
+		lappend tags [format "nexus_%d_%d" $col $row]
+		$w itemconfigure $hexId -tags $tags
+	}
+
+	# draw exits
+	set exitData [::db eval {
+		SELECT dir, dest from nexus_exits
+	}]
+
+	foreach {d col row} {Northwest 0 2 North 1 1 Northeast 2 2 Southwest 0 4 South 1 5 Southeast 2 4} {
+		set loc [dGet $exitData $d]
+		set hexId [plot_hex_full $w [col2x $col] [row2y $row]]
+		set tags [$w itemcget $hexId -tags]
+		set x [lindex $loc 0]
+		set y [lindex $loc 1]
+		lappend tags [format "hex_%d_%d" $x $y]
+		$w itemconfigure $hexId -tags $tags
+
+		# terrain
+		set terrain [db eval {SELECT type FROM terrain WHERE x=$x and y=$y}]
+		$w itemconfigure $hexId -fill [dict get $::terrainColors $terrain]
+	}
+}
+
 # draw all the regions in the db data
 proc drawDB {w db} {
 	$w delete all
@@ -264,6 +294,11 @@ proc drawDB {w db} {
 			GROUP BY terrain.x, terrain.y, terrain.z
 			ORDER BY detail.turn
 	}]
+
+	if {$zlevel == 0} {
+		drawNexus $w $data
+		return
+	}
 
 	foreach {col row type city ct rid exitDirs} $data {
 
@@ -663,7 +698,7 @@ proc showUnit {name} {
 }
 
 # update the left frame with all the region details
-proc displayRegion {x y} {
+proc displayRegion {x y nexus} {
 	# clean up
 	orderBoxReset .t.fL.tOrd
 
@@ -685,6 +720,7 @@ proc displayRegion {x y} {
 
 	# pull region terrain info
 	set zlevel [getZlevel]
+	if {!$nexus && $zlevel == 0} {set zlevel 1}
 	set data [db eval {
 		SELECT type, city, region
 		FROM terrain
@@ -821,9 +857,13 @@ proc makeNotDone {w tag} {
 }
 
 # make region x and y selected in w
-proc selectRegion {w x y} {
+proc selectRegion {w x y {nexus 0}} {
+	set baseTag "hex_%d_%d"
+	if {$nexus} {
+		set baseTag "nexus_%d_%d"
+	}
 	# see if hex is active
-	set curTags [$w gettags [format "hex_%d_%d" $x $y]]
+	set curTags [$w gettags [format $baseTag $x $y]]
 	if {$curTags eq ""} {return}
 
 	set i [lsearch $curTags "active"]
@@ -843,7 +883,7 @@ proc selectRegion {w x y} {
 
 	# move active tag
 	$w dtag active
-	$w addtag active withtag [format "hex_%d_%d" $x $y]
+	$w addtag active withtag [format $baseTag $x $y]
 
 	# show active
 	$w itemconfigure active -outline red
@@ -852,7 +892,7 @@ proc selectRegion {w x y} {
 	$w raise active
 	$w raise icon
 
-	displayRegion $x $y
+	displayRegion $x $y $nexus
 }
 
 proc arrow {w dir} {
@@ -932,7 +972,17 @@ proc hexClick {w x y} {
 	if {$i != -1} { return }
 
 	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
-	if {$i == -1} { return }
+	if {$i == -1} {
+		set i [lsearch -regexp $tags {nexus_[[:digit:]]+_[[:digit:]]}]
+		if {$i != -1} {
+			set hexTag [lindex $tags $i]
+			regexp {nexus_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> hx hy
+
+			selectRegion $w $hx $hy 1
+		}
+		return
+	}
+
 	set hexTag [lindex $tags $i]
 	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> hx hy
 
