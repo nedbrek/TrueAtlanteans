@@ -412,6 +412,11 @@ proc doExits {db exits} {
 			INSERT OR REPLACE INTO terrain VALUES
 			($x, $y, $z, $ttype, $city, $region);
 		}
+
+		$db eval {
+			INSERT OR REPLACE INTO nexus_exits (dir, dest)
+			VALUES ($d, $loc);
+		}
 	}
 
 	return $dirs

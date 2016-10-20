@@ -106,6 +106,15 @@ proc createDb {filename} {
 		);
 	}
 
+	::db eval {
+		CREATE TABLE nexus_exits (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			dir not null,
+			dest not null,
+				unique(dir)
+		);
+	}
+
 	# unit table: (regionId) -> name, description, detail (own or foreign), orders
 	::db eval {
 		CREATE TABLE units (
