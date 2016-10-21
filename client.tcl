@@ -1681,7 +1681,7 @@ proc formUnit {} {
 		grid columnconfigure $t.fTop 1 -weight 1
 
 		pack [frame $t.fButtons] -side bottom
-		pack [button $t.fButtons.bOk -text "Ok"] -side left
+		pack [button $t.fButtons.bOk -text "Ok" -command [list finishForm $t]] -side left
 		pack [button $t.fButtons.bCancel -text "Cancel" -command [list destroy $t]] -side right
 	}
 
@@ -1692,6 +1692,26 @@ proc formUnit {} {
 	$t.fTop.cbRaces current 0
 	$t.fTop.sCt configure -to $maxRace
 	$t.fTop.sCt set 1
+}
+
+proc finishForm {t} {
+	.t.fL.tOrd insert end "form [$t.fTop.sAlias get]\n"
+
+	set name [$t.fTop.eName get]
+	if {$name ne ""} {
+		.t.fL.tOrd insert end "name unit $name\n"
+	}
+
+	set ct [$t.fTop.sCt get]
+	set race [$t.fTop.cbRaces get]
+	regexp {\[(.+)\]} $race -> abbr
+	.t.fL.tOrd insert end "buy $ct $abbr\n"
+
+	set orders [$t.fTop.orders get 1.0 end]
+	if {$orders ne ""} {
+		.t.fL.tOrd insert end "$orders\n"
+	}
+	.t.fL.tOrd insert end "end\n"
 }
 
 proc loadGlob {patt} {
