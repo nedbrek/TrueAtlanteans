@@ -1597,6 +1597,47 @@ proc centerCanvas {w cx cy} {
 	$w yview moveto $ypos
 }
 
+proc formTaxers {regionId} {
+	# get units in hex
+	set rdata [db eval {
+		SELECT name, orders, items, flags
+		FROM units
+		WHERE regionId=$regionId AND detail="own"
+	}]
+
+	# look over all units
+	set totalSilver 0
+	set numTaxers 0
+	foreach {name orders items flags} $rdata {
+		set silver [lsearch -inline $items "* silver *"]
+		if {$silver ne ""} {
+			incr totalSilver [lindex $silver 0]
+		}
+		if {[ordersMatch $orders "tax"] != -1} {
+			incr numTaxers [countMen $items]
+		}
+	}
+	if {$totalSilver == 0} { return 1 }
+
+	set maxTax [db eval {
+		SELECT tax FROM detail WHERE id=$regionId ORDER BY turn DESC LIMIT 1
+	}]
+
+	set taxersNeeded [expr {($maxTax - $numTaxers * 50) / 50}]
+	if {$taxersNeeded == 0} { return 1 }
+
+	# limit by cash on hand
+	set rdata [db onecolumn {
+		SELECT sells
+		FROM detail
+		WHERE id=$regionId AND turn=$gui::currentTurn
+	}]
+	set price [lindex $rdata 1]
+	# TODO configure maintenance cost
+	set maxBuy [expr {$totalSilver / ($price + 10)}]
+	return [expr {min($taxersNeeded, $maxBuy)}]
+}
+
 proc formUnit {} {
 	# pull current hex info
 	set xy [getSelectionXY]
@@ -1694,7 +1735,7 @@ proc formUnit {} {
 	$t.fTop.cbRaces configure -values $raceList
 	$t.fTop.cbRaces current 0
 	$t.fTop.sCt configure -to $maxRace
-	$t.fTop.sCt set 1
+	$t.fTop.sCt set [formTaxers $regionId]
 }
 
 proc finishForm {t} {
