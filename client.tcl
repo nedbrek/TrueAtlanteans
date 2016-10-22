@@ -426,7 +426,7 @@ proc drawDB {w db} {
 # helper for updateDb
 # process the exits field
 # returns a list of all exit directions (for wall processing)
-proc doExits {db exits} {
+proc doExits {db exits rz} {
 	set dirs ""
 
 	#foreach direction and exit info
@@ -448,9 +448,11 @@ proc doExits {db exits} {
 			($x, $y, $z, $ttype, $city, $region);
 		}
 
-		$db eval {
-			INSERT OR REPLACE INTO nexus_exits (dir, dest)
-			VALUES ($d, $loc);
+		if {$rz == 0} {
+			$db eval {
+				INSERT OR REPLACE INTO nexus_exits (dir, dest)
+				VALUES ($d, $loc);
+			}
 		}
 	}
 
@@ -484,12 +486,13 @@ proc updateDb {db tdata} {
 	set regions [dGet $tdata Regions]
 	foreach r $regions {
 
-		set dirs [doExits $db [dGet $r Exits]]
-
 		set loc [dGet $r Location]
 		set x [lindex $loc 0]
 		set y [lindex $loc 1]
 		set z [lindex $loc 2]
+
+		set dirs [doExits $db [dGet $r Exits] $z]
+
 		set ttype [dGet $r Terrain]
 
 		set city    [dGet $r Town]
