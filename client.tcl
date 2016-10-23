@@ -1739,11 +1739,11 @@ proc formUnit {} {
 }
 
 proc finishForm {t} {
-	.t.fL.tOrd insert end "form [$t.fTop.sAlias get]\n"
+	.t.fL.tOrd insert end "\nform [$t.fTop.sAlias get]\n"
 
 	set name [$t.fTop.eName get]
 	if {$name ne ""} {
-		.t.fL.tOrd insert end "name unit $name\n"
+		.t.fL.tOrd insert end "name unit \"$name\"\n"
 	}
 
 	set ct [$t.fTop.sCt get]
@@ -1756,6 +1756,7 @@ proc finishForm {t} {
 		.t.fL.tOrd insert end "$orders\n"
 	}
 	.t.fL.tOrd insert end "end\n"
+	destroy $t
 }
 
 proc loadGlob {patt} {
