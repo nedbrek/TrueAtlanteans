@@ -1,6 +1,6 @@
-set ::nextLine ""
+variable nextLine ""
 
-set ::unitFlags {
+variable unitFlags {
 	{on guard} {GUARD 1}
 	{avoiding} {AVOID 1}
 	{behind} {BEHIND 1}
@@ -20,17 +20,18 @@ proc dGet {d k} {
 }
 
 proc getSection {f} {
-	set ret $::nextLine
+	variable nextLine
+	set ret $nextLine
 
-	set i1 [regexp -inline -indices {^[ \t]*[^ \t]} $::nextLine]
+	set i1 [regexp -inline -indices {^[ \t]*[^ \t]} $nextLine]
 	set i1 [lindex $i1 0]
 	set l [string trimright [gets $f]]
 
 	while {![eof $f]} {
-		if {$::nextLine eq ""} {
+		if {$nextLine eq ""} {
 			append ret $l
-			set ::nextLine $l
-			set i1 [regexp -inline -indices {^[ \t]*[^ \t]} $::nextLine]
+			set nextLine $l
+			set i1 [regexp -inline -indices {^[ \t]*[^ \t]} $nextLine]
 			set i1 [lindex $i1 0]
 			set l [gets $f]
 			continue
@@ -39,7 +40,7 @@ proc getSection {f} {
 		set i2 [regexp -inline -indices {^[ \t]*[^ \t]} $l]
 		set i2 [lindex $i2 0]
 		if {$l eq "" || [lindex $i1 1] == [lindex $i2 1]} {
-			set ::nextLine $l
+			set nextLine $l
 			return $ret
 		}
 		append ret $l
@@ -63,6 +64,7 @@ proc searchListOfDict {l i key val} {
 
 # try and pull a unit's orders (unit is in region xy)
 proc doRegionOrders {f regionVar xy} {
+	variable nextLine
 	set v [getSection $f]
 	if {[eof $f]} { return "" }
 
@@ -73,8 +75,8 @@ proc doRegionOrders {f regionVar xy} {
 	}
 
 	# save name
-	set nameLine $::nextLine
-	set ::nextLine ""
+	set nameLine $nextLine
+	set nextLine ""
 
 	# pull the orders
 	set orders ""
@@ -278,6 +280,8 @@ proc fixSkills {skills} {
 }
 
 proc parseUnit {v} {
+	variable unitFlags
+
 	# what sort of report is this
 	set quality own
 	if {[lindex $v 0] == "-"} {
@@ -303,12 +307,12 @@ proc parseUnit {v} {
 			continue
 		}
 
-		set i [dict exists $::unitFlags $f]
+		set i [dict exists $unitFlags $f]
 		if {$i == 0} {
 			puts "Unknown flag '$f'"
-			dict set ::unitFlags $f ""
+			dict set unitFlags $f ""
 		} else {
-			dict set uflags {*}[dict get $::unitFlags $f]
+			dict set uflags {*}[dict get $unitFlags $f]
 		}
 	}
 
@@ -343,12 +347,13 @@ proc fixSales {sells} {
 }
 
 proc getRegion {f} {
+	variable nextLine
 	set v [getSection $f]
 	if {$v eq "Orders Template (Long Format):"} {
 		return ""
 	}
 	set region [parseRegion $v]
-	set ::nextLine "" ;# clear the -----
+	set nextLine "" ;# clear the -----
 
 	# weather
 	set v [getSection $f]
@@ -435,11 +440,11 @@ proc getRegion {f} {
 
 	# units
 	set hadBuilding 0
-	set oldNextLine $::nextLine
+	set oldNextLine $nextLine
 	set filePtr [tell $f]
 	set v [getSection $f]
 	if {[regexp {There is a Gate here} $v]} {
-		set oldNextLine $::nextLine
+		set oldNextLine $nextLine
 		set filePtr [tell $f]
 		set v [getSection $f]
 	}
@@ -463,7 +468,7 @@ proc getRegion {f} {
 			if {[llength $lines] == 1} {
 				dict lappend region Objects $object
 
-				set oldNextLine $::nextLine
+				set oldNextLine $nextLine
 				set filePtr [tell $f]
 
 				set v [getSection $f]
@@ -491,7 +496,7 @@ proc getRegion {f} {
 
 			dict lappend region Objects $object
 
-			set oldNextLine $::nextLine
+			set oldNextLine $nextLine
 			set filePtr [tell $f]
 
 			set v [getSection $f]
@@ -507,14 +512,14 @@ proc getRegion {f} {
 
 		dict lappend region Units $u
 
-		set oldNextLine $::nextLine
+		set oldNextLine $nextLine
 		set filePtr [tell $f]
 
 		set v [getSection $f]
 	}
 
 	seek $f $filePtr
-	set ::nextLine $oldNextLine
+	set nextLine $oldNextLine
 
 	return $region
 }
@@ -711,7 +716,7 @@ if {![info exists debug]} {
 
 		close $f
 		close $chn
-		set ::nextLine ""
+		set nextLine ""
 	}
 }
 
