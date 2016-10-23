@@ -608,6 +608,8 @@ proc parseFile {f} {
 
 	# extract items after events
 	set itemList [list]
+	set skillList [list]
+	set objList [list]
 
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
@@ -623,6 +625,7 @@ proc parseFile {f} {
 
 				set skillDesc [parseSkill $v]
 				puts $skillF $skillDesc
+				lappend skillList $skillDesc
 
 				set v [getSection $f]
 			}
@@ -652,12 +655,15 @@ proc parseFile {f} {
 			while {![regexp {^Declared Attitudes} $v]} {
 				set objDesc [parseObject $v]
 				puts $objectF $objDesc
+				lappend objList $objDesc
 
 				set v [getSection $f]
 			}
 		}
 	}
 	dict set turn "Items" $itemList
+	dict set turn "Skills" $skillList
+	dict set turn "Objects" $objList
 
 	# unclaimed silver
 
@@ -696,8 +702,13 @@ if {![info exists debug]} {
 
 	foreach fname $argv {
 		set f [open $fname]
-		set chn [open [format {%s%s} "c" [file tail $fname]] "w"]
+
+		set l [join [lrange [file split $fname] end-1 end] "_"]
+		set ofile [format {%s%s} "c" $l]
+
+		set chn [open $ofile "w"]
 		puts $chn [parseFile $f]
+
 		close $f
 		close $chn
 		set ::nextLine ""
