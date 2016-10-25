@@ -1193,9 +1193,10 @@ proc selectUnitFromList {w} {
 	showUnit $name
 }
 
-proc makeUnitListbox {t res} {
+proc makeUnitListbox {t title res} {
 	if {![winfo exists $t]} {
 		toplevel $t
+		wm title $t $title
 		pack [frame $t.fTop] -side top
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tl yview"
@@ -1226,7 +1227,7 @@ proc findForeignUnits {} {
 		WHERE detail.turn=$gui::currentTurn AND units.detail<>'own'
 	}]
 
-	makeUnitListbox .tForeignUnits $res
+	makeUnitListbox .tForeignUnits "Foreign Units" $res
 }
 
 proc findIdleUnits {} {
@@ -1238,7 +1239,7 @@ proc findIdleUnits {} {
 		   AND units.orders=''
 	}]
 
-	makeUnitListbox .tIdleUnits $res
+	makeUnitListbox .tIdleUnits "Idle Units" $res
 }
 
 proc selectRegionFromList {w} {
