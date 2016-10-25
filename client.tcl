@@ -1717,7 +1717,7 @@ proc formUnit {} {
 		grid [ttk::combobox $t.fTop.cbRaces -state readonly] -row 3 -column 1 -sticky we
 
 		grid [label $t.fTop.lCt -text "Count"] -row 4 -column 0
-		grid [ttk::spinbox $t.fTop.sCt -from 1] -row 4 -column 1 -sticky we
+		grid [ttk::spinbox $t.fTop.sCt -from 0] -row 4 -column 1 -sticky we
 
 		grid [label $t.fTop.lOrders -text "Orders"] -row 5 -columnspan 2
 		grid [text $t.fTop.orders -height 24 -width 42] -row 6 -columnspan 2 -sticky nswe
@@ -1747,9 +1747,11 @@ proc finishForm {t} {
 	}
 
 	set ct [$t.fTop.sCt get]
-	set race [$t.fTop.cbRaces get]
-	regexp {\[(.+)\]} $race -> abbr
-	.t.fL.tOrd insert end "buy $ct $abbr\n"
+	if {$ct > 0} {
+		set race [$t.fTop.cbRaces get]
+		regexp {\[(.+)\]} $race -> abbr
+		.t.fL.tOrd insert end "buy $ct $abbr\n"
+	}
 
 	set orders [$t.fTop.orders get 1.0 end]
 	if {$orders ne ""} {
