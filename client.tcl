@@ -573,13 +573,21 @@ proc copyTree {w} {
 }
 bind Treeview <Control-c> {copyTree %W}
 
+proc saveUnitOrders {unit_id w} {
+	if {![$w edit modified]} {
+		return
+	}
+
+	set orders [split [string trimright [$w get 1.0 end]] "\n"]
+	db eval {
+		UPDATE units SET orders=$orders
+		WHERE id=$unit_id
+	}
+}
+
 proc orderBoxReset {w} {
-	if {$gui::prevUnit ne "" && [$w edit modified]} {
-		set orders [split [string trimright [$w get 1.0 end]] "\n"]
-		db eval {
-			UPDATE units SET orders=$orders
-			WHERE id=$gui::prevId
-		}
+	if {$gui::prevUnit ne ""} {
+		saveUnitOrders $gui::prevId $w
 	}
 
 	.t.fL.fItems.t configure -state normal
