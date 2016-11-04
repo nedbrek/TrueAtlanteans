@@ -683,6 +683,11 @@ proc parseFile {f} {
 	# orders template
 	# faction number and pass
 	set v [getSection $f]
+	if {[lindex $v 0] ne "#atlantis"} {
+		puts "Parse error: expected start of order template"
+		exit 1
+	}
+	dict set turn PlayerNum [lindex $v 1]
 
 	# orders
 	set v [getSection $f]
