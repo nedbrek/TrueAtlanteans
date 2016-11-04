@@ -1713,8 +1713,8 @@ proc formUnit {} {
 		wm title $t "Create New Unit"
 		pack [frame $t.fTop] -side top -expand 1 -fill both
 
-		grid [label $t.fTop.lParent -text "Parent"] -row 0 -column 0
-		grid [ttk::combobox $t.fTop.cbParent -state readonly] -row 0 -column 1 -sticky we
+		#grid [label $t.fTop.lParent -text "Parent"] -row 0 -column 0
+		#grid [ttk::combobox $t.fTop.cbParent -state readonly] -row 0 -column 1 -sticky we
 
 		grid [label $t.fTop.lAlias -text "Alias"] -row 1 -column 0
 		grid [ttk::spinbox $t.fTop.sAlias -from 1 -to 100] -row 1 -column 1 -sticky we
@@ -1738,8 +1738,8 @@ proc formUnit {} {
 		pack [button $t.fButtons.bCancel -text "Cancel" -command [list destroy $t]] -side right
 	}
 
-	$t.fTop.cbParent configure -values $unitList
-	$t.fTop.cbParent current 0
+	#$t.fTop.cbParent configure -values $unitList
+	#$t.fTop.cbParent current 0
 	$t.fTop.sAlias set [expr {$maxAlias + 1}]
 	$t.fTop.cbRaces configure -values $raceList
 	$t.fTop.cbRaces current 0
@@ -1767,6 +1767,12 @@ proc finishForm {t} {
 		.t.fL.tOrd insert end "$orders\n"
 	}
 	.t.fL.tOrd insert end "end\n"
+
+	# TODO use parent listbox
+	if {$gui::prevUnit ne ""} {
+		saveUnitOrders $gui::prevId $w
+	}
+
 	destroy $t
 }
 
