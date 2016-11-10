@@ -621,7 +621,7 @@ proc parseFile {f} {
 		set v [getSection $f]
 
 		if {$v eq "Skill reports:"} {
-			set skillF [open "skills.txt" a]
+			#set skillF [open "skills.txt" a]
 
 			set v [getSection $f]
 			while {![regexp {^Declared Attitudes} $v] &&
@@ -629,7 +629,7 @@ proc parseFile {f} {
 			       $v ne "Item reports:"} {
 
 				set skillDesc [parseSkill $v]
-				puts $skillF $skillDesc
+				#puts $skillF $skillDesc
 				lappend skillList $skillDesc
 
 				set v [getSection $f]
@@ -637,29 +637,29 @@ proc parseFile {f} {
 		}
 
 		if {$v eq "Item reports:"} {
-			set itemF [open "items.txt" a]
+			#set itemF [open "items.txt" a]
 
 			set v [getSection $f]
 
 			while {![regexp {^Declared Attitudes} $v] &&
 			       $v ne "Object reports:"} {
 				set itemDesc [parseItem $v]
-				puts $itemF $itemDesc
+				#puts $itemF $itemDesc
 				lappend itemList $itemDesc
 
 				set v [getSection $f]
 			}
 
-			close $itemF
+			#close $itemF
 		}
 
 		if {$v eq "Object reports:"} {
-			set objectF [open "objects.txt" a]
+			#set objectF [open "objects.txt" a]
 
 			set v [getSection $f]
 			while {![regexp {^Declared Attitudes} $v]} {
 				set objDesc [parseObject $v]
-				puts $objectF $objDesc
+				#puts $objectF $objDesc
 				lappend objList $objDesc
 
 				set v [getSection $f]
