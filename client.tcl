@@ -603,12 +603,19 @@ proc orderBoxReset {w} {
 # return the x and y coordinates of the hex under the mouse
 proc getSelectionXY {} {
 	set tags [.t.fR.screen gettags active]
+
 	set i [lsearch -regexp $tags {hex_[[:digit:]]+_[[:digit:]]}]
+	if {$i == -1} {
+		# check for nexus
+		set i [lsearch -regexp $tags {nexus_[[:digit:]]+_[[:digit:]]}]
+		if {$i == -1} { return "" }
+		set hexTag [lindex $tags $i]
+		regexp {nexus_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
 
-	if {$i == -1} {return ""}
-
-	set hexTag [lindex $tags $i]
-	regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
+	} else {
+		set hexTag [lindex $tags $i]
+		regexp {hex_([[:digit:]]+)_([[:digit:]]+)} $hexTag -> x y
+	}
 
 	return [list $x $y]
 }
