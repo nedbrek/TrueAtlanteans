@@ -1,33 +1,5 @@
+# men will be auto-populated from db
 set ::men {
-	AMAZ
-	BARB
-	DDWA
-	DMAN
-	DRLF
-	ESKI
-	GBLN
-	GELF
-	GNOL
-	GNOM
-	HDWA
-	HELF
-	HILA
-	HOBB
-	IDWA
-	LEAD
-	LIZA
-	MINO
-	NOMA
-	ORC
-	PLAI
-	SELF
-	TELF
-	TITA
-	TMAN
-	UDWA
-	URUK
-	VIKI
-	WELF
 }
 
 # map from product to skill

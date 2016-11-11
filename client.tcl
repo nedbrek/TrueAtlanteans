@@ -1094,6 +1094,8 @@ proc doOpen {} {
 		tk_messageBox -message $errMsg
 	}
 
+	set ::men [db eval {select abbr from items where type="race"}]
+
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set gui::viewLevel 1
 
@@ -1110,6 +1112,7 @@ proc doAdd {} {
 		loadData $f
 	}
 
+	set ::men [db eval {select abbr from items where type="race"}]
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set txt [wm title .t]
