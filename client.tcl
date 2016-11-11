@@ -3,6 +3,11 @@ package require sqlite3
 
 source dbtools.tcl
 
+namespace eval reader {
+	set debug 1
+	source oldReader.tcl
+}
+
 wm withdraw .
 
 ### gui constants
@@ -1025,10 +1030,11 @@ proc switchFocus {w} {
 # helper for "Add Report"
 proc loadData {filename} {
 	set tfile [open $filename]
-	set tdata [read $tfile]
-	close $tfile
+	#set tdata [read $tfile]
 
-	updateDb db [regsub -all {\n} $tdata " "]
+	#updateDb db [regsub -all {\n} $tdata " "]
+	updateDb db [reader::parseFile $tfile]
+	close $tfile
 }
 
 proc dnLevel {} {
@@ -1062,7 +1068,11 @@ proc zoomOut {} {
 }
 
 proc newGame {} {
-	set ofile [tk_getSaveFile]
+	set types {
+		{{Game Database} {.db}}
+		{{All Files} *}
+	}
+	set ofile [tk_getSaveFile -filetypes $types]
 	if {$ofile eq ""} { return }
 
 	wm title .t "True Atlanteans - [file tail $ofile]"
@@ -1072,7 +1082,11 @@ proc newGame {} {
 }
 
 proc doOpen {} {
-	set ofile [tk_getOpenFile]
+	set types {
+		{{Game Database} {.db}}
+		{{All Files} *}
+	}
+	set ofile [tk_getOpenFile -filetypes $types]
 	if {$ofile eq ""} { return }
 
 	set errMsg [openDb $ofile]
@@ -1089,10 +1103,13 @@ proc doOpen {} {
 }
 
 proc doAdd {} {
-	set ofile [tk_getOpenFile]
-	if {$ofile eq ""} { return }
+	set ofiles [tk_getOpenFile -multiple 1]
+	if {$ofiles eq ""} { return }
 
-	loadData $ofile
+	foreach f $ofiles {
+		loadData $f
+	}
+
 
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set txt [wm title .t]
