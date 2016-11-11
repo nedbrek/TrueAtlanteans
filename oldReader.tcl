@@ -539,13 +539,34 @@ proc parseItem {v} {
 	set sl0 [split [lindex $l 0] ","]
 
 	dict set d Name [lindex $sl0 0]
-	dict set d Weight [lindex [lindex $sl0 1] end]
-	# lindex 2 can swim
 
 	if {[llength $l] == 1} {
-	# simple item
+		# simple item
 		dict set d Type item
 		return $d
+	}
+
+	set sl01 [lindex $sl0 1]
+	if {[string trim [lindex $sl01 0]] ne "weight"} {
+		puts "Parse error in weight of item $v"
+		exit 1
+	}
+	dict set d Weight [lindex $sl01 end]
+
+	# parse indexes 2 to end
+	set carries [dict create]
+	foreach c [lrange $sl0 2 end] {
+		if {[lindex $c 1] eq "capacity"} {
+			dict set carries [string trim [lindex $c 0]] [lindex $c 2]
+		} elseif {[string trim $c] eq "can walk"} {
+			dict set carries "walking" 0
+		} elseif {[lindex $c end] ne "withdraw"} {
+			puts "Parse error in capacity of item $v"
+			exit 1
+		}
+	}
+	if {$carries ne ""} {
+		dict set d Capacity $carries
 	}
 
 	set l1 [lindex $l 1]
