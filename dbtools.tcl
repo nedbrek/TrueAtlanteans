@@ -1,4 +1,5 @@
-source atlantis_utils.tcl
+package require atlantis_utils
+package provide atlantis_dbtools 1.0
 
 # (database available function)
 # return amount of tax revenue in hex given by 'rid'

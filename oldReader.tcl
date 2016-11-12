@@ -1,3 +1,8 @@
+package provide atlantis_reader 1.0
+
+namespace eval reader {
+set debug 1
+
 variable nextLine ""
 
 variable unitFlags {
@@ -744,5 +749,7 @@ if {![info exists debug]} {
 		close $chn
 		set nextLine ""
 	}
+}
+
 }
 

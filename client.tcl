@@ -1,12 +1,9 @@
 package require Tk
 package require sqlite3
 
-source dbtools.tcl
-
-namespace eval reader {
-	set debug 1
-	source oldReader.tcl
-}
+lappend ::auto_path [pwd]
+package require atlantis_dbtools
+package require atlantis_reader
 
 wm withdraw .
 
@@ -1824,7 +1821,7 @@ proc exit {} {
 ##############################################################################
 ### build the GUI
 toplevel .t
-#bind .t <Destroy> {exit}
+bind .t <Destroy> {exit}
 wm title .t "True Atlanteans - <no game open>"
 
 ### top menu

@@ -1,3 +1,5 @@
+package provide atlantis_utils 1.0
+
 # men will be auto-populated from db
 set ::men {
 }
