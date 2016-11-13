@@ -625,6 +625,68 @@ proc parseItem {v} {
 	return $d
 }
 
+proc parseBattle {f} {
+	set v [getSection $f]
+	if {$v eq "Events during turn:"} {
+		return ""
+	}
+
+	set ret [dict create]
+
+	# Attacker (Id) attacks defender (id) in terrain (x,y) in region
+	if {![regexp {([^()]+) \(([[:digit:]]+)\) attacks ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) in .+!} $v -> attacker att_id defender def_id x y z]} {
+		puts "Parse error in battle on '$v'"
+		exit 1
+	}
+	dict set ret "Attacker" $attacker
+	dict set ret "AttId" $att_id
+	dict set ret "Defender" $defender
+	dict set ret "DefId" $def_id
+	dict set ret "XY" [list $x $y]
+
+	set v [getSection $f]
+	# Attackers:
+	if {$v ne "Attackers:"} {
+		puts "Parse error in battle"
+		exit 1
+	}
+
+	set v [getSection $f]
+	while {$v ne "Defenders:"} {
+		# Name (Id), Faction (Id), flags, items, skills; description
+		# (repeat per unit)
+		set v [getSection $f]
+	}
+
+	set v [getSection $f]
+	while {$v ne "Round 1:" && ![regexp {gets a free round of attacks} $v]} {
+		# Name (Id), Faction (Id), flags, items, skills; description
+		set v [getSection $f]
+	}
+
+	# battle begins
+	if {[regexp {(.+) gets a free round of attacks} $v -> first]} {
+		dict set ret "Tactics" $first
+	}
+
+	# <offensive unit> loses N.
+	# <defensive unit> loses N.
+	# <unit> is destroyed!
+	# Total Casualties:
+	# <unit> loses N.
+	# Damaged units: <Id>.
+
+	set v [getSection $f]
+	while {![regexp {^Spoils: ([^.]+).} $v -> spoils]} {
+		set v [getSection $f]
+	}
+
+	# Spoils:
+	dict set ret "Spoils" $spoils
+
+	return $ret
+}
+
 proc parseFile {f} {
 	# initial headers
 	set v [getSection $f]
@@ -646,7 +708,6 @@ proc parseFile {f} {
 
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
-		set v [getSection $f]
 
 		if {$v eq "Skill reports:"} {
 			#set skillF [open "skills.txt" a]
@@ -662,9 +723,7 @@ proc parseFile {f} {
 
 				set v [getSection $f]
 			}
-		}
-
-		if {$v eq "Item reports:"} {
+		} elseif {$v eq "Item reports:"} {
 			#set itemF [open "items.txt" a]
 
 			set v [getSection $f]
@@ -679,9 +738,7 @@ proc parseFile {f} {
 			}
 
 			#close $itemF
-		}
-
-		if {$v eq "Object reports:"} {
+		} elseif {$v eq "Object reports:"} {
 			#set objectF [open "objects.txt" a]
 
 			set v [getSection $f]
@@ -692,6 +749,20 @@ proc parseFile {f} {
 
 				set v [getSection $f]
 			}
+		} elseif {$v eq "Battles during turn:"} {
+			set battleList [list]
+			set battle [parseBattle $f]
+			while {$battle ne ""} {
+				lappend battleList $battle
+				set battle [parseBattle $f]
+			}
+			dict set turn "Battles" $battleList
+			# Events during turn:
+
+			set v [getSection $f]
+
+		} else {
+			set v [getSection $f]
 		}
 	}
 	dict set turn "Items" $itemList
