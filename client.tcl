@@ -1794,7 +1794,7 @@ proc finishForm {t} {
 
 	# TODO use parent listbox
 	if {$gui::prevUnit ne ""} {
-		saveUnitOrders $gui::prevId $w
+		saveUnitOrders $gui::prevId .t.fL.tOrd
 	}
 
 	destroy $t
