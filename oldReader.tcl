@@ -565,6 +565,8 @@ proc parseItem {v} {
 			dict set carries [string trim [lindex $c 0]] [lindex $c 2]
 		} elseif {[string trim $c] eq "can walk"} {
 			dict set carries "walking" 0
+		} elseif {[string trim $c] eq "can swim"} {
+			dict set carries "swimming" 0
 		} elseif {[lindex $c end] ne "withdraw"} {
 			puts "Parse error in capacity of item $v"
 			exit 1
