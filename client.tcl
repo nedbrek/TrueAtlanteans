@@ -1706,12 +1706,20 @@ proc formUnit {} {
 	set sells [lindex $rdata 2]
 	if {$turn != $gui::currentTurn} { return }
 
+	set peasants [db eval {
+		SELECT DISTINCT race FROM detail
+	}]
+
 	set maxRace 0
 	set raceList [list]
 	foreach {saleItem cost} $sells {
 		set race [string trim [lindex $saleItem end] {[]}]
 		if {[lsearch $::men $race] == -1} {
-			continue
+			set fullRace [lrange $saleItem 1 end-1]
+			if {[lsearch $peasants $fullRace] == -1} {
+				continue
+			}
+			lappend ::men $race
 		}
 		set ct [lindex $saleItem 0]
 		lappend raceList [join [lrange $saleItem 1 end]]
