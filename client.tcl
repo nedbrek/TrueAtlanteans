@@ -1098,6 +1098,19 @@ proc doOpen {} {
 
 	wm title .t "True Atlanteans - [file tail $ofile] Turn $gui::currentTurn"
 
+	# pull settings from db
+	set res [db eval {
+		SELECT geom_top, zoom_level, view_level, forSale_open
+		FROM settings WHERE id=1
+	}]
+
+	foreach {geom zoom view forSale} $res {
+		wm geometry .t $geom
+		setN [lindex $::zoomLevels $zoom]
+		set gui::viewLevel $view
+		set gui::forSaleOpen $forSale
+	}
+
 	drawDB .t.fR.screen db
 }
 
@@ -1813,6 +1826,16 @@ proc loadGlob {patt} {
 rename exit origExit
 proc exit {} {
 	if {[info exists ::db]} {
+		set geom [winfo geometry .t]
+		set i [lsearch $::zoomLevels $::n]
+		::db eval {
+			UPDATE settings SET
+			geom_top = $geom,
+			zoom_level = $i,
+			view_level = $gui::viewLevel,
+			forSale_open = $gui::forSaleOpen
+			WHERE id=1
+		}
 		::db close
 	}
 	origExit

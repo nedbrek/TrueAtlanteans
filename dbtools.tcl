@@ -72,6 +72,26 @@ proc createDb {filename} {
 	}
 	sqlite3 ::db $filename
 
+	# settings
+	::db eval {
+		CREATE TABLE settings(
+		id INTEGER PRIMARY KEY,
+		version INTEGER,
+		player_id INTEGER,
+		player_pass TEXT not null,
+		geom_top TEXT not null,
+		zoom_level INTEGER,
+		view_level INTEGER,
+		forSale_open INTEGER
+		);
+	}
+
+	::db eval {
+		INSERT INTO settings
+		(id, version, player_id, player_pass, geom_top, zoom_level, view_level, forSale_open)
+		VALUES(1, 1, 0, "", "", 0, 0, 0)
+	}
+
 	# terrain table: (x, y, z) -> terrain type, city, region name
 	::db eval {
 		CREATE TABLE terrain(
