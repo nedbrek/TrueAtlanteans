@@ -688,6 +688,9 @@ proc parseBattle {f} {
 }
 
 proc parseFile {f} {
+	variable nextLine
+	set nextLine ""
+
 	# initial headers
 	set v [getSection $f]
 	# Atlantis Report For:
@@ -820,7 +823,6 @@ if {![info exists debug]} {
 
 		close $f
 		close $chn
-		set nextLine ""
 	}
 }
 
