@@ -790,6 +790,7 @@ proc parseFile {f} {
 		exit 1
 	}
 	dict set turn PlayerNum [lindex $v 1]
+	dict set turn PlayerPass [lindex $v 2]
 
 	# orders
 	set v [getSection $f]
