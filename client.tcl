@@ -481,6 +481,10 @@ proc dbInsertUnit {db regionId u} {
 }
 
 proc updateDb {db tdata} {
+	set pid [dGet $tdata PlayerNum]
+	db eval {
+		UPDATE settings SET player_id = $pid
+	}
 	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
 
 	$db eval {BEGIN TRANSACTION}
@@ -1588,6 +1592,9 @@ proc saveOrders {} {
 
 	set f [open $ofile "w"]
 
+	set pid [::db eval { SELECT player_id FROM settings }]
+	puts $f "#atlantis $pid"
+
 	set res [::db eval {
 		SELECT units.name, units.orders
 		FROM detail JOIN units
@@ -1603,6 +1610,7 @@ proc saveOrders {} {
 		puts $f "[join $ol "\n"]\n"
 	}
 
+	puts $f "#end"
 	close $f
 }
 
