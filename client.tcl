@@ -482,8 +482,11 @@ proc dbInsertUnit {db regionId u} {
 
 proc updateDb {db tdata} {
 	set pid [dGet $tdata PlayerNum]
+	set ppass [dGet $tdata PlayerPass]
 	db eval {
-		UPDATE settings SET player_id = $pid
+		UPDATE settings SET
+		player_id = $pid,
+		player_pass = $ppass
 	}
 	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
 
@@ -1593,7 +1596,12 @@ proc saveOrders {} {
 	set f [open $ofile "w"]
 
 	set pid [::db eval { SELECT player_id FROM settings }]
-	puts $f "#atlantis $pid"
+	set ppass [::db eval { SELECT player_pass FROM settings }]
+	if {$ppass eq ""} {
+		puts $f "#atlantis $pid"
+	} else {
+		puts $f "#atlantis $pid \"$ppass\""
+	}
 
 	set res [::db eval {
 		SELECT units.name, units.orders
