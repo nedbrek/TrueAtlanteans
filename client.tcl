@@ -1088,6 +1088,9 @@ proc newGame {} {
 }
 
 proc doOpen {} {
+	set gui::prevUnit ""
+	set gui::prevId   ""
+
 	set types {
 		{{Game Database} {.db}}
 		{{All Files} *}
