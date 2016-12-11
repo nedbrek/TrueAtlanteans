@@ -280,6 +280,8 @@ proc drawNexus {w data} {
 		set terrain [db eval {SELECT type FROM terrain WHERE x=$x and y=$y}]
 		$w itemconfigure $hexId -fill [dict get $::terrainColors $terrain]
 	}
+
+	$w configure -scrollregion [$w bbox all]
 }
 
 # draw all the regions in the db data
