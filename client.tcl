@@ -277,7 +277,7 @@ proc drawNexus {w data} {
 		$w itemconfigure $hexId -tags $tags
 
 		# terrain
-		set terrain [db eval {SELECT type FROM terrain WHERE x=$x and y=$y}]
+		set terrain [db eval {SELECT type FROM terrain WHERE x=$x and y=$y and z=1}]
 		$w itemconfigure $hexId -fill [dict get $::terrainColors $terrain]
 	}
 
