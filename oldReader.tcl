@@ -634,7 +634,7 @@ proc parseBattle {f} {
 	set ret [dict create]
 
 	# Attacker (Id) attacks defender (id) in terrain (x,y) in region
-	if {![regexp {([^()]+) \(([[:digit:]]+)\) attacks ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) in .+!} $v -> attacker att_id defender def_id x y z]} {
+	if {![regexp {([^()]+) \(([[:digit:]]+)\) attacks ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in .+!} $v -> attacker att_id defender def_id x y z]} {
 		puts "Parse error in battle on '$v'"
 		exit 1
 	}
