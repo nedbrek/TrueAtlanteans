@@ -1854,7 +1854,7 @@ proc loadGlob {patt} {
 
 rename exit origExit
 proc exit {} {
-	if {[info exists ::db]} {
+	if {[info commands ::db] ne ""} {
 		set geom [winfo geometry .t]
 		set i [lsearch $::zoomLevels $::n]
 		::db eval {
