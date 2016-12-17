@@ -11,3 +11,4 @@
 package ifneeded atlantis_dbtools 1.0 [list source [file join $dir dbtools.tcl]]
 package ifneeded atlantis_reader 1.0 [list source [file join $dir oldReader.tcl]]
 package ifneeded atlantis_utils 1.0 [list source [file join $dir atlantis_utils.tcl]]
+package ifneeded client_utils 1.0 [list source [file join $dir client_utils.tcl]]

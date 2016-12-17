@@ -1,9 +1,6 @@
 package require Tk
-package require sqlite3
-
 lappend ::auto_path [pwd]
-package require atlantis_dbtools
-package require atlantis_reader
+package require client_utils
 
 wm withdraw .
 
@@ -40,21 +37,6 @@ set ::terrainColors {
 }
 
 ### game constants
-set ::monthNames {
-	January
-	February
-	March
-	April
-	May
-	June
-	July
-	August
-	September
-	October
-	November
-	December
-}
-
 set ::directions {
 	Southeast
 	South
@@ -96,12 +78,6 @@ namespace eval gui {
 
 ##############################################################################
 ### general utilities
-proc dGet {d k} {
-	if {![dict exists $d $k]} { return "" }
-
-	return [string trim [dict get $d $k]]
-}
-
 proc lGet {l i} {
 	return [string trim [lindex $l $i]]
 }
@@ -123,12 +99,6 @@ proc getZlevel {} {
 	}
 
 	return [lindex $zList $zlevel]
-}
-
-proc calcTurnNo {m y} {
-	set mN [lsearch $::monthNames $m]
-
-	return [expr ($y-1)*12 + $mN + 1]
 }
 
 ##############################################################################
@@ -423,154 +393,6 @@ proc drawDB {w db} {
 	drawMarkers $w $db
 
 	$w configure -scrollregion [$w bbox all]
-}
-
-##############################################################################
-### database
-# helper for updateDb
-# process the exits field
-# returns a list of all exit directions (for wall processing)
-proc doExits {db exits rz} {
-	set dirs ""
-
-	#foreach direction and exit info
-	foreach {d e} $exits {
-		lappend dirs $d ;# save the exit direction
-
-		# pull the terrain info from the exit info
-		set loc [dGet $e Location]
-		set x [lindex $loc 0]
-		set y [lindex $loc 1]
-		set z [lindex $loc 2]
-
-		set ttype  [dGet $e Terrain]
-		set city   [dGet $e Town]
-		set region [dGet $e Region]
-
-		$db eval {
-			INSERT OR REPLACE INTO terrain VALUES
-			($x, $y, $z, $ttype, $city, $region);
-		}
-
-		if {$rz == 0} {
-			$db eval {
-				INSERT OR REPLACE INTO nexus_exits (dir, dest)
-				VALUES ($d, $loc);
-			}
-		}
-	}
-
-	return $dirs
-}
-
-proc dbInsertUnit {db regionId u} {
-	set name   [dGet $u Name]
-	set desc   [dGet $u Desc]
-	set detail [dGet $u Report]
-	set orders [dGet $u Orders]
-	set items  [dGet $u Items]
-	set skills [dGet $u Skills]
-	set flags  [dGet $u Flags]
-
-	$db eval {
-		INSERT INTO units
-		(regionId, name, desc, detail, orders, items, skills, flags)
-		VALUES(
-		$regionId, $name, $desc, $detail, $orders, $items, $skills, $flags
-		);
-	}
-	return [$db last_insert_rowid]
-}
-
-proc updateDb {db tdata} {
-	set pid [dGet $tdata PlayerNum]
-	set ppass [dGet $tdata PlayerPass]
-	db eval {
-		UPDATE settings SET
-		player_id = $pid,
-		player_pass = $ppass
-	}
-	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
-
-	$db eval {BEGIN TRANSACTION}
-
-	set regions [dGet $tdata Regions]
-	foreach r $regions {
-
-		set loc [dGet $r Location]
-		set x [lindex $loc 0]
-		set y [lindex $loc 1]
-		set z [lindex $loc 2]
-
-		set dirs [doExits $db [dGet $r Exits] $z]
-
-		set ttype [dGet $r Terrain]
-
-		set city    [dGet $r Town]
-		set region  [dGet $r Region]
-
-		$db eval {
-			INSERT OR REPLACE INTO terrain VALUES
-			($x, $y, $z, $ttype, $city, $region);
-		}
-
-		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]
-		set wages   [list [dGet $r Wage] [dGet $r MaxWage]]
-		set pop     [dGet $r Population]
-		set race    [dGet $r Race]
-		set tax     [dGet $r MaxTax]
-		set ente    [dGet $r Entertainment]
-		set wants   [dGet $r Wants]
-		set sells   [dGet $r Sells]
-		set prod    [dGet $r Products]
-		$db eval {
-			INSERT OR REPLACE INTO detail
-			(x, y, z, turn, weather, wages, pop, race, tax, entertainment, wants,
-			 sells, products, exitDirs)
-
-			VALUES(
-			$x, $y, $z, $turnNo, $weather, $wages, $pop, $race, $tax, $ente,
-			$wants, $sells, $prod, $dirs
-			);
-		}
-
-		set regionId [$db last_insert_rowid]
-		set units [dGet $r Units]
-		foreach u $units {
-			dbInsertUnit $db $regionId $u
-		}
-
-		set objects [dGet $r Objects]
-		foreach o $objects {
-			set oname [dGet $o Name]
-			set odesc [dGet $o ObjectName]
-			$db eval {
-				INSERT OR REPLACE INTO objects
-				(regionId, name, desc)
-				VALUES(
-				$regionId, $oname, $odesc
-				)
-			}
-			set objectId [$db last_insert_rowid]
-
-			foreach u [dGet $o Units] {
-				set unitRow [dbInsertUnit $db $regionId $u]
-				$db eval {
-					INSERT OR REPLACE INTO object_unit_map
-					(objectId, unitId)
-					VALUES($objectId, $unitRow)
-				}
-			}
-		}
-	}
-
-	# items are a list of dict
-	set items [dGet $tdata Items]
-	foreach item $items {
-		insertItem $item
-	}
-
-	$db eval {END TRANSACTION}
 }
 
 ##############################################################################
@@ -1034,15 +856,6 @@ proc switchFocus {w} {
 ##############################################################################
 ### menu callbacks
 # helper for "Add Report"
-proc loadData {filename} {
-	set tfile [open $filename]
-	#set tdata [read $tfile]
-
-	#updateDb db [regsub -all {\n} $tdata " "]
-	updateDb db [reader::parseFile $tfile]
-	close $tfile
-}
-
 proc dnLevel {} {
 	incr gui::viewLevel
 	drawDB .t.fR.screen db
@@ -1662,6 +1475,61 @@ proc centerCanvas {w cx cy} {
 
 	$w xview moveto $xpos
 	$w yview moveto $ypos
+}
+
+proc showAllUnits {} {
+	set units [db eval {
+      SELECT detail.x, detail.y, detail.z, units.name, countMen(units.items), units.orders
+      FROM detail JOIN units
+      ON detail.id=units.regionId
+      WHERE detail.turn=$gui::currentTurn and units.detail='own'
+	}]
+
+	# build the window
+	set t .tAllUnits
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "All Units"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	}
+
+	# clear old contents
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# populate it
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 5} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	# x,y,z
+	$t.fTop.tv column 1 -width 34
+	$t.fTop.tv column 2 -width 34
+	$t.fTop.tv column 3 -width 34
+	$t.fTop.tv heading 1 -text "x"
+	$t.fTop.tv heading 2 -text "y"
+	$t.fTop.tv heading 3 -text "z"
+	$t.fTop.tv heading 4 -text "men"
+	$t.fTop.tv heading 5 -text "orders"
+
+	foreach {x y z name count orders} $units {
+		if {[info exists id($x,$y,$z)]} {
+			set n $id($x,$y,$z)
+			$t.fTop.tv insert $n end -text $name -values [list $x $y $z $count $orders]
+		} else {
+			set id($x,$y,$z) [$t.fTop.tv insert {} end -text "Terrain" -values [list $x $y $z "" "" ""]]
+			$t.fTop.tv item $id($x,$y,$z) -open 1
+			$t.fTop.tv insert $id($x,$y,$z) end -text $name -values [list $x $y $z $count $orders]
+		}
+	}
 }
 
 proc formTaxers {regionId} {

@@ -1,7 +1,35 @@
 package provide atlantis_utils 1.0
 
+### general utilities
+proc dGet {d k} {
+	if {![dict exists $d $k]} { return "" }
+
+	return [string trim [dict get $d $k]]
+}
+
 # men will be auto-populated from db
 set ::men {
+}
+
+set ::monthNames {
+	January
+	February
+	March
+	April
+	May
+	June
+	July
+	August
+	September
+	October
+	November
+	December
+}
+
+proc calcTurnNo {m y} {
+	set mN [lsearch $::monthNames $m]
+
+	return [expr ($y-1)*12 + $mN + 1]
 }
 
 # map from product to skill

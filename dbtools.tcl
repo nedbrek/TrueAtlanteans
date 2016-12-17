@@ -1,4 +1,5 @@
 package require atlantis_utils
+package require sqlite3
 package provide atlantis_dbtools 1.0
 
 # (database available function)
@@ -64,6 +65,13 @@ proc countItem {ils item} {
 	}
 
 	return 0
+}
+
+proc registerFunctions {} {
+	::db function curTax curTax
+	::db function curProduce curProduce
+	::db function countItem countItem
+	::db function countMen countMen
 }
 
 proc createDb {filename} {
@@ -204,9 +212,7 @@ proc createDb {filename} {
 		)
 	}
 
-	::db function curTax curTax
-	::db function curProduce curProduce
-	::db function countItem countItem
+	registerFunctions
 }
 
 proc openDb {ofile} {
@@ -222,9 +228,7 @@ proc openDb {ofile} {
 		return "Error file $ofile is invalid"
 	}
 
-	::db function curTax curTax
-	::db function curProduce curProduce
-	::db function countItem countItem
+	registerFunctions
 	return ""
 }
 
@@ -265,5 +269,151 @@ proc getUnits {name} {
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn and units.detail='own' and units.name LIKE $name
 	}]
+}
+
+# helper for updateDb
+# process the exits field
+# returns a list of all exit directions (for wall processing)
+proc doExits {db exits rz} {
+	set dirs ""
+
+	#foreach direction and exit info
+	foreach {d e} $exits {
+		lappend dirs $d ;# save the exit direction
+
+		# pull the terrain info from the exit info
+		set loc [dGet $e Location]
+		set x [lindex $loc 0]
+		set y [lindex $loc 1]
+		set z [lindex $loc 2]
+
+		set ttype  [dGet $e Terrain]
+		set city   [dGet $e Town]
+		set region [dGet $e Region]
+
+		$db eval {
+			INSERT OR REPLACE INTO terrain VALUES
+			($x, $y, $z, $ttype, $city, $region);
+		}
+
+		if {$rz == 0} {
+			$db eval {
+				INSERT OR REPLACE INTO nexus_exits (dir, dest)
+				VALUES ($d, $loc);
+			}
+		}
+	}
+
+	return $dirs
+}
+
+proc dbInsertUnit {db regionId u} {
+	set name   [dGet $u Name]
+	set desc   [dGet $u Desc]
+	set detail [dGet $u Report]
+	set orders [dGet $u Orders]
+	set items  [dGet $u Items]
+	set skills [dGet $u Skills]
+	set flags  [dGet $u Flags]
+
+	$db eval {
+		INSERT INTO units
+		(regionId, name, desc, detail, orders, items, skills, flags)
+		VALUES(
+		$regionId, $name, $desc, $detail, $orders, $items, $skills, $flags
+		);
+	}
+	return [$db last_insert_rowid]
+}
+
+proc updateDb {db tdata} {
+	set pid [dGet $tdata PlayerNum]
+	set ppass [dGet $tdata PlayerPass]
+	db eval {
+		UPDATE settings SET
+		player_id = $pid,
+		player_pass = $ppass
+	}
+	set turnNo [calcTurnNo [dGet $tdata Month] [dGet $tdata Year]]
+
+	$db eval {BEGIN TRANSACTION}
+
+	set regions [dGet $tdata Regions]
+	foreach r $regions {
+
+		set loc [dGet $r Location]
+		set x [lindex $loc 0]
+		set y [lindex $loc 1]
+		set z [lindex $loc 2]
+
+		set dirs [doExits $db [dGet $r Exits] $z]
+
+		set ttype [dGet $r Terrain]
+
+		set city    [dGet $r Town]
+		set region  [dGet $r Region]
+
+		$db eval {
+			INSERT OR REPLACE INTO terrain VALUES
+			($x, $y, $z, $ttype, $city, $region);
+		}
+
+		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]
+		set wages   [list [dGet $r Wage] [dGet $r MaxWage]]
+		set pop     [dGet $r Population]
+		set race    [dGet $r Race]
+		set tax     [dGet $r MaxTax]
+		set ente    [dGet $r Entertainment]
+		set wants   [dGet $r Wants]
+		set sells   [dGet $r Sells]
+		set prod    [dGet $r Products]
+		$db eval {
+			INSERT OR REPLACE INTO detail
+			(x, y, z, turn, weather, wages, pop, race, tax, entertainment, wants,
+			 sells, products, exitDirs)
+
+			VALUES(
+			$x, $y, $z, $turnNo, $weather, $wages, $pop, $race, $tax, $ente,
+			$wants, $sells, $prod, $dirs
+			);
+		}
+
+		set regionId [$db last_insert_rowid]
+		set units [dGet $r Units]
+		foreach u $units {
+			dbInsertUnit $db $regionId $u
+		}
+
+		set objects [dGet $r Objects]
+		foreach o $objects {
+			set oname [dGet $o Name]
+			set odesc [dGet $o ObjectName]
+			$db eval {
+				INSERT OR REPLACE INTO objects
+				(regionId, name, desc)
+				VALUES(
+				$regionId, $oname, $odesc
+				)
+			}
+			set objectId [$db last_insert_rowid]
+
+			foreach u [dGet $o Units] {
+				set unitRow [dbInsertUnit $db $regionId $u]
+				$db eval {
+					INSERT OR REPLACE INTO object_unit_map
+					(objectId, unitId)
+					VALUES($objectId, $unitRow)
+				}
+			}
+		}
+	}
+
+	# items are a list of dict
+	set items [dGet $tdata Items]
+	foreach item $items {
+		insertItem $item
+	}
+
+	$db eval {END TRANSACTION}
 }
 
