@@ -312,13 +312,15 @@ proc parseUnit {v} {
 	set itemIdx [unitItemsIdx $group0]
 
 	set uflags ""
+	set fact ""
 	set flags [lrange $group0 1 $itemIdx-1]
 	foreach f $flags {
 		set f [string trim $f]
 		set f [regsub -all { +} $f " "]
 
+		# look for faction
 		if {[regexp {.*\([[:digit:]]+\)$} $f] == 1} {
-			# TODO extract faction
+			set fact $f
 			continue
 		}
 
@@ -335,6 +337,7 @@ proc parseUnit {v} {
 	set items [repairItemList $items]
 
 	set u [dict create Name $n Desc $desc Report $quality Items $items]
+	dict set u Faction $fact
 	dict set u Flags $uflags
 
 	# group 3 - skills
