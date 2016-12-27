@@ -297,6 +297,15 @@ proc parseUnit {v} {
 	set comma [string first "," $v]
 	set n [string range $v 2 $comma-1]
 
+	# strip description
+	set d [regexp {;(.*)$} $v -> desc]
+	if {$d == 0} {
+		set desc ""
+	} else {
+		set desc [string trim $desc]
+		set v [regsub {;.*$} $v ""]
+	}
+
 	set groups [split $v "."]
 
 	set group0 [split [lindex $groups 0] ","]
@@ -309,6 +318,7 @@ proc parseUnit {v} {
 		set f [regsub -all { +} $f " "]
 
 		if {[regexp {.*\([[:digit:]]+\)$} $f] == 1} {
+			# TODO extract faction
 			continue
 		}
 
@@ -324,7 +334,7 @@ proc parseUnit {v} {
 	set items [lrange $group0 $itemIdx end]
 	set items [repairItemList $items]
 
-	set u [dict create Name $n Desc {} Report $quality Items $items]
+	set u [dict create Name $n Desc $desc Report $quality Items $items]
 	dict set u Flags $uflags
 
 	# group 3 - skills
@@ -334,6 +344,8 @@ proc parseUnit {v} {
 
 		dict set u Skills [fixSkills $skills]
 	}
+
+	# group 4 - can study
 
 	return $u
 }
