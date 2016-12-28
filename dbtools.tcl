@@ -151,6 +151,7 @@ proc createDb {filename} {
 			regionId INTEGER not null,
 			name not null,
 			desc not null,
+			faction not null,
 			detail not null,
 			orders not null,
 			items not null,
@@ -310,6 +311,7 @@ proc doExits {db exits rz} {
 proc dbInsertUnit {db regionId u} {
 	set name   [dGet $u Name]
 	set desc   [dGet $u Desc]
+	set fact   [dGet $u Faction]
 	set detail [dGet $u Report]
 	set orders [dGet $u Orders]
 	set items  [dGet $u Items]
@@ -318,9 +320,9 @@ proc dbInsertUnit {db regionId u} {
 
 	$db eval {
 		INSERT INTO units
-		(regionId, name, desc, detail, orders, items, skills, flags)
+		(regionId, name, desc, faction, detail, orders, items, skills, flags)
 		VALUES(
-		$regionId, $name, $desc, $detail, $orders, $items, $skills, $flags
+		$regionId, $name, $desc, $fact, $detail, $orders, $items, $skills, $flags
 		);
 	}
 	return [$db last_insert_rowid]

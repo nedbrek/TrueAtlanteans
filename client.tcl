@@ -481,7 +481,7 @@ proc showUnit {name} {
 	set gui::prevUnit $name
 
 	set data [db eval {
-		SELECT orders, id, items, skills, detail, flags
+		SELECT orders, id, items, skills, detail, flags, faction
 		FROM units
 		WHERE regionId=$regionId AND name=$name
 		ORDER BY id
@@ -492,6 +492,7 @@ proc showUnit {name} {
 	set skills      [lindex $data 3]
 	set detail      [lindex $data 4]
 	set flags       [lindex $data 5]
+	set fact        [lindex $data 6]
 
 	# fill the items box (stick skills in too)
 	set t .t.fL.fItems.t
@@ -526,6 +527,11 @@ proc showUnit {name} {
 			$t insert end "[join $s]\n"
 		}
 	}
+
+	if {$detail ne "own"} {
+		$t insert end "Faction: '$fact'\n"
+	}
+
 	$t insert end "-------- [countMen $items] men\n"
 
 	foreach i $items {
@@ -658,7 +664,7 @@ proc displayRegion {x y nexus} {
 	if {[lindex $rdata 0] != $gui::currentTurn} { return }
 
 	set units [db eval {
-		SELECT name, detail
+		SELECT name, detail, faction
 		FROM units
 		WHERE regionId=$regionId
 		ORDER BY detail DESC
@@ -667,7 +673,7 @@ proc displayRegion {x y nexus} {
 	## set up units combox
 	set unitList {}
 	set state "start"
-	foreach {name detail} $units {
+	foreach {name detail fact} $units {
 		if {$detail eq "own"} {
 			set state "own"
 		} elseif {$state ne "start"} {
