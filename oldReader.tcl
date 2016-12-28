@@ -788,6 +788,8 @@ proc parseFile {f} {
 	dict set turn "Objects" $objList
 
 	# unclaimed silver
+	regexp {Unclaimed silver: ([[:digit:]]+)\.} $v -> unclaim
+	dict set turn "Unclaimed" $unclaim
 
 	# regions
 	set regions ""
