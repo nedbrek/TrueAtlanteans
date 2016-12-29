@@ -1428,17 +1428,26 @@ proc saveOrders {} {
 	}
 
 	set res [::db eval {
-		SELECT units.name, units.orders
+		SELECT units.name, units.orders, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		ORDER BY detail.z, detail.x, detail.y
 	}]
 
-	foreach {u ol} $res {
+	set loc ""
+	foreach {u ol x y z} $res {
 		if {$ol eq ""} continue
+
+		set newLoc [list $x $y $z]
+		if {$loc eq "" || $loc ne $newLoc} {
+			set loc $newLoc
+			puts $f ";*** $x $y $z ***"
+		}
 
 		regexp {\(([[:digit:]]+)\)} $u -> unitNum
 		puts $f "unit $unitNum"
+		puts $f "; $u"
 		puts $f "[join $ol "\n"]\n"
 	}
 
