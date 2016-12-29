@@ -202,6 +202,18 @@ proc createDb {filename} {
 		)
 	}
 
+	# skill descriptions (desc is a list)
+	::db eval {
+		CREATE TABLE skills(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT not null,
+			abbr TEXT not null,
+			level TEXT not null,
+			cost TEXT not null,
+			desc TEXT not null
+		)
+	}
+
 	# active markers
 	::db eval {
 		CREATE TABLE active_markers(
@@ -328,6 +340,20 @@ proc dbInsertUnit {db regionId u} {
 	return [$db last_insert_rowid]
 }
 
+proc insertSkill {s} {
+	set name [dGet $s "Name"]
+	set abbr [dGet $s "Abbr"]
+	set level [dGet $s "Level"]
+	set cost [dGet $s "Cost"]
+	set desc [dGet $s "Desc"]
+
+	::db eval {
+		INSERT INTO skills
+		(name, abbr, level, cost, desc)
+		VALUES($name, $abbr, $level, $cost, $desc)
+	}
+}
+
 proc updateDb {db tdata} {
 	set pid [dGet $tdata PlayerNum]
 	set ppass [dGet $tdata PlayerPass]
@@ -414,6 +440,11 @@ proc updateDb {db tdata} {
 	set items [dGet $tdata Items]
 	foreach item $items {
 		insertItem $item
+	}
+
+	set skills [dGet $tdata Skills]
+	foreach skill $skills {
+		insertSkill $skill
 	}
 
 	$db eval {END TRANSACTION}

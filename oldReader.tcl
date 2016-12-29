@@ -545,8 +545,31 @@ proc getRegion {f} {
 }
 
 proc parseSkill {v} {
+	# split sentences into a list
 	set l [split [string trimright $v "."] "."]
-	return $l
+	# grab first item
+	set l0 [lindex $l 0]
+
+	# skill name [ABBR] level: Overall description
+	# (note skill name can have spaces)
+	# Some skills have a description "No skill report"
+	regexp {([^[]+) \[([^]]+)\] ([[:digit:]]+): (.*)} $l0 -> name abbr lvl rest
+	lset l 0 $rest
+
+	# getSection() can introduce multiple spaces
+	set l [regsub -all {  } $l " "]
+
+	set i [lsearch $l {*This skill costs*}]
+	if {$i != -1} {
+		set li [lindex $l $i]
+		regexp { *This skill costs ([[:digit:]]+) silver per month of study} $li -> cost
+		# remove it
+		set l [lreplace $l $i $i]
+	} else {
+		set cost ""
+	}
+
+	return [dict create Name $name Abbr $abbr Level $lvl Cost $cost Desc $l]
 }
 
 proc parseObject {v} {
