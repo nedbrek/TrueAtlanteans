@@ -729,18 +729,34 @@ proc parseFile {f} {
 	variable nextLine
 	set nextLine ""
 
+	set turn [dict create]
+
 	# initial headers
 	set v [getSection $f]
 	# Atlantis Report For:
 
 	set v [getSection $f]
 	# Faction Name (number) (War n,Trade n, Magic n)
+	if {![regexp {([^(]+) \(([[:digit:]]+)\) \(War ([[:digit:]]+), Trade ([[:digit:]]+)(, Magic ([[:digit:]]+))?\)} $v -> \
+	   fact_name fact_num war_num trade_num magic_num]} {
+			puts "Error parsing faction name '$v'"
+			exit 1
+	}
+
+	dict set turn FactName $fact_name
+	dict set turn WarNum $war_num
+	dict set turn TradeNum $trade_num
+	dict set turn MagicNum [expr {$magic_num eq "" ? 0 : $magic_num}]
 
 	set v [getSection $f]
 	# <Month>, Year <number>
 	set v [string map {"," ""} $v]
-	set turn [dict create Month [lindex $v 0]]
-	dict set turn [lindex $v 1] [lindex $v 2]
+	dict set turn Month [lindex $v 0]
+	if {[lindex $v 1] ne "Year"} {
+		puts "Parse error in turn month/year"
+		exit 1
+	}
+	dict set turn Year [lindex $v 2]
 
 	# extract items after events
 	set itemList [list]
@@ -750,7 +766,34 @@ proc parseFile {f} {
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
 
-		if {$v eq "Skill reports:"} {
+		if {$v eq "Faction Status:"} {
+			# tax
+			set v [getSection $f]
+			regexp {Tax Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> tax_use tax_max
+
+			# trade
+			set v [getSection $f]
+			regexp {Trade Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> trade_use trade_max
+
+			# mages
+			set v [getSection $f]
+			regexp {Mages: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> mage_use mage_max
+
+			# apprentices (if they exist)
+			set v [getSection $f]
+			if {[regexp {Apprentices: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> appr_use appr_max]} {
+				set v [getSection $f]
+			} else {
+				set appr_use ""
+				set appr_max ""
+			}
+
+			dict set turn Tax [list $tax_use $tax_max]
+			dict set turn Trade [list $trade_use $trade_max]
+			dict set turn Mage [list $mage_use $mage_max]
+			dict set turn Appr [list $appr_use $appr_max]
+
+		} elseif {$v eq "Skill reports:"} {
 			#set skillF [open "skills.txt" a]
 
 			set v [getSection $f]
@@ -798,11 +841,11 @@ proc parseFile {f} {
 				set battle [parseBattle $f]
 			}
 			dict set turn "Battles" $battleList
-			# Events during turn:
 
 			set v [getSection $f]
 
 		} else {
+			# Events during turn:
 			set v [getSection $f]
 		}
 	}
