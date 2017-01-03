@@ -1412,6 +1412,357 @@ proc ctProd {} {
 	return [llength [array names prod]]
 }
 
+proc checkBool {s} {
+	return [expr {$s != 0 && $s != 1}]
+}
+
+proc checkOrder {u o x y z ctxt} {
+	set op [split $o " "]
+	set c [lindex $op 0]
+	switch -nocase $c {
+		declare { 
+			# change diplomatic stance
+			# TODO use a dialog
+			return 0
+		}
+
+		faction {
+			# change faction type
+			# TODO use a dialog
+			return 0
+		}
+
+		password {
+			# change password
+			# TODO use a dialog
+			return 0
+		}
+
+		restart {
+			# start over
+			# TODO use a dialog
+			return 0
+		}
+
+		quit {
+			# delete faction
+			# TODO use a dialog
+			return 0
+		}
+
+		show {
+			# get description again
+			# TODO use a dialog
+			return 0
+		}
+
+		name {
+			# change name of something
+			# TODO check args
+			return 0
+		}
+
+		avoid {
+			# avoid combat
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) Avoid with non-bool flag"]
+			}
+			return 0
+		}
+
+		hold {
+			# stay in hex
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) Hold with non-bool flag"]
+			}
+			return 0
+		}
+
+		behind {
+			# stand behind other units
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) Behind with non-bool flag"]
+			}
+			return 0
+		}
+
+		noaid {
+			# do not call for help
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) Noaid with non-bool flag"]
+			}
+			return 0
+		}
+
+		guard {
+			# block enemy units
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) Guard with non-bool flag"]
+			}
+			return 0
+		}
+
+		nocross {
+			# do not cross water
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) NoCross with non-bool flag"]
+			}
+			return 0
+		}
+
+		autotax {
+			# always tax
+			if {[checkBool [lindex $op 1]]} {
+				return [list -2 "$u ($x, $y, $z) AutoTax with non-bool flag"]
+			}
+			return 0
+		}
+
+		spoils {
+			# avoid taking on encumbrance
+			# TODO check args
+			return 0
+		}
+
+		reveal {
+			# reveal unit and/or faction name
+			# TODO check args
+			return 0
+		}
+
+		consume {
+			# control use of food
+			# TODO check args
+			return 0
+		}
+
+		work {
+			# earn wages
+			return 0
+		}
+
+		entertain {
+			# gather more income
+			return 0
+		}
+
+		give {
+			# give an item
+			# TODO check args
+			return 0
+		}
+
+		promote {
+			# change control of building
+			# TODO check args
+			return 0
+		}
+
+		exchange {
+			# swap item
+			# TODO check args
+			return 0
+		}
+
+		form {
+			# create new unit
+			# TODO check args
+			return 0
+		}
+
+		end {
+			# end of form
+			return 0
+		}
+
+		turn {
+			# postpone command for next turn
+			# TODO check args
+			return [list 1 "turn"]
+		}
+
+		endturn {
+			# end of turn directive
+			return [list 2 "endturn"]
+		}
+
+		study {
+			# improve skill
+			# TODO check args
+			return 0
+		}
+
+		teach {
+			# help another unit study
+			# TODO check args
+			return 0
+		}
+
+		forget {
+			# get ready for a new skill
+			# TODO check args
+			return 0
+		}
+
+		move {
+			# change hex
+			# TODO check args
+			return 0
+		}
+
+		sail {
+			# change hex over water
+			# TODO check args
+			return 0
+		}
+
+		enter {
+			# go into a building/object
+			# TODO check args
+			return 0
+		}
+
+		leave {
+			# leave current object
+			return 0
+		}
+
+		advance {
+			# move with aggression
+			# TODO check args
+			return 0
+		}
+
+		attack {
+			# start a fight with given unit
+			# TODO check args
+			return 0
+		}
+
+		evict {
+			# kick unit out of object
+			# TODO check args
+			return 0
+		}
+
+		assassinate {
+			# secretly attack
+			# TODO check args
+			return 0
+		}
+
+		steal {
+			# try to take an item
+			# TODO check args
+			return 0
+		}
+
+		destroy {
+			# tear down an object
+			# TODO check args
+			return 0
+		}
+
+		tax {
+			# get money from residents
+			return 0
+		}
+
+		pillage {
+			# degrade hex for cash
+			return 0
+		}
+
+		buy {
+			# get items for cash
+			# TODO check args
+			return 0
+		}
+
+		sell {
+			# give up item for cash
+			# TODO check args
+			return 0
+		}
+
+		produce {
+			# gather natural resources, or refine them into goods
+			# TODO check args
+			return 0
+		}
+
+		build {
+			# construct an object
+			# TODO check args
+			return 0
+		}
+	}
+	return [list -1 "Command '$c' not recognized"]
+}
+
+proc checkAllOrders {} {
+	# pull all orders, sort by hex
+	set res [::db eval {
+		SELECT units.name, units.orders, detail.x, detail.y, detail.z
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		ORDER BY detail.z, detail.x, detail.y
+	}]
+
+	set loc ""
+	foreach {u ol x y z} $res {
+		if {$ol eq ""} continue
+
+		set newLoc [list $x $y $z]
+		if {$loc eq "" || $loc ne $newLoc} {
+			set loc $newLoc
+		}
+
+		# TODO assembly unit ids
+		set ctxt ""
+
+		set skip 0
+		# foreach order
+		foreach o $ol {
+			# strip whitespace
+			set o [string trim $o]
+
+			if {$skip} {
+				if {$o == "endturn"} {
+					set skip 0
+				}
+				continue
+			}
+
+			if {[string index $o 0] eq "@"} {
+				# repeat
+				set o [string trimleft $o "@"]
+
+				if {[string is digit [string index $o 0]]} {
+					# @n <order>
+					set o [regsub {[[:digit:]]+} $o ""]
+				} else {
+					# it was a simple repeat
+				}
+
+				set o [string trim $o]
+			}
+
+			set r [checkOrder $u $o $x $y $z $ctxt]
+			set rc [lindex $r 0]
+			if {$rc < 0} {
+				puts [lindex $r 1]
+			} elseif {$rc == 2} {
+				# endturn without turn
+				puts "$u ($x, $y, $z) EndTurn without Turn"
+			} elseif {$rc == 1} {
+				set skip 1
+			}
+		}
+	}
+}
+
 proc saveOrders {} {
 	set filename [format {orders%d.txt} $gui::currentTurn]
 	set ofile [tk_getSaveFile -initialfile $filename ]
