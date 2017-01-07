@@ -1417,6 +1417,10 @@ proc checkBool {s} {
 }
 
 proc checkOrder {u o x y z ctxt} {
+	if {$o eq ""} {
+		return 0
+	}
+
 	set op [split $o " "]
 	set c [lindex $op 0]
 	switch -nocase $c {
@@ -1532,6 +1536,12 @@ proc checkOrder {u o x y z ctxt} {
 
 		consume {
 			# control use of food
+			# TODO check args
+			return 0
+		}
+
+		cast {
+			# cast a spell
 			# TODO check args
 			return 0
 		}
@@ -1703,61 +1713,62 @@ proc checkOrder {u o x y z ctxt} {
 proc checkAllOrders {} {
 	# pull all orders, sort by hex
 	set res [::db eval {
-		SELECT units.name, units.orders, detail.x, detail.y, detail.z
-		FROM detail JOIN units
-		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
-		ORDER BY detail.z, detail.x, detail.y
+		SELECT DISTINCT id, x, y, z
+		FROM detail
+		WHERE turn=$gui::currentTurn
 	}]
 
-	set loc ""
-	foreach {u ol x y z} $res {
-		if {$ol eq ""} continue
-
-		set newLoc [list $x $y $z]
-		if {$loc eq "" || $loc ne $newLoc} {
-			set loc $newLoc
-		}
+	# foreach hex
+	foreach {id x y z} $res {
+		set units [::db eval {
+			SELECT name, orders, items
+			FROM units
+			WHERE units.regionId=$id AND units.detail='own'
+		}]
 
 		# TODO assembly unit ids
 		set ctxt ""
 
-		set skip 0
-		# foreach order
-		foreach o $ol {
-			# strip whitespace
-			set o [string trim $o]
+		foreach {u ol il} $units {
+			if {$ol eq ""} continue
 
-			if {$skip} {
-				if {$o == "endturn"} {
-					set skip 0
-				}
-				continue
-			}
-
-			if {[string index $o 0] eq "@"} {
-				# repeat
-				set o [string trimleft $o "@"]
-
-				if {[string is digit [string index $o 0]]} {
-					# @n <order>
-					set o [regsub {[[:digit:]]+} $o ""]
-				} else {
-					# it was a simple repeat
-				}
-
+			set skip 0
+			# foreach order
+			foreach o $ol {
+				# strip whitespace
 				set o [string trim $o]
-			}
 
-			set r [checkOrder $u $o $x $y $z $ctxt]
-			set rc [lindex $r 0]
-			if {$rc < 0} {
-				puts [lindex $r 1]
-			} elseif {$rc == 2} {
-				# endturn without turn
-				puts "$u ($x, $y, $z) EndTurn without Turn"
-			} elseif {$rc == 1} {
-				set skip 1
+				if {$skip} {
+					if {$o == "endturn"} {
+						set skip 0
+					}
+					continue
+				}
+
+				if {[string index $o 0] eq "@"} {
+					# repeat
+					set o [string trimleft $o "@"]
+
+					if {[string is digit [string index $o 0]]} {
+						# @n <order>
+						set o [regsub {[[:digit:]]+} $o ""]
+					} else {
+						# it was a simple repeat
+					}
+
+					set o [string trim $o]
+				}
+
+				set r [checkOrder $u $o $x $y $z $ctxt]
+				set rc [lindex $r 0]
+				if {$rc < 0} {
+					puts [lindex $r 1]
+				} elseif {$rc == 2} {
+					# endturn without turn
+					puts "$u ($x, $y, $z) EndTurn without Turn"
+				} elseif {$rc == 1} {
+					set skip 1
+				}
 			}
 		}
 	}
