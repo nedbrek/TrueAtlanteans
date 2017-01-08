@@ -1469,7 +1469,7 @@ proc checkOrder {u o x y z ctxt} {
 		avoid {
 			# avoid combat
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) Avoid with non-bool flag"]
+				return [list -2 "Avoid with non-bool flag"]
 			}
 			return 0
 		}
@@ -1477,7 +1477,7 @@ proc checkOrder {u o x y z ctxt} {
 		hold {
 			# stay in hex
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) Hold with non-bool flag"]
+				return [list -2 "Hold with non-bool flag"]
 			}
 			return 0
 		}
@@ -1485,7 +1485,7 @@ proc checkOrder {u o x y z ctxt} {
 		behind {
 			# stand behind other units
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) Behind with non-bool flag"]
+				return [list -2 "Behind with non-bool flag"]
 			}
 			return 0
 		}
@@ -1493,7 +1493,7 @@ proc checkOrder {u o x y z ctxt} {
 		noaid {
 			# do not call for help
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) Noaid with non-bool flag"]
+				return [list -2 "Noaid with non-bool flag"]
 			}
 			return 0
 		}
@@ -1501,7 +1501,7 @@ proc checkOrder {u o x y z ctxt} {
 		guard {
 			# block enemy units
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) Guard with non-bool flag"]
+				return [list -2 "Guard with non-bool flag"]
 			}
 			return 0
 		}
@@ -1509,7 +1509,7 @@ proc checkOrder {u o x y z ctxt} {
 		nocross {
 			# do not cross water
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) NoCross with non-bool flag"]
+				return [list -2 "NoCross with non-bool flag"]
 			}
 			return 0
 		}
@@ -1517,7 +1517,7 @@ proc checkOrder {u o x y z ctxt} {
 		autotax {
 			# always tax
 			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "$u ($x, $y, $z) AutoTax with non-bool flag"]
+				return [list -2 "AutoTax with non-bool flag"]
 			}
 			return 0
 		}
@@ -1558,7 +1558,26 @@ proc checkOrder {u o x y z ctxt} {
 
 		give {
 			# give an item
-			# TODO check args
+			## check receiver
+			set units [dGet $ctxt Units]
+			set recv [lindex $op 1]
+			set i 2
+			if {$recv eq "new"} {
+				set recv "new [lindex $op 2]"
+				incr i
+			}
+			if {![dict exists $units $recv]} {
+				return [list -1 "Give with invalid receiver ('$o')"]
+			}
+
+			# TODO check inventory
+			set ct [lindex $op $i]
+
+			set item_id [lindex $op $i+1]
+			if {$item_id eq ""} {
+				return [list -1 "Give needs item ('$o')"]
+			}
+
 			return 0
 		}
 
@@ -1726,24 +1745,75 @@ proc checkAllOrders {} {
 			WHERE units.regionId=$id AND units.detail='own'
 		}]
 
-		# TODO assembly unit ids
-		set ctxt ""
+		# assemble unit ids
+		set ctxt [dict create]
 
+		set u_entries [dict create]
+
+		# look for "form <id>"/end and "turn/endturn"
 		foreach {u ol il} $units {
-			if {$ol eq ""} continue
+			set u_entry [dict create]
+			dict set u_entry Id $u
+			dict set u_entry Items $il
 
+			set new_orders [list]
 			set skip 0
-			# foreach order
-			foreach o $ol {
-				# strip whitespace
-				set o [string trim $o]
+			for {set i 0} {$i < [llength $ol]} {incr i} {
+				set o [lindex $ol $i]
 
 				if {$skip} {
-					if {$o == "endturn"} {
+					if {[regexp {^ *endturn *} $o]} {
 						set skip 0
 					}
 					continue
 				}
+
+				if {[regexp {^ *@? *turn *} $o]} {
+					set skip 1
+					continue
+				}
+
+				if {[regexp {^ *form +(.*)} $o -> new_id]} {
+					set new_entry [dict create]
+					dict set new_entry Id "new $new_id"
+
+					set new_o [list]
+					for {incr i} {$i < [llength $ol]} {incr i} {
+						set o [lindex $ol $i]
+						if {[regexp { *end *$} $o]} {
+							break
+						}
+						lappend new_o $o
+					}
+
+					dict set new_entry Orders $new_o
+
+					dict set u_entries "new $new_id" $new_entry
+				} else {
+					lappend new_orders $o
+				}
+			}
+
+			dict set u_entry Orders $new_orders
+			if {![regexp {\(([[:digit:]]+)\)} $u -> unit_num]} {
+				puts "Parse error in unit num '$u'"
+				return
+			}
+			dict set u_entries $unit_num $u_entry
+		}
+
+		dict set ctxt Units $u_entries
+
+		dict for {u v} $u_entries {
+			set ol [dGet $v Orders]
+			if {$ol eq ""} continue
+
+			set il [dGet $v Items]
+
+			# foreach order
+			foreach o $ol {
+				# strip whitespace
+				set o [string trim $o]
 
 				if {[string index $o 0] eq "@"} {
 					# repeat
@@ -1762,12 +1832,12 @@ proc checkAllOrders {} {
 				set r [checkOrder $u $o $x $y $z $ctxt]
 				set rc [lindex $r 0]
 				if {$rc < 0} {
-					puts [lindex $r 1]
+					puts "$u ($x, $y, $z) [lindex $r 1]"
 				} elseif {$rc == 2} {
 					# endturn without turn
 					puts "$u ($x, $y, $z) EndTurn without Turn"
 				} elseif {$rc == 1} {
-					set skip 1
+					puts "$u ($x, $y, $z) Turn should have been handled"
 				}
 			}
 		}
