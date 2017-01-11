@@ -1466,62 +1466,6 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
-		avoid {
-			# avoid combat
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "Avoid with non-bool flag"]
-			}
-			return 0
-		}
-
-		hold {
-			# stay in hex
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "Hold with non-bool flag"]
-			}
-			return 0
-		}
-
-		behind {
-			# stand behind other units
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "Behind with non-bool flag"]
-			}
-			return 0
-		}
-
-		noaid {
-			# do not call for help
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "Noaid with non-bool flag"]
-			}
-			return 0
-		}
-
-		guard {
-			# block enemy units
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "Guard with non-bool flag"]
-			}
-			return 0
-		}
-
-		nocross {
-			# do not cross water
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "NoCross with non-bool flag"]
-			}
-			return 0
-		}
-
-		autotax {
-			# always tax
-			if {[checkBool [lindex $op 1]]} {
-				return [list -2 "AutoTax with non-bool flag"]
-			}
-			return 0
-		}
-
 		spoils {
 			# avoid taking on encumbrance
 			# TODO check args
@@ -1593,26 +1537,14 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
-		form {
-			# create new unit
-			# TODO check args
-			return 0
-		}
-
 		end {
 			# end of form
-			return 0
-		}
-
-		turn {
-			# postpone command for next turn
-			# TODO check args
-			return [list 1 "turn"]
+			return [list -1 "End without Form"]
 		}
 
 		endturn {
 			# end of turn directive
-			return [list 2 "endturn"]
+			return [list -1 "Endturn without Turn"]
 		}
 
 		study {
@@ -1729,7 +1661,38 @@ proc checkOrder {u o x y z ctxt} {
 	return [list -1 "Command '$c' not recognized"]
 }
 
+proc cleanOrder {o} {
+	# strip whitespace
+	set o [string trim $o]
+
+	if {[string index $o 0] eq "@"} {
+		# repeat
+		set o [string trimleft $o "@"]
+
+		if {[string is digit [string index $o 0]]} {
+			# @n <order>
+			set o [regsub {[[:digit:]]+} $o ""]
+		} else {
+			# it was a simple repeat
+		}
+
+		set o [string trim $o]
+	}
+
+	return $o
+}
+
 proc checkAllOrders {} {
+	set bool_flags {
+		avoid
+		hold
+		behind
+		noaid
+		guard
+		nocross
+		autotax
+	}
+
 	# pull all orders, sort by hex
 	set res [::db eval {
 		SELECT DISTINCT id, x, y, z
@@ -1759,7 +1722,7 @@ proc checkAllOrders {} {
 			set new_orders [list]
 			set skip 0
 			for {set i 0} {$i < [llength $ol]} {incr i} {
-				set o [lindex $ol $i]
+				set o [cleanOrder [lindex $ol $i]]
 
 				if {$skip} {
 					if {[regexp {^ *endturn *} $o]} {
@@ -1812,21 +1775,17 @@ proc checkAllOrders {} {
 
 			# foreach order
 			foreach o $ol {
-				# strip whitespace
-				set o [string trim $o]
 
-				if {[string index $o 0] eq "@"} {
-					# repeat
-					set o [string trimleft $o "@"]
+				set o [cleanOrder $o]
 
-					if {[string is digit [string index $o 0]]} {
-						# @n <order>
-						set o [regsub {[[:digit:]]+} $o ""]
-					} else {
-						# it was a simple repeat
+				# handle bool flags
+				set cmd [lindex $o 0]
+				if {[lsearch $bool_flags $cmd] != -1} {
+					set arg [lindex $o 1]
+					if {[checkBool $arg]} {
+						puts "$u ($x, $y, $z) $cmd bad argument $arg"
 					}
-
-					set o [string trim $o]
+					continue
 				}
 
 				set r [checkOrder $u $o $x $y $z $ctxt]
