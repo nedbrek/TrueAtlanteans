@@ -481,7 +481,7 @@ proc showUnit {name} {
 	set gui::prevUnit $name
 
 	set data [db eval {
-		SELECT orders, id, items, skills, detail, flags, faction
+		SELECT orders, id, items, skills, detail, flags, faction, desc
 		FROM units
 		WHERE regionId=$regionId AND name=$name
 		ORDER BY id
@@ -493,6 +493,7 @@ proc showUnit {name} {
 	set detail      [lindex $data 4]
 	set flags       [lindex $data 5]
 	set fact        [lindex $data 6]
+	set desc        [lindex $data 7]
 
 	# fill the items box (stick skills in too)
 	set t .t.fL.fItems.t
@@ -530,6 +531,9 @@ proc showUnit {name} {
 
 	if {$detail ne "own"} {
 		$t insert end "Faction: '$fact'\n"
+	}
+	if {$desc ne ""} {
+		$t insert end "'$desc'\n"
 	}
 
 	$t insert end "-------- [countMen $items] men\n"
