@@ -1889,7 +1889,7 @@ proc centerCanvas {w cx cy} {
 
 proc showAllUnits {} {
 	set units [db eval {
-      SELECT detail.x, detail.y, detail.z, units.name, countMen(units.items), units.orders
+      SELECT detail.x, detail.y, detail.z, units.name, units.items, units.orders
       FROM detail JOIN units
       ON detail.id=units.regionId
       WHERE detail.turn=$gui::currentTurn and units.detail='own'
@@ -1917,28 +1917,23 @@ proc showAllUnits {} {
 
 	# configure all the columns
 	set cols ""
-	for {set i 1} {$i <= 5} {incr i} { lappend cols $i }
+	for {set i 1} {$i <= 6} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
 
 	# x,y,z
-	$t.fTop.tv column 1 -width 34
-	$t.fTop.tv column 2 -width 34
-	$t.fTop.tv column 3 -width 34
-	$t.fTop.tv heading 1 -text "x"
-	$t.fTop.tv heading 2 -text "y"
-	$t.fTop.tv heading 3 -text "z"
-	$t.fTop.tv heading 4 -text "men"
-	$t.fTop.tv heading 5 -text "orders"
+	$t.fTop.tv column  1 -width 34; $t.fTop.tv column  2 -width 34; $t.fTop.tv column  3 -width 34
+	$t.fTop.tv heading 1 -text "x"; $t.fTop.tv heading 2 -text "y"; $t.fTop.tv heading 3 -text "z"
 
-	foreach {x y z name count orders} $units {
-		if {[info exists id($x,$y,$z)]} {
-			set n $id($x,$y,$z)
-			$t.fTop.tv insert $n end -text $name -values [list $x $y $z $count $orders]
-		} else {
+	$t.fTop.tv heading 4 -text "men"
+	$t.fTop.tv heading 5 -text "silv"
+	$t.fTop.tv heading 6 -text "orders"
+
+	foreach {x y z name items orders} $units {
+		if {![info exists id($x,$y,$z)]} {
 			set id($x,$y,$z) [$t.fTop.tv insert {} end -text "Terrain" -values [list $x $y $z "" "" ""]]
 			$t.fTop.tv item $id($x,$y,$z) -open 1
-			$t.fTop.tv insert $id($x,$y,$z) end -text $name -values [list $x $y $z $count $orders]
 		}
+		$t.fTop.tv insert $id($x,$y,$z) end -text $name -values [list $x $y $z [countMen $items] [countItem $items SILV] $orders]
 	}
 }
 
