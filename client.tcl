@@ -1,8 +1,48 @@
 package require Tk
+package require Itcl
 lappend ::auto_path [pwd]
 package require client_utils
 
 wm withdraw .
+
+### classes
+itcl::class Unit {
+	public variable name; # not including "(num)"
+	public variable num; # just the num
+	public variable items; # list of items
+	public variable orders
+	public variable skills
+	public variable flags
+	public variable region
+	public variable object
+
+	constructor {args} {
+		set name   [dGet $args Name]
+		set num    [dGet $args Num]
+		set items  [dGet $args Items]
+		set orders [dGet $args Orders]
+		set skills [dGet $args Skills]
+		set flags  [dGet $args Flags]
+		set region [dGet $args Region]
+		set object [dGet $args Object]
+
+		if {$name eq ""} {
+			if {[lindex $num 0] eq "new"} {
+				set name $num
+			} else {
+				set name "Unit $num"
+			}
+		}
+	}
+
+	method print {} {
+		puts "$name ($num) '$flags' '$skills' '$orders' '$items'"
+	}
+
+	# filter instant orders, including "form <id>"/end and "turn/endturn"
+	# return new units (created by form)
+	method filterInstantOrders {}
+}
 
 ### gui constants
 set ::zoomLevels {
@@ -99,6 +139,14 @@ proc getZlevel {} {
 	}
 
 	return [lindex $zList $zlevel]
+}
+
+proc extractUnitNameNum {full_name} {
+	if {![regexp {([^(]+) \(([[:digit:]]+)\)} $full_name -> unit_name unit_num]} {
+		puts "Parse error in unit num '$full_name'"
+		return $full_name
+	}
+	return [list $unit_name $unit_num]
 }
 
 ##############################################################################
@@ -1470,24 +1518,6 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
-		spoils {
-			# avoid taking on encumbrance
-			# TODO check args
-			return 0
-		}
-
-		reveal {
-			# reveal unit and/or faction name
-			# TODO check args
-			return 0
-		}
-
-		consume {
-			# control use of food
-			# TODO check args
-			return 0
-		}
-
 		cast {
 			# cast a spell
 			# TODO check args
@@ -1686,7 +1716,33 @@ proc cleanOrder {o} {
 	return $o
 }
 
-proc checkAllOrders {} {
+proc getUnitObjects {id} {
+	set res [::db eval {
+		SELECT x, y, z
+		FROM detail
+		WHERE id=$id
+	}]
+	foreach {x y z} $res {}
+	set region "$x $y $z"
+
+	set ret [list]
+	set units [::db eval {
+		SELECT name, orders, items, skills, flags
+		FROM units
+		WHERE units.regionId=$id AND units.detail='own'
+	}]
+	foreach {full_name orders items skills flags} $units {
+		foreach {name num} [extractUnitNameNum $full_name] {}
+
+		lappend ret [Unit #auto \
+		    Name $name Num $num Items $items Orders $orders Skills $skills Flags $flags Region $region Object ""
+		]
+	}
+
+	return $ret
+}
+
+itcl::body Unit::filterInstantOrders {} {
 	set bool_flags {
 		avoid
 		hold
@@ -1696,8 +1752,94 @@ proc checkAllOrders {} {
 		nocross
 		autotax
 	}
+	set enum_flags {
+		consume
+		reveal
+	}
+	set enum_flag_vals {
+		""
+		unit
+		faction
+	}
 
-	# pull all orders, sort by hex
+	foreach {x y z} $region {}
+
+	set new_units [list]
+
+	set new_orders [list]
+	set skip 0
+	for {set i 0} {$i < [llength $orders]} {incr i} {
+		set o [cleanOrder [lindex $orders $i]]
+		set cmd [string tolower [lindex $o 0]]
+
+		if {$skip} {
+			if {$cmd eq "endturn"} {
+				set skip 0
+			}
+			continue
+		}
+
+		if {$cmd eq "turn"} {
+			set skip 1
+			continue
+		}
+
+		# handle bool flags
+		if {[lsearch $bool_flags $cmd] != -1} {
+			set arg [lindex $o 1]
+			if {[checkBool $arg]} {
+				puts "$name ($x, $y, $z) $cmd bad argument $arg"
+			}
+			# TODO: apply flags
+			continue
+		}
+
+		# enum flags
+		if {[lsearch $enum_flags $cmd] != -1} {
+			set arg [lindex $o 1]
+			if {[lsearch -nocase $enum_flag_vals $arg] == -1} {
+				puts "$name ($x, $y, $z) $cmd bad argument $arg"
+			}
+			# TODO: apply flags
+			continue
+		}
+
+		# TODO spoils
+		if {$cmd eq "spoils"} {
+			continue
+		}
+
+		# anything but form
+		if {![regexp {^form +(.*)} $o -> new_id]} {
+			lappend new_orders $o
+			continue
+		}
+
+		set new_o [list]
+		for {incr i} {$i < [llength $orders]} {incr i} {
+			set o [lindex $orders $i]
+			if {[regexp { *end *$} $o]} {
+				break
+			}
+			lappend new_o $o
+		}
+
+		set new_unit [itcl::code [Unit #auto Num "new $new_id" Orders $new_o Flags $flags Region $region Object $object]]
+		lappend new_units $new_unit
+
+		set tmp [$new_unit filterInstantOrders]
+		if {$tmp ne ""} {
+			puts "Error: nested FORM will not work [$u cget -name] ($x, $y, $z)"
+			itcl:delete object $tmp
+		}
+	}
+
+	set orders $new_orders
+	return $new_units
+}
+
+proc checkAllOrders {} {
+	# pull all hexes that we have details for
 	set res [::db eval {
 		SELECT DISTINCT id, x, y, z
 		FROM detail
@@ -1706,91 +1848,39 @@ proc checkAllOrders {} {
 
 	# foreach hex
 	foreach {id x y z} $res {
-		set units [::db eval {
-			SELECT name, orders, items
-			FROM units
-			WHERE units.regionId=$id AND units.detail='own'
-		}]
+		set units [getUnitObjects $id]
+		if {$units eq ""} { continue }
 
-		# assemble unit ids
-		set ctxt [dict create]
-
-		set u_entries [dict create]
-
-		# look for "form <id>"/end and "turn/endturn"
-		foreach {u ol il} $units {
-			set u_entry [dict create]
-			dict set u_entry Id $u
-			dict set u_entry Items $il
-
-			set new_orders [list]
-			set skip 0
-			for {set i 0} {$i < [llength $ol]} {incr i} {
-				set o [cleanOrder [lindex $ol $i]]
-
-				if {$skip} {
-					if {[regexp {^ *endturn *} $o]} {
-						set skip 0
-					}
-					continue
-				}
-
-				if {[regexp {^ *@? *turn *} $o]} {
-					set skip 1
-					continue
-				}
-
-				if {[regexp {^ *form +(.*)} $o -> new_id]} {
-					set new_entry [dict create]
-					dict set new_entry Id "new $new_id"
-
-					set new_o [list]
-					for {incr i} {$i < [llength $ol]} {incr i} {
-						set o [lindex $ol $i]
-						if {[regexp { *end *$} $o]} {
-							break
-						}
-						lappend new_o $o
-					}
-
-					dict set new_entry Orders $new_o
-
-					dict set u_entries "new $new_id" $new_entry
-				} else {
-					lappend new_orders $o
-				}
+		set new_units [list]
+		foreach u $units {
+			set ret [$u filterInstantOrders]
+			if {$ret ne ""} {
+				lappend new_units {*}$ret
 			}
-
-			dict set u_entry Orders $new_orders
-			if {![regexp {\(([[:digit:]]+)\)} $u -> unit_num]} {
-				puts "Parse error in unit num '$u'"
-				return
-			}
-			dict set u_entries $unit_num $u_entry
+		}
+		if {$new_units ne ""} {
+			lappend units {*}$new_units
 		}
 
-		dict set ctxt Units $u_entries
+		# stash unit ids
+		set unit_map [dict create]
+		foreach u $units {
+			dict set unit_map [$u cget -num] $u
+		}
 
-		dict for {u v} $u_entries {
-			set ol [dGet $v Orders]
+		set ctxt [dict create]
+		dict set ctxt Units $unit_map
+
+		dict for {u v} $unit_map {
+			set ol [$v cget -orders]
 			if {$ol eq ""} continue
 
-			set il [dGet $v Items]
+			set il [$v cget -items]
 
 			# foreach order
 			foreach o $ol {
 
 				set o [cleanOrder $o]
-
-				# handle bool flags
-				set cmd [lindex $o 0]
-				if {[lsearch $bool_flags $cmd] != -1} {
-					set arg [lindex $o 1]
-					if {[checkBool $arg]} {
-						puts "$u ($x, $y, $z) $cmd bad argument $arg"
-					}
-					continue
-				}
 
 				set r [checkOrder $u $o $x $y $z $ctxt]
 				set rc [lindex $r 0]
@@ -1805,6 +1895,7 @@ proc checkAllOrders {} {
 			}
 		}
 	}
+	itcl::delete object {*}$units
 }
 
 proc saveOrders {} {
@@ -1889,10 +1980,10 @@ proc centerCanvas {w cx cy} {
 
 proc showAllUnits {} {
 	set units [db eval {
-      SELECT detail.x, detail.y, detail.z, units.name, units.items, units.orders
-      FROM detail JOIN units
-      ON detail.id=units.regionId
-      WHERE detail.turn=$gui::currentTurn and units.detail='own'
+		SELECT detail.x, detail.y, detail.z, units.name, units.items, units.orders
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn and units.detail='own'
 	}]
 
 	# build the window
