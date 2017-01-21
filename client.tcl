@@ -1524,6 +1524,12 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
+		combat {
+			# set combat spell
+			# TODO check args
+			return 0
+		}
+
 		work {
 			# earn wages
 			return 0
