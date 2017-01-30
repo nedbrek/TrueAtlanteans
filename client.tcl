@@ -42,6 +42,24 @@ itcl::class Unit {
 	# filter instant orders, including "form <id>"/end and "turn/endturn"
 	# return new units (created by form)
 	method filterInstantOrders {}
+
+	method countItem {abbr} {
+		return [::countItem $items $abbr]
+	}
+
+	method setItem {abbr ct} {
+		set full_abbr [format {[%s]} $abbr]
+		for {set i 0} {$i < [llength $items]} {incr i} {
+			set il [lindex $items $i]
+			if {[lindex $il 2] eq $full_abbr} {
+				set il [lreplace $il 0 0 $ct]
+				set items [lreplace $items $i $i $il]
+				return
+			}
+		}
+		set name [db onecolumn {SELECT name FROM items WHERE abbr=$abbr}]
+		lappend items [list $ct $name $full_abbr]
+	}
 }
 
 ### gui constants
@@ -1530,6 +1548,15 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
+		claim {
+			# pull funds from faction bank
+			set amt [lindex $op 1]
+			# TODO check against unclaimed amount
+			set cur_silv [$u countItem SILV]
+			$u setItem SILV [expr {$cur_silv + $amt}]
+			return 0
+		}
+
 		work {
 			# earn wages
 			return 0
@@ -1553,14 +1580,25 @@ proc checkOrder {u o x y z ctxt} {
 			if {![dict exists $units $recv]} {
 				return [list -1 "Give with invalid receiver ('$o')"]
 			}
+			set recv_obj [dict get $units $recv]
 
-			# TODO check inventory
 			set ct [lindex $op $i]
 
-			set item_id [lindex $op $i+1]
+			set item_id [string toupper [lindex $op $i+1]]
 			if {$item_id eq ""} {
 				return [list -1 "Give needs item ('$o')"]
 			}
+
+			# check inventory
+			set cur_ct [$u countItem $item_id]
+			if {$cur_ct < $ct} {
+				return [list -1 "Give more than they own ($cur_ct < $ct $item_id)"]
+			}
+
+			# execute
+			set recv_ct [$recv_obj countItem $item_id]
+			$u setItem $item_id [expr {$cur_ct - $ct}]
+			$recv_obj setItem $item_id [expr {$recv_ct + $ct}]
 
 			return 0
 		}
@@ -1888,7 +1926,7 @@ proc checkAllOrders {} {
 
 				set o [cleanOrder $o]
 
-				set r [checkOrder $u $o $x $y $z $ctxt]
+				set r [checkOrder $v $o $x $y $z $ctxt]
 				set rc [lindex $r 0]
 				if {$rc < 0} {
 					puts "$u ($x, $y, $z) [lindex $r 1]"
