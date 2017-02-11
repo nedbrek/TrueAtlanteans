@@ -1536,6 +1536,11 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
+		describe {
+			# TODO check args
+			return 0
+		}
+
 		cast {
 			# cast a spell
 			# TODO check args
@@ -1582,8 +1587,6 @@ proc checkOrder {u o x y z ctxt} {
 			}
 			set recv_obj [dict get $units $recv]
 
-			set ct [lindex $op $i]
-
 			set item_id [string toupper [lindex $op $i+1]]
 			if {$item_id eq ""} {
 				return [list -1 "Give needs item ('$o')"]
@@ -1591,6 +1594,11 @@ proc checkOrder {u o x y z ctxt} {
 
 			# check inventory
 			set cur_ct [$u countItem $item_id]
+			set ct [lindex $op $i]
+			if {$ct eq "all"} {
+				set ct $cur_ct
+			}
+
 			if {$cur_ct < $ct} {
 				return [list -1 "Give more than they own ($cur_ct < $ct $item_id)"]
 			}
