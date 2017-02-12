@@ -1635,7 +1635,26 @@ proc checkOrder {u o x y z ctxt} {
 
 		study {
 			# improve skill
-			# TODO check args
+			# check arg
+			set skill_name [lindex $op 1]
+			set skill_cost [db onecolumn {
+				SELECT cost
+				FROM skills
+				WHERE level = 1 and (abbr like $skill_name or name like $skill_name)
+			}]
+			if {$skill_cost eq ""} {
+				puts "Warning: no skill cost for $skill_name"
+				return 0
+			}
+			set men [countMen [$u cget -items]]
+			set cost [expr {$skill_cost * $men}]
+
+			set cur_silv [$u countItem SILV]
+			if {$cur_silv < $cost} {
+				return [list -1 "STUDY: not enough funds"]
+			}
+
+			$u setItem SILV [expr {$cur_silv - $cost}]
 			return 0
 		}
 
@@ -1890,6 +1909,43 @@ itcl::body Unit::filterInstantOrders {} {
 	return $new_units
 }
 
+proc checkOrderType {tgt_ord x y z ctxt} {
+	set unit_map [dict get $ctxt Units]
+	dict for {u v} $unit_map {
+		set ol [$v cget -orders]
+		if {$ol eq ""} continue
+
+		set il [$v cget -items]
+
+		set new_orders [list]
+
+		# foreach order
+		foreach o $ol {
+
+			set o [cleanOrder $o]
+
+			set op [split $o " "]
+			set c [string tolower [lindex $op 0]]
+			if {$tgt_ord ne "" && $tgt_ord ne $c} {
+				lappend new_orders $o
+				continue
+			}
+
+			set r [checkOrder $v $o $x $y $z $ctxt]
+			set rc [lindex $r 0]
+			if {$rc < 0} {
+				puts "$u ($x, $y, $z) [lindex $r 1]"
+			} elseif {$rc == 2} {
+				# endturn without turn
+				puts "$u ($x, $y, $z) EndTurn without Turn"
+			} elseif {$rc == 1} {
+				puts "$u ($x, $y, $z) Turn should have been handled"
+			}
+		}
+		$v configure -orders $new_orders
+	}
+}
+
 proc checkAllOrders {} {
 	# pull all hexes that we have details for
 	set res [::db eval {
@@ -1923,31 +1979,14 @@ proc checkAllOrders {} {
 		set ctxt [dict create]
 		dict set ctxt Units $unit_map
 
-		dict for {u v} $unit_map {
-			set ol [$v cget -orders]
-			if {$ol eq ""} continue
-
-			set il [$v cget -items]
-
-			# foreach order
-			foreach o $ol {
-
-				set o [cleanOrder $o]
-
-				set r [checkOrder $v $o $x $y $z $ctxt]
-				set rc [lindex $r 0]
-				if {$rc < 0} {
-					puts "$u ($x, $y, $z) [lindex $r 1]"
-				} elseif {$rc == 2} {
-					# endturn without turn
-					puts "$u ($x, $y, $z) EndTurn without Turn"
-				} elseif {$rc == 1} {
-					puts "$u ($x, $y, $z) Turn should have been handled"
-				}
-			}
-		}
+		# run claim/give before other orders
+		checkOrderType "claim" $x $y $z $ctxt
+		checkOrderType "give" $x $y $z $ctxt
+		checkOrderType "" $x $y $z $ctxt
 	}
-	itcl::delete object {*}$units
+	if {$units ne ""} {
+		itcl::delete object {*}$units
+	}
 }
 
 proc saveOrders {} {
