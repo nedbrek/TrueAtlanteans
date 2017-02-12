@@ -539,7 +539,6 @@ proc showUnit {name} {
 		WHERE x=$x AND y=$y AND z=$zlevel
 		ORDER BY turn DESC LIMIT 1
 	}]
-	if {[lindex $detail 1] != $gui::currentTurn} { return }
 
 	## got it, use it to retrieve the unit
 	set regionId [lindex $detail 0]
@@ -678,7 +677,8 @@ proc displayRegion {x y nexus} {
 	# if no detail info, done
 	if {[llength $rdata] == 0} { return }
 
-	$t insert end "Data from turn: [lGet $rdata 0]\n"
+	set turn [lindex $rdata 0]
+	$t insert end "Data from turn: $turn\n"
 	set weather [lindex $rdata 1]
 	set wages   [lindex $rdata 2]
 
@@ -729,10 +729,6 @@ proc displayRegion {x y nexus} {
 	}
 
 	# unit processing
-
-	## don't show units from the past
-	if {[lindex $rdata 0] != $gui::currentTurn} { return }
-
 	set units [db eval {
 		SELECT name, detail, faction
 		FROM units
@@ -745,6 +741,8 @@ proc displayRegion {x y nexus} {
 	set state "start"
 	foreach {name detail fact} $units {
 		if {$detail eq "own"} {
+			## don't show owned units from the past
+			if {$turn != $gui::currentTurn} { continue }
 			set state "own"
 		} elseif {$state ne "start"} {
 			set state "start"
