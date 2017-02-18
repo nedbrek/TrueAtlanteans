@@ -83,7 +83,7 @@ set ::terrainColors {
 	lake        #0000ff
 	mountain    #704018
 	mystforest  #004000
-	ocean       #000090
+	ocean       #000040
 	plain       #ffffc0
 	swamp       #a0a040
 	tunnels     #704018
@@ -454,7 +454,7 @@ proc drawDB {w db} {
 		}
 	}
 
-	$w itemconfigure unexplored -stipple gray50
+	$w itemconfigure unexplored -stipple gray75
 
 	drawMarkers $w $db
 
