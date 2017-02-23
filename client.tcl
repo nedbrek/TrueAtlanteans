@@ -427,7 +427,8 @@ proc drawDB {w db} {
 
 		# tag unexplored hexes
 		if {$ct eq ""} {
-			$w addtag unexplored withtag $hexId
+			set hexOverId [plot_hex_num $w $col $row]
+			$w itemconfigure $hexOverId -fill gray -stipple gray12
 		}
 
 		# pull buildings
@@ -453,8 +454,6 @@ proc drawDB {w db} {
 			  -anchor ne -tags icon
 		}
 	}
-
-	$w itemconfigure unexplored -stipple gray75
 
 	drawMarkers $w $db
 
