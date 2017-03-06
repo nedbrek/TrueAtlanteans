@@ -1571,18 +1571,24 @@ proc checkOrder {u o x y z ctxt} {
 
 		give {
 			# give an item
-			## check receiver
 			set units [dGet $ctxt Units]
+
+			## check receiver
 			set recv [lindex $op 1]
 			set i 2
-			if {$recv eq "new"} {
-				set recv "new [lindex $op 2]"
-				incr i
+
+			if {$recv == 0} {
+				set recv_obj ""
+			} else {
+				if {$recv eq "new"} {
+					set recv "new [lindex $op 2]"
+					incr i
+				}
+				if {![dict exists $units $recv]} {
+					return [list -1 "Give with invalid receiver ('$o')"]
+				}
+				set recv_obj [dict get $units $recv]
 			}
-			if {![dict exists $units $recv]} {
-				return [list -1 "Give with invalid receiver ('$o')"]
-			}
-			set recv_obj [dict get $units $recv]
 
 			set item_id [string toupper [lindex $op $i+1]]
 			if {$item_id eq ""} {
@@ -1601,9 +1607,11 @@ proc checkOrder {u o x y z ctxt} {
 			}
 
 			# execute
-			set recv_ct [$recv_obj countItem $item_id]
 			$u setItem $item_id [expr {$cur_ct - $ct}]
-			$recv_obj setItem $item_id [expr {$recv_ct + $ct}]
+			if {$recv_obj ne ""} {
+				set recv_ct [$recv_obj countItem $item_id]
+				$recv_obj setItem $item_id [expr {$recv_ct + $ct}]
+			}
 
 			return 0
 		}
