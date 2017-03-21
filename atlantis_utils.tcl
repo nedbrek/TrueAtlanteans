@@ -48,12 +48,16 @@ set ::production {
 	GEM  GCUT
 	PARM ARMO
 	CARM ARMO
+	AXE  WEAP
 	BHAM WEAP
 	MSTA WEAP
 	MSWO WEAP
 	SPEA WEAP
 	SWOR WEAP
 	XBOW WEAP
+	BAG  HERB
+	IRWD LUMB
+	FUR  HUNT
 }
 
 # return index if current orders contain 'str' (-1 on no match)
