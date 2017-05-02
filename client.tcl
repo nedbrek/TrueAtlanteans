@@ -1915,6 +1915,7 @@ itcl::body Unit::filterInstantOrders {} {
 }
 
 proc checkOrderType {tgt_ord x y z ctxt} {
+	set ret [list]
 	set unit_map [dict get $ctxt Units]
 	dict for {u v} $unit_map {
 		set ol [$v cget -orders]
@@ -1939,16 +1940,17 @@ proc checkOrderType {tgt_ord x y z ctxt} {
 			set r [checkOrder $v $o $x $y $z $ctxt]
 			set rc [lindex $r 0]
 			if {$rc < 0} {
-				puts "$u ($x, $y, $z) [lindex $r 1]"
+				lappend ret [format "$u ($x, $y, $z) %s" [lindex $r 1]]
 			} elseif {$rc == 2} {
 				# endturn without turn
-				puts "$u ($x, $y, $z) EndTurn without Turn"
+				lappend ret [format "$u ($x, $y, $z) EndTurn without Turn"]
 			} elseif {$rc == 1} {
 				puts "$u ($x, $y, $z) Turn should have been handled"
 			}
 		}
 		$v configure -orders $new_orders
 	}
+	return $ret
 }
 
 proc checkAllOrders {} {
@@ -1959,6 +1961,7 @@ proc checkAllOrders {} {
 		WHERE turn=$gui::currentTurn
 	}]
 
+	set ret [list]
 	# foreach hex
 	foreach {id x y z} $res {
 		set units [getUnitObjects $id]
@@ -1966,9 +1969,9 @@ proc checkAllOrders {} {
 
 		set new_units [list]
 		foreach u $units {
-			set ret [$u filterInstantOrders]
-			if {$ret ne ""} {
-				lappend new_units {*}$ret
+			set lret [$u filterInstantOrders]
+			if {$lret ne ""} {
+				lappend new_units {*}$lret
 			}
 		}
 		if {$new_units ne ""} {
@@ -1985,13 +1988,18 @@ proc checkAllOrders {} {
 		dict set ctxt Units $unit_map
 
 		# run claim/give before other orders
-		checkOrderType "claim" $x $y $z $ctxt
-		checkOrderType "give" $x $y $z $ctxt
-		checkOrderType "" $x $y $z $ctxt
+		lappend ret {*}[checkOrderType "claim" $x $y $z $ctxt]
+		lappend ret {*}[checkOrderType "give" $x $y $z $ctxt]
+		lappend ret {*}[checkOrderType "" $x $y $z $ctxt]
+
+		if {$units ne ""} {
+			itcl::delete object {*}$units
+		}
 	}
-	if {$units ne ""} {
-		itcl::delete object {*}$units
+	if {$ret ne ""} {
+		tk_messageBox -message [join $ret "\n"]
 	}
+	return $ret
 }
 
 proc saveOrders {} {
