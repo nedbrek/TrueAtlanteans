@@ -159,14 +159,6 @@ proc getZlevel {} {
 	return [lindex $zList $zlevel]
 }
 
-proc extractUnitNameNum {full_name} {
-	if {![regexp {([^(]+) \(([[:digit:]]+)\)} $full_name -> unit_name unit_num]} {
-		puts "Parse error in unit num '$full_name'"
-		return $full_name
-	}
-	return [list $unit_name $unit_num]
-}
-
 ##############################################################################
 ### drawing
 # use 1,2,rad3 triangles
@@ -544,10 +536,14 @@ proc showUnit {name} {
 
 	set gui::prevUnit $name
 
+	set r [extractUnitNameNum $name]
+	set just_name [lindex $r 0]
+	set uid [lindex $r 1]
+
 	set data [db eval {
 		SELECT orders, id, items, skills, detail, flags, faction, desc
 		FROM units
-		WHERE regionId=$regionId AND name=$name
+		WHERE regionId=$regionId AND uid=$uid
 		ORDER BY id
 	}]
 	set orders      [lindex $data 0]
@@ -729,7 +725,7 @@ proc displayRegion {x y nexus} {
 
 	# unit processing
 	set units [db eval {
-		SELECT name, detail, faction
+		SELECT name, uid, detail, faction
 		FROM units
 		WHERE regionId=$regionId
 		ORDER BY detail DESC
@@ -738,7 +734,7 @@ proc displayRegion {x y nexus} {
 	## set up units combox
 	set unitList {}
 	set state "start"
-	foreach {name detail fact} $units {
+	foreach {name uid detail fact} $units {
 		if {$detail eq "own"} {
 			## don't show owned units from the past
 			if {$turn != $gui::currentTurn} { continue }
@@ -748,7 +744,7 @@ proc displayRegion {x y nexus} {
 			lappend unitList "-----"
 		}
 
-		lappend unitList $name
+		lappend unitList [format {%s (%d)} $name $uid]
 	}
 
 	.t.fL.cbMyUnits configure -values $unitList
@@ -1153,18 +1149,18 @@ proc makeUnitListbox {t title res} {
 	}
 
 	$t.fTop.tl delete 0 end
-	foreach {n x y z} $res {
+	foreach {n uid x y z} $res {
 		if {$z eq ""} {
-			$t.fTop.tl insert end "$n ($x,$y)"
+			$t.fTop.tl insert end "$n ($uid) ($x,$y)"
 		} else {
-			$t.fTop.tl insert end "$n ($x,$y,$z)"
+			$t.fTop.tl insert end "$n ($uid) ($x,$y,$z)"
 		}
 	}
 }
 
 proc findForeignUnits {} {
 	set res [db eval {
-		SELECT units.name, detail.x, detail.y, detail.z
+		SELECT units.name, units.uid, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn AND units.detail<>'own'
@@ -1175,7 +1171,7 @@ proc findForeignUnits {} {
 
 proc findIdleUnits {} {
 	set res [db eval {
-		SELECT units.name, detail.x, detail.y, detail.z
+		SELECT units.name, units.uid, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
@@ -1383,9 +1379,10 @@ proc searchUnits {} {
 
 	# populate it
 	# TODO allow user to edit name
-	set res [getUnits "Courier %"]
-	foreach {x y z name} $res {
-		$t.fTop.tv insert {} end -text $name -values [list $x $y $z]
+	set res [getUnits "Courier%"]
+	foreach {x y z name uid} $res {
+		set n [format {%s (%d)} $name $uid]
+		$t.fTop.tv insert {} end -text $n -values [list $x $y $z]
 	}
 
 	# allow sorting
@@ -1458,13 +1455,13 @@ proc itemView {} {
 # return number of hexes where production is underway
 proc ctProd {} {
 	set res [db eval {
-		SELECT units.name, units.orders, detail.x, detail.y, detail.z
+		SELECT units.orders, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
 	}]
 
-	foreach {u ol x y z} $res {
+	foreach {ol x y z} $res {
 		if {[ordersMatch $ol "produce"] != -1} {
 			set prod($x,$y,$z) 1
 			continue
@@ -1803,13 +1800,11 @@ proc getUnitObjects {id} {
 
 	set ret [list]
 	set units [::db eval {
-		SELECT name, orders, items, skills, flags
+		SELECT name, uid, orders, items, skills, flags
 		FROM units
 		WHERE units.regionId=$id AND units.detail='own'
 	}]
-	foreach {full_name orders items skills flags} $units {
-		foreach {name num} [extractUnitNameNum $full_name] {}
-
+	foreach {name num orders items skills flags} $units {
 		lappend ret [Unit #auto \
 		    Name $name Num $num Items $items Orders $orders Skills $skills Flags $flags Region $region Object ""
 		]
@@ -2018,7 +2013,7 @@ proc saveOrders {} {
 	}
 
 	set res [::db eval {
-		SELECT units.name, units.orders, detail.x, detail.y, detail.z
+		SELECT units.name, units.uid, units.orders, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
@@ -2026,7 +2021,7 @@ proc saveOrders {} {
 	}]
 
 	set loc ""
-	foreach {u ol x y z} $res {
+	foreach {u uid ol x y z} $res {
 		if {$ol eq ""} continue
 
 		set newLoc [list $x $y $z]
@@ -2035,8 +2030,7 @@ proc saveOrders {} {
 			puts $f ";*** $x $y $z ***"
 		}
 
-		regexp {\(([[:digit:]]+)\)} $u -> unitNum
-		puts $f "unit $unitNum"
+		puts $f "unit $uid"
 		puts $f "; $u"
 		puts $f "[join $ol "\n"]\n"
 	}
@@ -2084,7 +2078,7 @@ proc centerCanvas {w cx cy} {
 
 proc showAllUnits {} {
 	set units [db eval {
-		SELECT detail.x, detail.y, detail.z, units.name, units.items, units.orders
+		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items, units.orders
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn and units.detail='own'
@@ -2123,19 +2117,20 @@ proc showAllUnits {} {
 	$t.fTop.tv heading 5 -text "silv"
 	$t.fTop.tv heading 6 -text "orders"
 
-	foreach {x y z name items orders} $units {
+	foreach {x y z name uid items orders} $units {
 		if {![info exists id($x,$y,$z)]} {
 			set id($x,$y,$z) [$t.fTop.tv insert {} end -text "Terrain" -values [list $x $y $z "" "" ""]]
 			$t.fTop.tv item $id($x,$y,$z) -open 1
 		}
-		$t.fTop.tv insert $id($x,$y,$z) end -text $name -values [list $x $y $z [countMen $items] [countItem $items SILV] $orders]
+		set n [format {%s (%d)} $name $uid]
+		$t.fTop.tv insert $id($x,$y,$z) end -text $n -values [list $x $y $z [countMen $items] [countItem $items SILV] $orders]
 	}
 }
 
 proc formTaxers {regionId} {
 	# get units in hex
 	set rdata [db eval {
-		SELECT name, orders, items, flags
+		SELECT orders, items, flags
 		FROM units
 		WHERE regionId=$regionId AND detail="own"
 	}]
@@ -2143,7 +2138,7 @@ proc formTaxers {regionId} {
 	# look over all units
 	set totalSilver 0
 	set numTaxers 0
-	foreach {name orders items flags} $rdata {
+	foreach {orders items flags} $rdata {
 		set silver [lsearch -inline $items "* silver *"]
 		if {$silver ne ""} {
 			incr totalSilver [lindex $silver 0]
@@ -2218,7 +2213,7 @@ proc formUnit {} {
 
 	# get units in hex
 	set rdata [db eval {
-		SELECT name, orders, flags
+		SELECT name, uid, orders, flags
 		FROM units
 		WHERE regionId=$regionId AND detail="own"
 	}]
@@ -2227,8 +2222,8 @@ proc formUnit {} {
 	set unitList [list]
 	set unitOrders [list]
 	set unitFlags [list]
-	foreach {name orders flags} $rdata {
-		lappend unitList $name
+	foreach {name uid orders flags} $rdata {
+		lappend unitList [format {%s (%d)} $name $uid]
 		lappend unitOrders $orders
 		lappend unitFlags $flags
 

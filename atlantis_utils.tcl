@@ -60,6 +60,15 @@ set ::production {
 	FUR  HUNT
 }
 
+# return list with name and unit id from a string in the form "Name (id)"
+proc extractUnitNameNum {full_name} {
+	if {![regexp {([^(]+) \(([[:digit:]]+)\)} $full_name -> unit_name unit_num]} {
+		puts "Parse error in unit num '$full_name'"
+		return $full_name
+	}
+	return [list $unit_name $unit_num]
+}
+
 # return index if current orders contain 'str' (-1 on no match)
 # e.g. ordersMatch $ol "tax"
 # ordersMatch $ol "produce"

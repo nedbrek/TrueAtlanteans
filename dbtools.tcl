@@ -150,6 +150,7 @@ proc createDb {filename} {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			regionId INTEGER not null,
 			name not null,
+			uid INTEGER not null,
 			desc not null,
 			faction not null,
 			detail not null,
@@ -277,7 +278,7 @@ proc taxProgress {} {
 
 proc getUnits {name} {
 	return [::db eval {
-		SELECT detail.x, detail.y, detail.z, units.name
+		SELECT detail.x, detail.y, detail.z, units.name, units.uid
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn and units.detail='own' and units.name LIKE $name
@@ -330,11 +331,15 @@ proc dbInsertUnit {db regionId u} {
 	set skills [dGet $u Skills]
 	set flags  [dGet $u Flags]
 
+	set r [extractUnitNameNum $name]
+	set n [lindex $r 0]
+	set uid [lindex $r 1]
+
 	$db eval {
 		INSERT INTO units
-		(regionId, name, desc, faction, detail, orders, items, skills, flags)
+		(regionId, name, uid, desc, faction, detail, orders, items, skills, flags)
 		VALUES(
-		$regionId, $name, $desc, $fact, $detail, $orders, $items, $skills, $flags
+		$regionId, $n, $uid, $desc, $fact, $detail, $orders, $items, $skills, $flags
 		);
 	}
 	return [$db last_insert_rowid]
