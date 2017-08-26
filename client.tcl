@@ -2009,8 +2009,8 @@ proc saveOrders {} {
 
 	set f [open $ofile "w"]
 
-	set pid [::db eval { SELECT player_id FROM settings }]
-	set ppass [::db eval { SELECT player_pass FROM settings }]
+	set pid [::db onecolumn { SELECT player_id FROM settings }]
+	set ppass [::db onecolumn { SELECT player_pass FROM settings }]
 	if {$ppass eq ""} {
 		puts $f "#atlantis $pid"
 	} else {
