@@ -120,7 +120,7 @@ proc createDb {filename} {
 			x TEXT not null,
 			y TEXT not null, 
 			z TEXT not null,
-			turn not null,
+			turn INTEGER not null,
 			weather not null,
 			wages not null,
 			pop not null,
