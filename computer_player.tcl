@@ -81,6 +81,7 @@ proc rampFirstHex {units} {
 	set claimAmt [expr {$numBuy * ($price + 10)}]
 
 	lappend ol "form 1" "name unit Guard" "claim $claimAmt"
+	lappend ol "avoid 0" "behind 0"
 	lappend ol "buy $numBuy [lindex $item 1]"
 	lappend ol "study COMB"
 	lappend ol "end"
