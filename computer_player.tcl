@@ -34,37 +34,27 @@ proc evaluateSituation {} {
 
 	if {$units eq ""} {
 		dict set ret "State" "lost"
-	}
-
-	if {[llength $units] == 8} {
+	} elseif {[llength $units] == 8} {
 		dict set ret "State" "start"
+	} else {
+		dict set ret "State" "main"
 	}
 
 	return $ret
 }
 
-proc rampFirstHex {units} {
-	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
-	# TODO calculate a good budget to use
-	set budget 3000
-
-	foreach {x y z unit_id name uid il ol} $units {}
-
+proc buyGuards {budget x y z} {
 	set rdata [db eval {
-		SELECT id, turn, sells
+		SELECT id, sells, race, tax
 		FROM detail
-		WHERE x=$x AND y=$y AND z=$z
+		WHERE x=$x AND y=$y AND z=$z AND turn=$gui::currentTurn
 		ORDER BY turn DESC LIMIT 1
 	}]
-	foreach {regionId turn sells} $rdata {}
-	if {$turn != $gui::currentTurn} {
-		puts "Error - no data for region $x $y $z!"
-		exit -1
+	if {$rdata eq ""} {
+		puts "Unable to retrieve region data"
+		exit 1
 	}
-
-	set maxTax [db onecolumn {
-		SELECT tax FROM detail WHERE id=$regionId ORDER BY turn DESC LIMIT 1
-	}]
+	foreach {regionId sells peasants maxTax} $rdata {}
 
 	set taxersNeeded [expr {$maxTax / 50}]
 	if {$taxersNeeded == 0} {
@@ -72,21 +62,38 @@ proc rampFirstHex {units} {
 		exit -1
 	}
 
+	set ret [getBuyRace $sells $peasants]
+	foreach {maxRace raceList price} $ret {}
+
 	# limit by cash on hand
-	set item  [lindex $sells 0]
-	set price [lindex $sells 1]
 	# TODO configure maintenance cost
 	set maxBuy [expr {$budget / ($price + 20)}]
-	set numBuy [expr {min($taxersNeeded, $maxBuy)}]
+	set numBuy [expr {min($taxersNeeded, $maxBuy, $maxRace)}]
 	set claimAmt [expr {$numBuy * ($price + 10)}]
+
+	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
 
 	lappend ol "form 1" "name unit Guard" "claim $claimAmt"
 	lappend ol "avoid 0" "behind 0"
-	lappend ol "buy $numBuy [lindex $item 1]"
+	lappend ol "buy $numBuy $abbr"
 	lappend ol "study COMB"
 	lappend ol "end"
-	lappend ol "claim 50"
-	lappend ol "study OBSE"
+
+	return $ol
+}
+
+proc rampFirstHex {units} {
+	foreach {x y z unit_id name uid il ol} $units {}
+
+	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
+	# TODO calculate a good budget to use
+	set budget 3000
+
+	set ret [buyGuards $budget $x $y $z]
+
+	set ol [concat $ol $ret]
+	lappend ol "claim 100"
+	lappend ol "study FORC"
 
 	db eval {
 		UPDATE units SET orders=$ol
@@ -147,6 +154,15 @@ proc pickStartDirection {units} {
 	}
 }
 
+proc processRegion {ul rid} {
+	set res [::db eval {
+		SELECT x,y,z, wages, tax, entertainment, wants, sells, products, exitDirs
+		FROM detail
+		WHERE id=$rid
+	}]
+	puts "Process $ul $rid $res"
+}
+
 proc createOrders {sitRep} {
 	set units [dGet $sitRep Units]
 	if {[dict get $sitRep State] == "start"} {
@@ -163,6 +179,44 @@ proc createOrders {sitRep} {
 		return
 	}
 	#else post-start
+	# process per region
+	set res [::db eval {
+		SELECT units.id, units.items, units.orders, detail.x, detail.y, detail.z, detail.id
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		ORDER BY detail.z, detail.x, detail.y
+	}]
+
+	set loc ""
+	set old_rid 0
+	set ul [list]
+	foreach {uid il ol x y z rid} $res {
+		set u [dict create UID $uid IL $il OL $ol]
+
+		set newLoc [list $x $y $z]
+		if {$loc eq ""} {
+			set loc $newLoc
+			set old_rid $rid
+			# start list
+			set ul [list $u]
+		} elseif {$loc ne $newLoc} {
+
+			# location change - process current list with old rid
+			processRegion $ul $old_rid
+
+			# create new list
+			set ul [list $u]
+
+			set loc $newLoc
+			set old_rid $rid
+		} else {
+			# append to list
+			lappend ul $u
+		}
+	}
+
+	processRegion $ul $old_rid
 }
 
 proc saveOrders {} {

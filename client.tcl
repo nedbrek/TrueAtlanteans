@@ -2178,37 +2178,20 @@ proc formUnit {} {
 
 	## get most recent details
 	set rdata [db eval {
-		SELECT id, turn, sells
+		SELECT id, turn, sells, race
 		FROM detail
 		WHERE x=$x AND y=$y AND z=$zlevel
 		ORDER BY turn DESC LIMIT 1
 	}]
 	if {[llength $rdata] == 0} { return }
 
-	set regionId [lindex $rdata 0]
-	set turn [lindex $rdata 1]
-	set sells [lindex $rdata 2]
+	foreach {regionId turn sells peasants} $rdata {}
+
 	if {$turn != $gui::currentTurn} { return }
 
-	set peasants [db eval {
-		SELECT DISTINCT race FROM detail
-	}]
-
-	set maxRace 0
-	set raceList [list]
-	foreach {saleItem cost} $sells {
-		set race [string trim [lindex $saleItem end] {[]}]
-		if {[lsearch $::men $race] == -1} {
-			set fullRace [lrange $saleItem 1 end-1]
-			if {[lsearch $peasants $fullRace] == -1} {
-				continue
-			}
-			lappend ::men $race
-		}
-		set ct [lindex $saleItem 0]
-		lappend raceList [join [lrange $saleItem 1 end]]
-		set maxRace [expr {max($maxRace, $ct)}]
-	}
+	set ret [getBuyRace $sells $peasants]
+	set maxRace [lindex $ret 0]
+	set raceList [lindex $ret 1]
 	if {$maxRace == 0} { return }
 
 	# get units in hex
