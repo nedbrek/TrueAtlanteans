@@ -306,7 +306,7 @@ proc createOrders {sitRep} {
 }
 
 proc saveOrders {} {
-	set filename [format {orders.%d} $gui::currentTurn]
+	set filename [format {orders.%d} [expr {$gui::currentTurn + 1}]]
 
 	set f [open $filename "w"]
 
