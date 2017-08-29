@@ -18,28 +18,41 @@ cp1:
 
 	tclsh computer_player.tcl add cp1 turn4.3
 
+NUM_TURNS := 4
+NUMS_TURNS := $(shell seq 1 $(NUM_TURNS))
+TURNS := $(addprefix check_turn, $(NUMS_TURNS))
+
+NUMS_ORDERS := $(shell seq 2 $(NUM_TURNS))
+ORDERS := $(addprefix check_order, $(NUMS_ORDERS))
+
 .PHONY: check
-check:
-	diff $(GAME_DIR)/turn1/report.3 cp1/turn1.3
-	diff $(GAME_DIR)/turn2/report.3 cp1/turn2.3
-	diff $(GAME_DIR)/turn3/report.3 cp1/turn3.3
-	diff $(GAME_DIR)/turn4/report.3 cp1/turn4.3
-	diff cp1/orders.2 $(GAME_DIR)/turn2/orders.3
-	diff cp1/orders.3 $(GAME_DIR)/turn3/orders.3
-	diff cp1/orders.4 $(GAME_DIR)/turn4/orders.3
+check: $(TURNS) $(ORDERS)
+
+.PHONY: $(TURNS)
+$(TURNS): check_turn%:
+	diff $(GAME_DIR)/turn$*/report.3 cp1/turn$*.3
+
+.PHONY: $(ORDERS)
+$(ORDERS): check_order%:
+	diff cp1/orders.$* $(GAME_DIR)/turn$*/orders.3
+
+IORDERS := $(addprefix install_order, $(NUMS_ORDERS))
 
 .PHONY: install_orders
-install_orders:
-	cp cp1/orders.2 $(GAME_DIR)/turn2/orders.3
-	cp cp1/orders.3 $(GAME_DIR)/turn3/orders.3
-	cp cp1/orders.4 $(GAME_DIR)/turn4/orders.3
+install_orders: $(IORDERS)
+
+.PHONY: $(IORDERS)
+$(IORDERS): install_order%:
+	cp cp1/orders.$* $(GAME_DIR)/turn$*/orders.3
+
+ITURNS := $(addprefix install_turn, $(NUMS_TURNS))
+.PHONY: $(ITURNS)
 
 .PHONY: install_turns
-install_turns:
-	cp $(GAME_DIR)/turn1/report.3 cp1/turn1.3
-	cp $(GAME_DIR)/turn2/report.3 cp1/turn2.3
-	cp $(GAME_DIR)/turn3/report.3 cp1/turn3.3
-	cp $(GAME_DIR)/turn4/report.3 cp1/turn4.3
+install_turns: $(ITURNS)
+
+$(ITURNS): install_turn%:
+	cp $(GAME_DIR)/turn$*/report.3 cp1/turn$*.3
 
 .PHONY: clean
 clean:
