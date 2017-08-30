@@ -156,14 +156,15 @@ proc pickStartDirection {units} {
 
 # have leader do something
 proc advanceLeader {u} {
-	set ol [dict get $u OL]
+	if {$u eq ""} return
 
-	set il [dict get $u IL]
+	set ol [$u cget -orders]
+	set il [$u cget -items]
 
 	set silver [lsearch -inline $il "* silver *"]
 	if {$silver == ""} { set silver 0 }
 
-	set sl [dict get $u SL]
+	set sl [$u cget -skills]
 
 	# fire first
 	set i [lsearch $sl *FIRE*]
@@ -189,12 +190,12 @@ proc advanceLeader {u} {
 		lappend ol "STUDY TACT"
 	}
 
-	dict set u OL $ol
-
-	return [list 1 $u]
+	$u configure -orders $ol
 }
 
-proc processRegion {ul rid} {
+proc processRegion {rid} {
+	set units [getUnitObjects $rid]
+
 	# pull region info
 	set res [::db eval {
 		SELECT x,y,z, wages, tax, entertainment, wants, sells, products, exitDirs
@@ -205,31 +206,25 @@ proc processRegion {ul rid} {
 	# evaluate tax situation
 	set totalSilver 0
 	set numTaxers 0
-	for {set i 0} {$i < [llength $ul]} {incr i} {
-		set u [lindex $ul $i]
-
-		set items [dict get $u IL]
+	set leader ""
+	foreach u $units {
+		set items [$u cget -items]
 		set silver [lsearch -inline $items "* silver *"]
 		if {$silver ne ""} {
 			incr totalSilver [lindex $silver 0]
 		}
 
-		set ol [dict get $u OL]
-		set sl [dict get $u SL]
+		set ol [$u cget -orders]
+		set sl [$u cget -skills]
 		if {[regexp {PATT} $sl] != 0} {
 			# leader
-			set ret [advanceLeader $u]
-			foreach {status u} $ret {}
-			if {$status != 0} {
-				set ul [lreplace $ul $i $i $u]
-			}
+			set leader $u
 		} elseif {[ordersMatch $ol "tax"] != -1} {
 			incr numTaxers [countMen $items]
 		} elseif {[regexp {COMB} $sl] != 0} {
 			lappend ol "@tax"
 			incr numTaxers [countMen $items]
-			dict set u OL $ol
-			set ul [lreplace $ul $i $i $u]
+			$u configure -orders $ol
 		}
 	}
 
@@ -237,10 +232,12 @@ proc processRegion {ul rid} {
 	if {$totalSilver != 0} {
 	}
 
+	advanceLeader $leader
+
 	# save out orders
-	foreach u $ul {
-		set ol [dict get $u OL]
-		set unit_id [dict get $u UID]
+	foreach u $units {
+		set ol [$u cget -orders]
+		set unit_id [$u cget -db_id]
 
 		db eval {
 			UPDATE units SET orders=$ol
@@ -267,7 +264,7 @@ proc createOrders {sitRep} {
 	#else post-start
 	# process per region
 	set res [::db eval {
-		SELECT units.id, units.items, units.orders, units.skills, detail.x, detail.y, detail.z, detail.id
+		SELECT detail.x, detail.y, detail.z, detail.id
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
@@ -276,33 +273,22 @@ proc createOrders {sitRep} {
 
 	set loc ""
 	set old_rid 0
-	set ul [list]
-	foreach {uid il ol sl x y z rid} $res {
-		set u [dict create UID $uid IL $il OL $ol SL $sl]
-
+	foreach {x y z rid} $res {
 		set newLoc [list $x $y $z]
 		if {$loc eq ""} {
 			set loc $newLoc
 			set old_rid $rid
-			# start list
-			set ul [list $u]
 		} elseif {$loc ne $newLoc} {
 
 			# location change - process current list with old rid
-			processRegion $ul $old_rid
-
-			# create new list
-			set ul [list $u]
+			processRegion $old_rid
 
 			set loc $newLoc
 			set old_rid $rid
-		} else {
-			# append to list
-			lappend ul $u
 		}
 	}
 
-	processRegion $ul $old_rid
+	processRegion $old_rid
 }
 
 proc saveOrders {} {

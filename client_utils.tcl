@@ -5,6 +5,7 @@ package provide client_utils 1.0
 
 ### classes
 itcl::class Unit {
+	public variable db_id
 	public variable name; # not including "(num)"
 	public variable num; # just the num
 	public variable items; # list of items
@@ -15,6 +16,7 @@ itcl::class Unit {
 	public variable object
 
 	constructor {args} {
+		set db_id  [dGet $args Id]
 		set name   [dGet $args Name]
 		set num    [dGet $args Num]
 		set items  [dGet $args Items]
@@ -199,12 +201,12 @@ proc getUnitObjects {id} {
 
 	set ret [list]
 	set units [::db eval {
-		SELECT name, uid, orders, items, skills, flags
+		SELECT id, name, uid, orders, items, skills, flags
 		FROM units
 		WHERE units.regionId=$id AND units.detail='own'
 	}]
-	foreach {name num orders items skills flags} $units {
-		lappend ret [Unit #auto \
+	foreach {id name num orders items skills flags} $units {
+		lappend ret [Unit #auto Id $id \
 		    Name $name Num $num Items $items Orders $orders Skills $skills Flags $flags Region $region Object ""
 		]
 	}
