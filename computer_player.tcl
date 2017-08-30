@@ -43,7 +43,7 @@ proc evaluateSituation {} {
 	return $ret
 }
 
-proc buyGuards {budget x y z} {
+proc buyGuards {budget claim x y z} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
 		FROM detail
@@ -69,17 +69,25 @@ proc buyGuards {budget x y z} {
 	# TODO configure maintenance cost
 	set maxBuy [expr {$budget / ($price + 20)}]
 	set numBuy [expr {min($taxersNeeded, $maxBuy, $maxRace)}]
-	set claimAmt [expr {$numBuy * ($price + 10)}]
+	if {$numBuy == 0} {
+		return [list "" ""]
+	}
 
 	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
 
-	lappend ol "form 1" "name unit Guard" "claim $claimAmt"
+	lappend ol "form 1" "name unit Guard"
+
+	if {$claim} {
+		set claimAmt [expr {$numBuy * ($price + 10)}]
+		lappend ol "claim $claimAmt"
+	}
+
 	lappend ol "avoid 0" "behind 0"
 	lappend ol "buy $numBuy $abbr"
 	lappend ol "study COMB"
 	lappend ol "end"
 
-	return $ol
+	return [list [expr {$numBuy * ($price + 10)}] $ol]
 }
 
 proc rampFirstHex {units} {
@@ -89,9 +97,10 @@ proc rampFirstHex {units} {
 	# TODO calculate a good budget to use
 	set budget 3000
 
-	set ret [buyGuards $budget $x $y $z]
+	set ret [buyGuards $budget 1 $x $y $z]
+	foreach {price form_orders} $ret {}
 
-	set ol [concat $ol $ret]
+	set ol [concat $ol $form_orders]
 	lappend ol "claim 100"
 	lappend ol "study FORC"
 
@@ -160,11 +169,9 @@ proc advanceLeader {u} {
 
 	set ol [$u cget -orders]
 	set il [$u cget -items]
-
-	set silver [lsearch -inline $il "* silver *"]
-	if {$silver == ""} { set silver 0 }
-
 	set sl [$u cget -skills]
+
+	set silver [$u countItem SILV]
 
 	# fire first
 	set i [lsearch $sl *FIRE*]
@@ -202,37 +209,113 @@ proc processRegion {rid} {
 		FROM detail
 		WHERE id=$rid
 	}]
+	foreach {x y z wages tax ente wants sells products exits} $res {}
 
-	# evaluate tax situation
+	# get all the funds here
 	set totalSilver 0
-	set numTaxers 0
 	set leader ""
+	set funds [list]
 	foreach u $units {
-		set items [$u cget -items]
-		set silver [lsearch -inline $items "* silver *"]
-		if {$silver ne ""} {
-			incr totalSilver [lindex $silver 0]
+		set silver [$u countItem SILV]
+		if {$silver != 0} {
+			incr totalSilver $silver
+			lappend funds $u $silver
 		}
 
+		set items [$u cget -items]
 		set ol [$u cget -orders]
 		set sl [$u cget -skills]
 		if {[regexp {PATT} $sl] != 0} {
 			# leader
 			set leader $u
 		} elseif {[ordersMatch $ol "tax"] != -1} {
-			incr numTaxers [countMen $items]
 		} elseif {[regexp {COMB} $sl] != 0} {
 			lappend ol "@tax"
-			incr numTaxers [countMen $items]
 			$u configure -orders $ol
 		}
 	}
 
-	# TODO actually, if there is not enough silver to buy new men
-	if {$totalSilver != 0} {
+	# fund leader training
+	if {$leader ne ""} {
+		set s_need 200
+		if {$totalSilver >= $s_need} {
+			for {set i 0} {$s_need > 0 && $i < [llength $funds]} {incr i 2} {
+				set u [lindex $funds $i]
+				set s [lindex $funds $i+1]
+
+				if {$s >= $s_need} {
+					# goal achieved
+					set s_give $s_need
+					set s_left [expr {$s - $s_need}]
+				} elseif {$s > 0} {
+					set s_need [expr {$s_need - $s}]
+					set s_give $s
+					set s_left 0
+				}
+
+				# create the give order
+				if {$s_give > 0} {
+					set order_text "GIVE [$leader cget -num] $s_give SILV"
+
+					set give_o [$u cget -orders]
+					lappend give_o $order_text
+					$u configure -orders $give_o
+
+					# update giving unit
+					$u setItem SILV $s_left
+					set funds [lreplace $funds $i+1 $i+1 $s_left]
+					incr totalSilver -$s_give
+
+					# update leader
+					set leader_funds [$leader countItem SILV]
+					$leader setItem SILV [expr {$leader_funds + $s_give}]
+				}
+			}
+		}
+
+		advanceLeader $leader
 	}
 
-	advanceLeader $leader
+	# buy tax men
+	set ret [buyGuards $totalSilver 0 $x $y $z]
+	foreach {s_need form_orders} $ret {}
+
+	if {$s_need > 0} {
+		for {set i 0} {$s_need > 0 && $i < [llength $funds]} {incr i 2} {
+			set u [lindex $funds $i]
+			set s [lindex $funds $i+1]
+
+			if {$s >= $s_need} {
+				# goal achieved
+				set s_give $s_need
+				set s_left [expr {$s - $s_need}]
+			} elseif {$s > 0} {
+				set s_need [expr {$s_need - $s}]
+				set s_give $s
+				set s_left 0
+			}
+
+			# create the give order
+			if {$s_give > 0} {
+				set order_text "GIVE NEW 1 $s_give SILV"
+
+				set give_o [$u cget -orders]
+				lappend give_o $order_text
+				$u configure -orders $give_o
+
+				# update giving unit
+				$u setItem SILV $s_left
+				set funds [lreplace $funds $i+1 $i+1 $s_left]
+				incr totalSilver -$s_give
+			}
+		}
+
+		# have first unit do the form
+		set form_unit [lindex $units 0]
+		set ol [$form_unit cget -orders]
+		lappend ol {*}$form_orders
+		$form_unit configure -orders $ol
+	}
 
 	# save out orders
 	foreach u $units {

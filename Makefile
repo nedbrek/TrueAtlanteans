@@ -1,4 +1,5 @@
 GAME_DIR := ../Atlantis/ceran/cp1
+NUM_TURNS := 5
 
 .PHONY: all
 all: check
@@ -17,8 +18,10 @@ cp1:
 	tclsh computer_player.tcl gen cp1
 
 	tclsh computer_player.tcl add cp1 turn4.3
+	tclsh computer_player.tcl gen cp1
 
-NUM_TURNS := 4
+	tclsh computer_player.tcl add cp1 turn5.3
+
 NUMS_TURNS := $(shell seq 1 $(NUM_TURNS))
 TURNS := $(addprefix check_turn, $(NUMS_TURNS))
 
