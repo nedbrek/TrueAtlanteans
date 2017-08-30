@@ -85,6 +85,7 @@ proc buyGuards {budget claim x y z} {
 	lappend ol "avoid 0" "behind 0"
 	lappend ol "buy $numBuy $abbr"
 	lappend ol "study COMB"
+	lappend ol "turn" "@tax" "endturn"
 	lappend ol "end"
 
 	return [list [expr {$numBuy * ($price + 10)}] $ol]
@@ -188,6 +189,7 @@ proc advanceLeader {u} {
 				lappend ol "claim [expr {100 - $silver}]"
 			}
 			lappend ol "STUDY FIRE"
+			lappend ol "turn" "combat fire" "endturn"
 		}
 	} else {
 		# got fire, go for tact
@@ -230,8 +232,6 @@ proc processRegion {rid} {
 			set leader $u
 		} elseif {[ordersMatch $ol "tax"] != -1} {
 		} elseif {[regexp {COMB} $sl] != 0} {
-			lappend ol "@tax"
-			$u configure -orders $ol
 		}
 	}
 
