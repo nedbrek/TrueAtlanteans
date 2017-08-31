@@ -43,7 +43,7 @@ proc evaluateSituation {} {
 	return $ret
 }
 
-proc buyGuards {budget claim x y z} {
+proc buyGuards {budget claim x y z taxers} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
 		FROM detail
@@ -61,6 +61,10 @@ proc buyGuards {budget claim x y z} {
 		puts "No tax in region!"
 		exit -1
 	}
+	if {$taxersNeeded <= $taxers} {
+		return [list "" ""]
+	}
+	incr taxersNeeded -$taxers
 
 	set ret [getBuyRace $sells $peasants]
 	foreach {maxRace raceList price} $ret {}
@@ -98,7 +102,7 @@ proc rampFirstHex {units} {
 	# TODO calculate a good budget to use
 	set budget 3000
 
-	set ret [buyGuards $budget 1 $x $y $z]
+	set ret [buyGuards $budget 1 $x $y $z 0]
 	foreach {price form_orders} $ret {}
 
 	set ol [concat $ol $form_orders]
@@ -216,6 +220,7 @@ proc processRegion {rid} {
 	# get all the funds here
 	set totalSilver 0
 	set leader ""
+	set taxers 0
 	set funds [list]
 	foreach u $units {
 		set silver [$u countItem SILV]
@@ -231,6 +236,7 @@ proc processRegion {rid} {
 			# leader
 			set leader $u
 		} elseif {[ordersMatch $ol "tax"] != -1} {
+			incr taxers [countMen $items]
 		} elseif {[regexp {COMB} $sl] != 0} {
 		}
 	}
@@ -247,6 +253,7 @@ proc processRegion {rid} {
 					# goal achieved
 					set s_give $s_need
 					set s_left [expr {$s - $s_need}]
+					set s_need 0
 				} elseif {$s > 0} {
 					set s_need [expr {$s_need - $s}]
 					set s_give $s
@@ -277,7 +284,7 @@ proc processRegion {rid} {
 	}
 
 	# buy tax men
-	set ret [buyGuards $totalSilver 0 $x $y $z]
+	set ret [buyGuards $totalSilver 0 $x $y $z $taxers]
 	foreach {s_need form_orders} $ret {}
 
 	if {$s_need > 0} {
@@ -289,6 +296,7 @@ proc processRegion {rid} {
 				# goal achieved
 				set s_give $s_need
 				set s_left [expr {$s - $s_need}]
+				set s_need 0
 			} elseif {$s > 0} {
 				set s_need [expr {$s_need - $s}]
 				set s_give $s
