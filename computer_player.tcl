@@ -21,26 +21,37 @@ namespace eval gui {
 	set currentTurn 0
 }
 
-proc evaluateSituation {} {
-	set ret [dict create]
+itcl::class SitRep {
+	public variable overall_state
+	public variable unit_state
 
-	set units [db eval {
-		SELECT detail.x, detail.y, detail.z, units.id, units.name, units.uid, units.items, units.orders
-		FROM detail JOIN units
-		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn and units.detail='own'
-	}]
-	dict set ret Units $units
-
-	if {$units eq ""} {
-		dict set ret "State" "lost"
-	} elseif {[llength $units] == 8} {
-		dict set ret "State" "start"
-	} else {
-		dict set ret "State" "main"
+	constructor {} {
+		set ret [evaluateSituation]
+		set overall_state [dGet $ret State]
+		set unit_state [dGet $ret Units]
 	}
 
-	return $ret
+	method evaluateSituation {} {
+		set ret [dict create]
+
+		set units [db eval {
+			SELECT detail.x, detail.y, detail.z, units.id, units.name, units.uid, units.items, units.orders
+			FROM detail JOIN units
+			ON detail.id=units.regionId
+			WHERE detail.turn=$gui::currentTurn and units.detail='own'
+		}]
+		dict set ret Units $units
+
+		if {$units eq ""} {
+			dict set ret "State" "lost"
+		} elseif {[llength $units] == 8} {
+			dict set ret "State" "start"
+		} else {
+			dict set ret "State" "main"
+		}
+
+		return $ret
+	}
 }
 
 proc buyGuards {budget claim x y z taxers} {
@@ -338,8 +349,8 @@ proc processRegion {rid} {
 }
 
 proc createOrders {sitRep} {
-	set units [dGet $sitRep Units]
-	if {[dict get $sitRep State] == "start"} {
+	set units [$sitRep cget -unit_state]
+	if {[$sitRep cget -overall_state] == "start"} {
 		# only one unit
 		set zlevel [lindex $units 2]
 		if {$zlevel == 0} {
@@ -461,7 +472,7 @@ if {![info exists debug]} {
 	set ::men [db eval {select abbr from items where type="race"}]
 	set gui::currentTurn [db eval {select max(turn) from detail}]
 
-	set sitRep [evaluateSituation]
+	set sitRep [SitRep #auto]
 	createOrders $sitRep
 	saveOrders
 }
