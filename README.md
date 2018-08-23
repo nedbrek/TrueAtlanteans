@@ -1,4 +1,7 @@
-Tcl GUI for Atlantis PBEM
+# Tcl GUI for Atlantis PBEM
+
+![TrueAtlanteans GUI](atlta2.png)
+
 Requires the turn to be in "Tcl Object Notation" (a Tcl dictionary)
 
 For example:
@@ -19,4 +22,3 @@ TradeRegion 0
 
 (each entry is "key" <space> "value", with spaces inside the values
 protected by {} - all the keys are camel case, and lack spaces)
-
