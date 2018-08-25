@@ -2,23 +2,34 @@
 
 ![TrueAtlanteans GUI](atlta2.png)
 
-Requires the turn to be in "Tcl Object Notation" (a Tcl dictionary)
+Requires [Tcl](https://www.tcl.tk/)
 
-For example:
-Name {Tester (3)}
-FactionType { (War 1, Trade 1, Magic 1) }
-Month March
-Year 1
-VerString {4.1.0}
-Rulesetname {Ceran}
-Rulesetversion {2.0.4 (beta)}
-Newssheet 1
-Password {none}
-TurnCountdown -1
-Quit 0
-TaxRegion 0
-MaxTax 10
-TradeRegion 0
+The Tcl package requirements are fairly minimal (any "batteries included" installation should have them)
+* Wish (the GUI component)
+* Itcl (object oriented extension)
+* sqlite (database)
 
-(each entry is "key" <space> "value", with spaces inside the values
-protected by {} - all the keys are camel case, and lack spaces)
+If everything is set up correctly, you should be able to just load "client.tcl" into your wish executable (on UNIX 'wish client.tcl', on Windows, double-click client.tcl or open wish and source it).
+
+# Starting a new game
+All your turn history is stored in a database. You'll want a database for each game of Atlantis you play.
+
+From the File menu, select "New", I like to make a new directory with the database, turn files, order files, and any notes I'm making. Whatever you do, pick a name for the database file. I like to end them with .db so they stick out.
+
+# Adding turn information
+When you get a new turn, use File->Add Report to load it into the databse. You only need to do it once. The database will remember it.
+
+# Navigating and Creating orders
+The map will automatically be updated with any new information. Use View->Mark Active hexes to highlight the hexes where you have units. When you click on a hex, the units present will be shown on the left. Enter their orders in the bottom text area. When you move away, the orders will be saved internally. When you are done with a hex, hit 'd' to remove the highlight. When all the hexes are down, use Reports->Idle Units to find any units that missed getting orders. Then use File->Save Orders to export all your orders into a file suitable for sending back to the server.
+
+# Other keyboard commands
+* n - form new unit
+* c - center map (also, double click)
+* arrow keys for navigation (left and right will try to keep you in a straight line, Home/End/PgUp/PgDn allow you to move diagonally)
+* +/- zoom in, zoom out
+
+# Right-click
+* Level up and down (Nexus is level 0, main map is level 1, first underworld is level 2, etc)
+* center map
+* calculate maximum number of taxers in the selected region (rounds up)
+
