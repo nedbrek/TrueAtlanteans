@@ -16,20 +16,30 @@ All your turn history is stored in a database. You'll want a database for each g
 
 From the File menu, select "New", I like to make a new directory with the database, turn files, order files, and any notes I'm making. Whatever you do, pick a name for the database file. I like to end them with .db so they stick out.
 
+# Loading an existing game
+If you already have a database, use File->Open to bring it back.
+
 # Adding turn information
 When you get a new turn, use File->Add Report to load it into the databse. You only need to do it once. The database will remember it.
 
 # Navigating and Creating orders
-The map will automatically be updated with any new information. Use View->Mark Active hexes to highlight the hexes where you have units. When you click on a hex, the units present will be shown on the left. Enter their orders in the bottom text area. When you move away, the orders will be saved internally. When you are done with a hex, hit 'd' to remove the highlight. When all the hexes are down, use Reports->Idle Units to find any units that missed getting orders. Then use File->Save Orders to export all your orders into a file suitable for sending back to the server.
+The map will automatically be updated with any new information. Use View->Mark Active hexes to highlight (in blue) the hexes where you have units.
+
+In the active hex (marked in red), the units present will be shown on the left. Enter their orders in the bottom text area. When you move away, the orders will be saved internally. When you are done with a hex, hit 'd' to remove the highlight. When all the hexes are done, use Reports->Idle Units to find any units that missed getting orders.
+
+You can move to a hex by clicking on it, or by pressing the direction keys (arrows and Home/End/PgDn/PgUp). Also, double clicking a unit in a report should make that unit's hex active (if I've gotten around to enabling it :)
+
+When done, use File->Save Orders to export all your orders into a file suitable for sending back to the server.
 
 # Other keyboard commands
-* n - form new unit
 * c - center map (also, double click)
+* d - done with hex (clear blue highlight)
+* n - form new unit
 * arrow keys for navigation (left and right will try to keep you in a straight line, Home/End/PgUp/PgDn allow you to move diagonally)
 * +/- zoom in, zoom out
 
 # Right-click
-* Level up and down (Nexus is level 0, main map is level 1, first underworld is level 2, etc)
+* level up and down (Nexus is level 0, main map is level 1, first underworld is level 2, etc)
 * center map
 * calculate maximum number of taxers in the selected region (rounds up)
 
