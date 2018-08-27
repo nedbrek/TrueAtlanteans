@@ -1234,6 +1234,45 @@ proc sortProdList {tv col isInt} {
 	}
 }
 
+proc sortAllUnits {tv col isInt} {
+	if {$col == 2} {
+		# just rebuild
+		showAllUnits
+		return
+	}
+
+	set vals [list]
+
+	# pull top level
+	set child_list [$tv children {}]
+	# determine if there are multiple levels
+	set first_item [lindex $child_list 0]
+	if {[$tv children $first_item] eq ""} {
+		foreach i $child_list {
+			set col0 [$tv item $i -text]
+			lappend vals [list $col0 {*}[$tv item $i -values]]
+		}
+	} else {
+		foreach l $child_list {
+			foreach i [$tv children $l] {
+				set col0 [$tv item $i -text]
+				lappend vals [list $col0 {*}[$tv item $i -values]]
+			}
+		}
+	}
+	set command safeLsortIdxI
+	if {!$isInt} {
+		set command safeLsortIdxS
+	}
+	lappend command $col
+
+	set vals2 [lsort -decreasing -command $command $vals]
+	$tv delete [$tv children {}]
+	foreach v $vals2 {
+		$tv insert {} end -text [lindex $v 0] -values [lrange $v 1 end]
+	}
+}
+
 # build the resource report window
 proc reportResources {} {
 	# pull all production values
@@ -1927,25 +1966,38 @@ proc showAllUnits {} {
 	# populate it
 
 	# configure all the columns
+	set hdrs {
+		"Id" "Loc" "men" "silv" "Horses" "orders"
+	}
 	set cols ""
-	for {set i 1} {$i <= 6} {incr i} { lappend cols $i }
+	for {set i 1} {$i <= [llength $hdrs]} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
 
-	# x,y,z
-	$t.fTop.tv column  1 -width 34; $t.fTop.tv column  2 -width 34; $t.fTop.tv column  3 -width 34
-	$t.fTop.tv heading 1 -text "x"; $t.fTop.tv heading 2 -text "y"; $t.fTop.tv heading 3 -text "z"
-
-	$t.fTop.tv heading 4 -text "men"
-	$t.fTop.tv heading 5 -text "silv"
-	$t.fTop.tv heading 6 -text "orders"
+	set tv $t.fTop.tv
+	$tv heading #0 -command [list sortAllUnits $tv 0 0]
+	for {set i 1} {$i < [llength $hdrs]} {incr i} {
+		$tv heading $i -text [lindex $hdrs $i-1]
+		$tv column $i -width 34
+		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 6}]]
+	}
+	$tv heading $i -text [lindex $hdrs $i-1]
+	$tv heading $i -command [list sortAllUnits $tv $i 0]
 
 	foreach {x y z name uid items orders} $units {
 		if {![info exists id($x,$y,$z)]} {
-			set id($x,$y,$z) [$t.fTop.tv insert {} end -text "Terrain" -values [list $x $y $z "" "" ""]]
+			set terrain_type [::db onecolumn {SELECT type FROM terrain WHERE x=$x AND y=$y AND z=$z}]
+			set id($x,$y,$z) [$t.fTop.tv insert {} end -text $terrain_type -values [list "" "($x,$y,$z)" "" "" ""]]
 			$t.fTop.tv item $id($x,$y,$z) -open 1
 		}
-		set n [format {%s (%d)} $name $uid]
-		$t.fTop.tv insert $id($x,$y,$z) end -text $n -values [list $x $y $z [countMen $items] [countItem $items SILV] $orders]
+
+		set vals [list]
+		lappend vals $uid
+		lappend vals "($x,$y,$z)"
+		lappend vals [countMen $items]
+		lappend vals [countItem $items SILV]
+		lappend vals [countItem $items HORS]
+		lappend vals [join $orders ";"]
+		$t.fTop.tv insert $id($x,$y,$z) end -text $name -values $vals
 	}
 }
 
@@ -2168,6 +2220,7 @@ menu .mTopMenu.mReports -tearoff 0
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
 
 # reports menu
+.mTopMenu.mReports add command -label "My Units" -command showAllUnits -underline 0
 .mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
 .mTopMenu.mReports add command -label "Resources" -command reportResources -underline 0
