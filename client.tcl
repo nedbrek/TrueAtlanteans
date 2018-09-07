@@ -1416,7 +1416,7 @@ proc itemView {} {
 		set wt [dGet $desc Weight]
 		set d1 [dGet $desc Desc]
 		if {$type eq "item" || $type eq "race"} {
-			$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt $d1]
+			$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [join $d1 "."]]
 		} else {
 			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [lindex $d1 1]]]
 			for {set i 0} {$i < [llength $d1]} {incr i} {

@@ -578,6 +578,7 @@ proc parseObject {v} {
 }
 
 proc parseItem {v} {
+	set v [regsub -all { +} $v " "]
 	set l [split [string trimright $v "."] "."]
 	set sl0 [split [lindex $l 0] ","]
 
@@ -625,7 +626,7 @@ proc parseItem {v} {
 
 	if {[lindex $l1 1] eq "race"} {
 		dict set d Type race
-		dict set d Desc $l1
+		dict set d Desc [lrange $l 1 end]
 		return $d
 	}
 
