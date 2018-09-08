@@ -64,7 +64,6 @@ set ::boats {
 }
 
 namespace eval gui {
-	set currentTurn 0
 
 	set viewLevel 1
 
@@ -311,7 +310,7 @@ proc drawDB {w db} {
 		}
 
 		# show unit flags
-		if {$ct == $gui::currentTurn} {
+		if {$ct == $::currentTurn} {
 			set res [$db eval {
 				SELECT detail
 				FROM units
@@ -679,7 +678,7 @@ proc displayRegion {x y nexus} {
 	foreach {name uid detail fact} $units {
 		if {$detail eq "own"} {
 			## don't show owned units from the past
-			if {$turn != $gui::currentTurn} { continue }
+			if {$turn != $::currentTurn} { continue }
 			set state "own"
 		} elseif {$state ne "start"} {
 			set state "start"
@@ -927,12 +926,9 @@ proc doOpen {} {
 		tk_messageBox -message $errMsg
 	}
 
-	set ::men [db eval {select abbr from items where type="race"}]
-
-	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set gui::viewLevel 1
 
-	wm title .t "True Atlanteans - [file tail $ofile] Turn $gui::currentTurn"
+	wm title .t "True Atlanteans - [file tail $ofile] Turn $::currentTurn"
 
 	# pull settings from db
 	set res [db eval {
@@ -958,11 +954,8 @@ proc doAdd {} {
 		loadData $f
 	}
 
-	set ::men [db eval {select abbr from items where type="race"}]
-
-	set gui::currentTurn [db eval {select max(turn) from detail}]
 	set txt [wm title .t]
-	wm title .t "True Atlanteans - [lindex $txt 3] Turn $gui::currentTurn"
+	wm title .t "True Atlanteans - [lindex $txt 3] Turn $::currentTurn"
 
 	drawDB .t.fR.screen db
 }
@@ -1025,7 +1018,7 @@ proc markActive {} {
 			SELECT detail.x, detail.y, detail.z, 0
 			FROM detail JOIN units
 			ON detail.id=units.regionId
-			WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+			WHERE detail.turn=$::currentTurn AND units.detail='own'
 			GROUP BY detail.x, detail.y, detail.z
 	}
 
@@ -1105,7 +1098,7 @@ proc findForeignUnits {} {
 		SELECT units.name, units.uid, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail<>'own'
+		WHERE detail.turn=$::currentTurn AND units.detail<>'own'
 	}]
 
 	makeUnitListbox .tForeignUnits "Foreign Units" $res
@@ -1116,7 +1109,7 @@ proc findIdleUnits {} {
 		SELECT units.name, units.uid, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		WHERE detail.turn=$::currentTurn AND units.detail='own'
 		   AND units.orders=''
 	}]
 
@@ -1143,7 +1136,7 @@ proc reportTax {} {
 	set res [::db eval {
 		SELECT x,y,z,curTax(id,tax) as ct,tax
 		FROM detail
-		WHERE turn=$gui::currentTurn AND ct > 0
+		WHERE turn=$::currentTurn AND ct > 0
 		ORDER BY ct DESC
 	}]
 
@@ -1279,7 +1272,7 @@ proc reportResources {} {
 	set res [db eval {
 		SELECT x,y,z,curProduce(id, products) as cp
 		FROM detail
-		WHERE turn=$gui::currentTurn
+		WHERE turn=$::currentTurn
 	}]
 
 	# build the window
@@ -1439,7 +1432,7 @@ proc ctProd {} {
 		SELECT units.orders, detail.x, detail.y, detail.z
 		FROM detail JOIN units
 		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		WHERE detail.turn=$::currentTurn AND units.detail='own'
 	}]
 
 	foreach {ol x y z} $res {
@@ -1814,7 +1807,7 @@ proc checkAllOrders {} {
 	set res [::db eval {
 		SELECT DISTINCT id, x, y, z
 		FROM detail
-		WHERE turn=$gui::currentTurn
+		WHERE turn=$::currentTurn
 	}]
 
 	set ret [list]
@@ -1859,45 +1852,11 @@ proc checkAllOrders {} {
 }
 
 proc saveOrders {} {
-	set filename [format {orders%d.txt} $gui::currentTurn]
+	set filename [format {orders%d.txt} $::currentTurn]
 	set ofile [tk_getSaveFile -initialfile $filename ]
 	if {$ofile eq ""} { return }
 
-	set f [open $ofile "w"]
-
-	set pid [::db onecolumn { SELECT player_id FROM settings }]
-	set ppass [::db onecolumn { SELECT player_pass FROM settings }]
-	if {$ppass eq ""} {
-		puts $f "#atlantis $pid"
-	} else {
-		puts $f "#atlantis $pid \"$ppass\""
-	}
-
-	set res [::db eval {
-		SELECT units.name, units.uid, units.orders, detail.x, detail.y, detail.z
-		FROM detail JOIN units
-		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
-		ORDER BY detail.z, detail.x, detail.y
-	}]
-
-	set loc ""
-	foreach {u uid ol x y z} $res {
-		if {$ol eq ""} continue
-
-		set newLoc [list $x $y $z]
-		if {$loc eq "" || $loc ne $newLoc} {
-			set loc $newLoc
-			puts $f ";*** $x $y $z ***"
-		}
-
-		puts $f "unit $uid"
-		puts $f "; $u"
-		puts $f "[join $ol "\n"]\n"
-	}
-
-	puts $f "#end"
-	close $f
+	writeOrders $ofile
 }
 
 proc rightCenter {} {
@@ -1942,7 +1901,7 @@ proc showAllUnits {} {
 		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items, units.orders
 		FROM detail JOIN units
 		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn and units.detail='own'
+		WHERE detail.turn=$::currentTurn and units.detail='own'
 	}]
 
 	# build the window
@@ -2034,7 +1993,7 @@ proc formTaxers {regionId} {
 	set rdata [db onecolumn {
 		SELECT sells
 		FROM detail
-		WHERE id=$regionId AND turn=$gui::currentTurn
+		WHERE id=$regionId AND turn=$::currentTurn
 	}]
 	set price [lindex $rdata 1]
 	# TODO configure maintenance cost
@@ -2061,7 +2020,7 @@ proc formUnit {} {
 
 	foreach {regionId turn sells peasants} $rdata {}
 
-	if {$turn != $gui::currentTurn} { return }
+	if {$turn != $::currentTurn} { return }
 
 	set ret [getBuyRace $sells $peasants]
 	set maxRace [lindex $ret 0]
@@ -2168,7 +2127,6 @@ proc loadGlob {patt} {
 		loadData $f
 	}
 
-	set gui::currentTurn [db eval {select max(turn) from detail}]
 	drawDB .t.fR.screen db
 }
 

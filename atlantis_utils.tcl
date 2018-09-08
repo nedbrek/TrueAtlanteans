@@ -7,10 +7,6 @@ proc dGet {d k} {
 	return [string trim [dict get $d $k]]
 }
 
-# men will be auto-populated from db
-set ::men {
-}
-
 set ::monthNames {
 	January
 	February

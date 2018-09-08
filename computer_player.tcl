@@ -38,7 +38,7 @@ itcl::class SitRep {
 			SELECT detail.x, detail.y, detail.z, units.id, units.name, units.uid, units.items, units.orders
 			FROM detail JOIN units
 			ON detail.id=units.regionId
-			WHERE detail.turn=$gui::currentTurn and units.detail='own'
+			WHERE detail.turn=$::currentTurn and units.detail='own'
 		}]
 		dict set ret Units $units
 
@@ -58,7 +58,7 @@ proc buyGuards {budget claim x y z taxers} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
 		FROM detail
-		WHERE x=$x AND y=$y AND z=$z AND turn=$gui::currentTurn
+		WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn
 		ORDER BY turn DESC LIMIT 1
 	}]
 	if {$rdata eq ""} {
@@ -369,7 +369,7 @@ proc createOrders {sitRep} {
 		SELECT detail.x, detail.y, detail.z, detail.id
 		FROM detail JOIN units
 		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
+		WHERE detail.turn=$::currentTurn AND units.detail='own'
 		ORDER BY detail.z, detail.x, detail.y
 	}]
 
@@ -391,46 +391,6 @@ proc createOrders {sitRep} {
 	}
 
 	processRegion $old_rid
-}
-
-proc saveOrders {} {
-	set filename [format {orders.%d} [expr {$gui::currentTurn + 1}]]
-
-	set f [open $filename "w"]
-
-	set pid [::db onecolumn { SELECT player_id FROM settings }]
-	set ppass [::db onecolumn { SELECT player_pass FROM settings }]
-	if {$ppass eq ""} {
-		puts $f "#atlantis $pid"
-	} else {
-		puts $f "#atlantis $pid \"$ppass\""
-	}
-
-	set res [::db eval {
-		SELECT units.name, units.uid, units.orders, detail.x, detail.y, detail.z
-		FROM detail JOIN units
-		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn AND units.detail='own'
-		ORDER BY detail.z, detail.x, detail.y
-	}]
-
-	set loc ""
-	foreach {u uid ol x y z} $res {
-		if {$ol eq ""} continue
-
-		set newLoc [list $x $y $z]
-		if {$loc eq "" || $loc ne $newLoc} {
-			set loc $newLoc
-			puts $f ";*** $x $y $z ***"
-		}
-
-		puts $f "unit $uid"
-		puts $f "; $u"
-		puts $f "[join $ol "\n"]\n"
-	}
-
-	puts $f "#end"
-	close $f
 }
 
 # main
@@ -469,11 +429,9 @@ if {![info exists debug]} {
 	}
 
 	# generate orders for current turn
-	set ::men [db eval {select abbr from items where type="race"}]
-	set gui::currentTurn [db eval {select max(turn) from detail}]
-
 	set sitRep [SitRep #auto]
 	createOrders $sitRep
-	saveOrders
+
+	writeOrders [format {orders.%d} [expr {$::currentTurn + 1}]]
 }
 

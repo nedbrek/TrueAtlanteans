@@ -2,6 +2,12 @@ package require atlantis_utils
 package require sqlite3
 package provide atlantis_dbtools 1.0
 
+# men will be auto-populated from db
+set ::men {
+}
+
+set ::currentTurn 0
+
 # (database available function)
 # return amount of tax revenue in hex given by 'rid'
 # (capped by maxTax extracted from detail table)
@@ -243,6 +249,10 @@ proc openDb {ofile} {
 	}
 
 	registerFunctions
+
+	set ::men [db eval {select abbr from items where type="race"}]
+	set ::currentTurn [db eval {select max(turn) from detail}]
+
 	return ""
 }
 
@@ -281,7 +291,7 @@ proc getUnits {name} {
 		SELECT detail.x, detail.y, detail.z, units.name, units.uid
 		FROM detail JOIN units
 		ON detail.id=units.regionId
-		WHERE detail.turn=$gui::currentTurn and units.detail='own' and units.name LIKE $name
+		WHERE detail.turn=$::currentTurn and units.detail='own' and units.name LIKE $name
 	}]
 }
 
@@ -453,5 +463,8 @@ proc updateDb {db tdata} {
 	}
 
 	$db eval {END TRANSACTION}
+
+	set ::men [db eval {select abbr from items where type="race"}]
+	set ::currentTurn [db eval {select max(turn) from detail}]
 }
 

@@ -158,11 +158,50 @@ itcl::body Unit::filterInstantOrders {} {
 	return $new_units
 }
 
+### other functions
 proc loadData {filename} {
 	set tfile [open $filename]
 
 	updateDb db [reader::parseFile $tfile]
 	close $tfile
+}
+
+proc writeOrders {fname} {
+	set f [open $fname "w"]
+
+	set pid [::db onecolumn { SELECT player_id FROM settings }]
+	set ppass [::db onecolumn { SELECT player_pass FROM settings }]
+	if {$ppass eq ""} {
+		puts $f "#atlantis $pid"
+	} else {
+		puts $f "#atlantis $pid \"$ppass\""
+	}
+
+	set res [::db eval {
+		SELECT units.name, units.uid, units.orders, detail.x, detail.y, detail.z
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$::currentTurn AND units.detail='own'
+		ORDER BY detail.z, detail.x, detail.y
+	}]
+
+	set loc ""
+	foreach {u uid ol x y z} $res {
+		if {$ol eq ""} continue
+
+		set newLoc [list $x $y $z]
+		if {$loc eq "" || $loc ne $newLoc} {
+			set loc $newLoc
+			puts $f ";*** $x $y $z ***"
+		}
+
+		puts $f "unit $uid"
+		puts $f "; $u"
+		puts $f "[join $ol "\n"]\n"
+	}
+
+	puts $f "#end"
+	close $f
 }
 
 proc getBuyRace {sells peasants} {
