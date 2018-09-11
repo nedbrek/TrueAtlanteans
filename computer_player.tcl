@@ -54,6 +54,40 @@ itcl::class SitRep {
 	}
 }
 
+###
+proc selectNewHex {x y z} {
+	set start_cities [::db eval {
+		SELECT dest
+		FROM nexus_exits
+	}]
+
+	# TODO move strategy
+	foreach d {n nw ne sw se s} {
+		set loc [moveCoord $x $y $d]
+		set nx [lindex $loc 0]
+		set ny [lindex $loc 1]
+		lappend loc $z
+
+		# don't go back to a start city
+		if {[lsearch $start_cities $loc] != -1} {
+			continue
+		}
+
+		# TODO don't go to a hex we're already in
+
+		set terrain [::db eval {
+			SELECT type
+			FROM terrain
+			WHERE x=$nx AND y=$ny AND z=$z
+		}]
+		if {$terrain eq "ocean"} { continue }
+
+		return $d
+	}
+
+	return ""
+}
+
 proc buyGuards {budget claim x y z taxers} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
@@ -73,7 +107,7 @@ proc buyGuards {budget claim x y z taxers} {
 		exit -1
 	}
 	if {$taxersNeeded <= $taxers} {
-		return [list "" ""]
+		return [list "" "" 0]
 	}
 	incr taxersNeeded -$taxers
 
@@ -85,7 +119,7 @@ proc buyGuards {budget claim x y z taxers} {
 	set maxBuy [expr {$budget / ($price + 20)}]
 	set numBuy [expr {min($taxersNeeded, $maxBuy, $maxRace)}]
 	if {$numBuy == 0} {
-		return [list "" ""]
+		return [list "" "" 1]
 	}
 
 	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
@@ -103,7 +137,10 @@ proc buyGuards {budget claim x y z taxers} {
 	lappend ol "turn" "@tax" "endturn"
 	lappend ol "end"
 
-	return [list [expr {$numBuy * ($price + 10)}] $ol]
+	return [list \
+		[expr {$numBuy * ($price + 10)}] \
+		$ol \
+		[expr {$taxersNeeded - $numBuy}]]
 }
 
 proc rampFirstHex {units} {
@@ -114,7 +151,7 @@ proc rampFirstHex {units} {
 	set budget 3000
 
 	set ret [buyGuards $budget 1 $x $y $z 0]
-	foreach {price form_orders} $ret {}
+	foreach {price form_orders rem} $ret {}
 
 	set ol [concat $ol $form_orders]
 	lappend ol "claim 100"
@@ -296,7 +333,7 @@ proc processRegion {rid} {
 
 	# buy tax men
 	set ret [buyGuards $totalSilver 0 $x $y $z $taxers]
-	foreach {s_need form_orders} $ret {}
+	foreach {s_need form_orders rem} $ret {}
 
 	if {$s_need > 0} {
 		for {set i 0} {$s_need > 0 && $i < [llength $funds]} {incr i 2} {
@@ -334,6 +371,60 @@ proc processRegion {rid} {
 		set ol [$form_unit cget -orders]
 		lappend ol {*}$form_orders
 		$form_unit configure -orders $ol
+	}
+
+	# consider expansion
+	if {$rem == 0} {
+		set new_dir [selectNewHex $x $y $z]
+
+		if {$new_dir ne ""} {
+			set rdata [db eval {
+				SELECT id, sells, race, tax
+				FROM detail
+				WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn
+				ORDER BY turn DESC LIMIT 1
+			}]
+			foreach {regionId sells peasants maxTax} $rdata {}
+			set ret [getBuyRace $sells $peasants]
+			foreach {maxRace raceList price} $ret {}
+			regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
+
+			set form_unit [lindex $units 0]
+			set ol [$form_unit cget -orders]
+			lappend ol \
+				{FORM 20} \
+				{NAME UNIT "Courier"} \
+				"BUY 1 $abbr" \
+				{AVOID 1} \
+				{BEHIND 1} \
+				{NOAID 1} \
+				"MOVE $new_dir" \
+				{END}
+
+			$form_unit configure -orders $ol
+
+			for {set i 0} {$totalSilver > 0 && $i < [llength $funds]} {incr i 2} {
+				set u [lindex $funds $i]
+				set s [lindex $funds $i+1]
+
+				set s_give $s
+				set s_left 0
+
+				# create the give order
+				if {$s_give > 0} {
+					set order_text "GIVE NEW 20 $s_give SILV"
+
+					set give_o [$u cget -orders]
+					lappend give_o $order_text
+					$u configure -orders $give_o
+
+					# update giving unit
+					$u setItem SILV $s_left
+					set funds [lreplace $funds $i+1 $i+1 $s_left]
+					incr totalSilver -$s_give
+				}
+			}
+		}
 	}
 
 	# save out orders

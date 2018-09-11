@@ -159,6 +159,46 @@ itcl::body Unit::filterInstantOrders {} {
 }
 
 ### other functions
+proc moveCoord {x y dir} {
+	switch $dir {
+		n { incr y -2 }
+		s { incr y  2 }
+
+		nw { incr x -1; incr y -1 }
+		ne { incr x  1; incr y -1 }
+
+		se { incr x 1; incr y 1 }
+		sw { incr x -1; incr y 1 }
+
+		w {
+			incr x -1
+
+			if {$x & 1} {
+				incr y -1
+			} else {
+				incr y 1
+			}
+		}
+
+		e {
+			incr x
+
+			if {$x & 1} {
+				incr y -1
+			} else {
+				incr y 1
+			}
+		}
+	}
+
+	# wrap around
+	set maxX [::db eval { SELECT max(cast(x as integer)) FROM terrain }]
+	if {$x == -1} { set x $maxX }
+	if {$x > $maxX} { set x 0 }
+
+	return [list $x $y]
+}
+
 proc loadData {filename} {
 	set tfile [open $filename]
 
