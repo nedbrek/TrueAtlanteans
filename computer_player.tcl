@@ -55,6 +55,24 @@ itcl::class SitRep {
 }
 
 ###
+proc isCoast {x y z} {
+	foreach d {n nw ne sw se s} {
+		set loc [moveCoord $x $y $d]
+		set nx [lindex $loc 0]
+		set ny [lindex $loc 1]
+
+		set terrain [::db eval {
+			SELECT type
+			FROM terrain
+			WHERE x=$nx AND y=$ny AND z=$z
+		}]
+		if {$terrain eq "ocean"} {
+			return 1
+		}
+	}
+	return 0
+}
+
 proc selectNewHex {x y z} {
 	set start_cities [::db eval {
 		SELECT dest
@@ -62,7 +80,10 @@ proc selectNewHex {x y z} {
 	}]
 
 	# TODO move strategy
-	foreach d {n nw ne sw se s} {
+	set dirs {n nw ne sw se s}
+	set d_vals [list]
+
+	foreach d $dirs {
 		set loc [moveCoord $x $y $d]
 		set nx [lindex $loc 0]
 		set ny [lindex $loc 1]
@@ -70,6 +91,7 @@ proc selectNewHex {x y z} {
 
 		# don't go back to a start city
 		if {[lsearch $start_cities $loc] != -1} {
+			lappend d_vals 0
 			continue
 		}
 
@@ -80,12 +102,29 @@ proc selectNewHex {x y z} {
 			FROM terrain
 			WHERE x=$nx AND y=$ny AND z=$z
 		}]
-		if {$terrain eq "ocean"} { continue }
+		if {$terrain eq "ocean"} {
+			lappend d_vals 0
+			continue
+		}
 
-		return $d
+		# degrade moving to coast
+		if {[isCoast $nx $ny $z]} {
+			lappend d_vals 1
+			continue
+		}
+
+		if {$terrain eq "plains"} {
+			lappend d_vals 10
+		} else {
+			lappend d_vals 2
+		}
 	}
 
-	return ""
+	set best_d [lindex [lsort -decreasing -indices $d_vals] 0]
+	if {[lindex $d_vals $best_d] == 0} {
+		return ""
+	}
+	return [lindex $dirs $best_d]
 }
 
 proc buyGuards {budget claim x y z taxers} {
