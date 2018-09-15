@@ -154,9 +154,18 @@ proc buyGuards {budget claim x y z taxers} {
 	foreach {maxRace raceList price} $ret {}
 
 	# limit by cash on hand
-	# TODO configure maintenance cost
-	set maxBuy [expr {$budget / ($price + 20)}]
+	# start without maintenance cost
+	set maxBuy [expr {$budget / ($price + 10)}]
 	set numBuy [expr {min($taxersNeeded, $maxBuy, $maxRace)}]
+	set need_support 0
+
+	# if not claiming, and taxers cannot support
+	if {!$claim && $numBuy * 10 > $taxers * 50} {
+		# drop buy
+		set maxBuy [expr {$budget / ($price + 20)}]
+		set numBuy [expr {min($taxersNeeded, $maxBuy, $maxRace)}]
+		set need_support [expr {10 * $numBuy - $taxers * 50}]
+	}
 	if {$numBuy == 0} {
 		return [list "" "" 1]
 	}
@@ -165,9 +174,13 @@ proc buyGuards {budget claim x y z taxers} {
 
 	lappend ol "form 1" "name unit Guard"
 
+	set give_amt [expr {$numBuy * ($price + 10)}]
+
 	if {$claim} {
-		set claimAmt [expr {$numBuy * ($price + 10)}]
-		lappend ol "claim $claimAmt"
+		lappend ol "claim $give_amt"
+	}
+	if {$need_support} {
+		incr give_amt $need_support
 	}
 
 	lappend ol "avoid 0" "behind 0"
@@ -177,7 +190,7 @@ proc buyGuards {budget claim x y z taxers} {
 	lappend ol "end"
 
 	return [list \
-		[expr {$numBuy * ($price + 10)}] \
+		$give_amt \
 		$ol \
 		[expr {$taxersNeeded - $numBuy}]]
 }
@@ -187,10 +200,10 @@ proc rampFirstHex {units} {
 
 	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
 	# TODO calculate a good budget to use
-	set budget 3000
+	set budget 2600
 
 	set ret [buyGuards $budget 1 $x $y $z 0]
-	foreach {price form_orders rem} $ret {}
+	foreach {s_need form_orders rem} $ret {}
 
 	set ol [concat $ol $form_orders]
 	lappend ol "claim 100"
