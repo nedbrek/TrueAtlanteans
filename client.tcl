@@ -1450,10 +1450,6 @@ proc ctProd {} {
 	return [llength [array names prod]]
 }
 
-proc checkBool {s} {
-	return [expr {$s != 0 && $s != 1}]
-}
-
 proc checkOrder {u o x y z ctxt} {
 	if {$o eq ""} {
 		return 0
@@ -1740,27 +1736,6 @@ proc checkOrder {u o x y z ctxt} {
 		}
 	}
 	return [list -1 "Command '$c' not recognized"]
-}
-
-proc cleanOrder {o} {
-	# strip whitespace
-	set o [string trim $o]
-
-	if {[string index $o 0] eq "@"} {
-		# repeat
-		set o [string trimleft $o "@"]
-
-		if {[string is digit [string index $o 0]]} {
-			# @n <order>
-			set o [regsub {[[:digit:]]+} $o ""]
-		} else {
-			# it was a simple repeat
-		}
-
-		set o [string trim $o]
-	}
-
-	return $o
 }
 
 proc checkOrderType {tgt_ord x y z ctxt} {

@@ -3,6 +3,35 @@ package require atlantis_reader
 package require Itcl
 package provide client_utils 1.0
 
+# TODO store in db
+set max_x 32
+set max_y 32
+
+proc checkBool {s} {
+	return [expr {$s != 0 && $s != 1}]
+}
+
+proc cleanOrder {o} {
+	# strip whitespace
+	set o [string trim $o]
+
+	if {[string index $o 0] eq "@"} {
+		# repeat
+		set o [string trimleft $o "@"]
+
+		if {[string is digit [string index $o 0]]} {
+			# @n <order>
+			set o [regsub {[[:digit:]]+} $o ""]
+		} else {
+			# it was a simple repeat
+		}
+
+		set o [string trim $o]
+	}
+
+	return $o
+}
+
 ### classes
 itcl::class Unit {
 	public variable db_id
@@ -10,6 +39,7 @@ itcl::class Unit {
 	public variable num; # just the num
 	public variable items; # list of items
 	public variable orders
+	public variable orig_orders
 	public variable skills
 	public variable flags
 	public variable region
@@ -25,6 +55,8 @@ itcl::class Unit {
 		set flags  [dGet $args Flags]
 		set region [dGet $args Region]
 		set object [dGet $args Object]
+
+		set orig_orders $orders
 
 		if {$name eq ""} {
 			if {[lindex $num 0] eq "new"} {
@@ -42,6 +74,30 @@ itcl::class Unit {
 	# filter instant orders, including "form <id>"/end and "turn/endturn"
 	# return new units (created by form)
 	method filterInstantOrders {}
+
+	method moveTo {x y z} {
+		foreach {cur_x cur_y cur_z} $region {}
+		if {$cur_z != $z} {
+			puts "Can't navigate between levels"
+			return
+		}
+		# TODO handle weight and weather
+		if {$cur_y < $y} {
+			set d "s"
+		} else {
+			set d "n"
+		}
+		if {$cur_x < $x} {
+			append d "e"
+		} elseif {$cur_x > $x} {
+			append d "w"
+		}
+		# TODO decide when to use wrap
+		# TODO move multiple
+		set o "MOVE $d"
+		lappend orders $o
+		lappend orig_orders $o
+	}
 
 	method countItem {abbr} {
 		return [::countItem $items $abbr]
@@ -159,6 +215,23 @@ itcl::body Unit::filterInstantOrders {} {
 }
 
 ### other functions
+proc getDistance {x1 y1 z1 x2 y2 z2} {
+	set maxy [expr {abs($y1 - $y2)}]
+	set maxx [expr {abs($x1 - $x2)}]
+
+	set max2 [expr {abs($x1 + $::max_x - $x2)}]
+	set maxx [expr {min($maxx, $max2)}]
+
+	set max2 [expr {abs($x1 - ($x2 + $::max_x))}]
+	set maxx [expr {min($maxx, $max2)}]
+
+	if {$maxy > $maxx} {
+		return [expr {($maxx + $maxy) / 2}]
+	}
+
+	return $maxx
+}
+
 proc moveCoord {x y dir} {
 	switch $dir {
 		n { incr y -2 }

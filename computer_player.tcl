@@ -507,33 +507,87 @@ proc createOrders {sitRep} {
 		return
 	}
 	#else post-start
-	# process per region
+
+	# pull all regions where we have units
 	set res [::db eval {
 		SELECT detail.x, detail.y, detail.z, detail.id
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$::currentTurn AND units.detail='own'
-		ORDER BY detail.z, detail.x, detail.y
+		GROUP BY detail.z, detail.x, detail.y
 	}]
 
-	set loc ""
-	set old_rid 0
+	# foreach region
+	set tax_regions [list]
 	foreach {x y z rid} $res {
-		set newLoc [list $x $y $z]
-		if {$loc eq ""} {
-			set loc $newLoc
-			set old_rid $rid
-		} elseif {$loc ne $newLoc} {
-
-			# location change - process current list with old rid
-			processRegion $old_rid
-
-			set loc $newLoc
-			set old_rid $rid
+		processRegion $rid
+		set ct [curTax $rid 1e6]
+		if {$ct > 0} {
+			lappend tax_regions [list $x $y $z]
 		}
 	}
 
-	processRegion $old_rid
+	# shuffle couriers
+	set res [::db eval {
+		SELECT detail.x, detail.y, detail.z, units.id, units.orders
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$::currentTurn and units.detail='own' and units.name LIKE "Courier%"
+	}]
+
+	## find distance from each courier to each tax region
+	set couriers [list]
+	set courier_dists [list]
+	set cmin_dists [list]
+
+	foreach {x y z uid ol} $res {
+		set u [Unit #auto Id $uid Orders $ol Region [list $x $y $z]]
+		$u filterInstantOrders
+		if {[string match -nocase {*move*} [$u cget -orders]]} {
+			continue
+		}
+		lappend couriers $u
+
+		# calc distance to each taxing region
+		set cdist [list]
+		set min_dist 1e6
+		foreach tr $tax_regions {
+			set d [getDistance $x $y $z {*}$tr]
+			lappend cdist $d
+			set min_dist [expr {min($d, $min_dist)}]
+		}
+		lappend cmin_dists $min_dist
+		lappend courier_dists $cdist
+	}
+
+	if {[llength $couriers] > [llength $tax_regions]} {
+		# TODO trim far coutiers (convert to scouts?)
+	}
+
+	while {[llength $couriers]} {
+		# move the furthest courier towards his closest region
+		set furthest_idx [lindex [lsort -integer -decreasing -indices $cmin_dists] 0]
+		set dist [lindex $cmin_dists $furthest_idx]
+		set dists [lindex $courier_dists $furthest_idx]
+		set city_idx [lsearch -integer $dists $dist]
+		set loc [lindex $tax_regions $city_idx]
+
+		set u [lindex $couriers $furthest_idx]
+		$u moveTo {*}$loc
+
+		set unit_id [$u cget -db_id]
+		set ol [$u cget -orig_orders]
+
+		db eval {
+			UPDATE units SET orders=$ol
+			WHERE id=$unit_id
+		}
+
+		set couriers [lreplace $couriers $furthest_idx $furthest_idx]
+		set courier_dists [lreplace $courier_dists $furthest_idx $furthest_idx]
+		set cmin_dists [lreplace $cmin_dists $furthest_idx $furthest_idx]
+	}
+
 }
 
 # main
