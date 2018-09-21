@@ -3,7 +3,7 @@ package require atlantis_reader
 package require Itcl
 package provide client_utils 1.0
 
-# TODO store in db
+# can be stored in db, or calculated from terrain
 set max_x 32
 set max_y 32
 

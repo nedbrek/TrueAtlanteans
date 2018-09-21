@@ -106,6 +106,13 @@ proc createDb {filename} {
 		VALUES(1, 1, 0, "", "", 0, 0, 0)
 	}
 
+	::db eval {
+		CREATE TABLE notes(
+		key TEXT PRIMARY KEY,
+		val TEXT not null
+		);
+	}
+
 	# terrain table: (x, y, z) -> terrain type, city, region name
 	::db eval {
 		CREATE TABLE terrain(
@@ -252,6 +259,26 @@ proc openDb {ofile} {
 
 	set ::men [db eval {select abbr from items where type="race"}]
 	set ::currentTurn [db eval {select max(turn) from detail}]
+
+	set maxx [::db onecolumn {SELECT val FROM notes WHERE key = "max_x"}]
+	if {$maxx eq ""} {
+		set maxx [::db onecolumn { SELECT max(cast(x as integer)) FROM terrain WHERE z=1}]
+		if {$maxx ne ""} {
+			set ::max_x [expr {$maxx + 1}]
+		}
+	} else {
+		set ::max_x $maxx
+	}
+
+	set maxy [::db onecolumn {SELECT val FROM notes WHERE key = "max_y"}]
+	if {$maxy eq ""} {
+		set maxy [::db onecolumn { SELECT max(cast(y as integer)) FROM terrain WHERE z=1}]
+		if {$maxy ne ""} {
+			set ::max_y [expr {$maxy + 1}]
+		}
+	} else {
+		set ::max_y $maxy
+	}
 
 	return ""
 }
