@@ -24,11 +24,16 @@ namespace eval gui {
 itcl::class SitRep {
 	public variable overall_state
 	public variable unit_state
+	public variable regions
 
 	constructor {} {
 		set ret [evaluateSituation]
 		set overall_state [dGet $ret State]
 		set unit_state [dGet $ret Units]
+	}
+
+	method inRegion {x y z} {
+		return [info exists regions($x,$y,$z)]
 	}
 
 	method evaluateSituation {} {
@@ -52,6 +57,8 @@ itcl::class SitRep {
 
 		return $ret
 	}
+
+	method createOrders {}
 }
 
 ###
@@ -73,7 +80,7 @@ proc isCoast {x y z} {
 	return 0
 }
 
-proc selectNewHex {x y z} {
+proc selectNewHex {sitRep x y z} {
 	set start_cities [::db eval {
 		SELECT dest
 		FROM nexus_exits
@@ -95,7 +102,11 @@ proc selectNewHex {x y z} {
 			continue
 		}
 
-		# TODO don't go to a hex we're already in
+		# don't go to a hex we're already in
+		if {[$sitRep inRegion $nx $ny $z]} {
+			lappend d_vals 0
+			continue
+		}
 
 		set terrain [::db eval {
 			SELECT type
@@ -113,14 +124,14 @@ proc selectNewHex {x y z} {
 			continue
 		}
 
-		if {$terrain eq "plains"} {
+		if {$terrain eq "plain"} {
 			lappend d_vals 10
 		} else {
 			lappend d_vals 2
 		}
 	}
 
-	set best_d [lindex [lsort -decreasing -indices $d_vals] 0]
+	set best_d [lindex [lsort -integer -decreasing -indices $d_vals] 0]
 	if {[lindex $d_vals $best_d] == 0} {
 		return ""
 	}
@@ -306,7 +317,7 @@ proc advanceLeader {u} {
 	$u configure -orders $ol
 }
 
-proc processRegion {rid} {
+proc processRegion {sitRep rid} {
 	set units [getUnitObjects $rid]
 
 	# pull region info
@@ -321,6 +332,7 @@ proc processRegion {rid} {
 	set totalSilver 0
 	set leader ""
 	set taxers 0
+	set couriers [list]
 	set funds [list]
 	foreach u $units {
 		set silver [$u countItem SILV]
@@ -338,6 +350,10 @@ proc processRegion {rid} {
 		} elseif {[ordersMatch $ol "tax"] != -1} {
 			incr taxers [countMen $items]
 		} elseif {[regexp {COMB} $sl] != 0} {
+		}
+
+		if {[$u cget -name] eq "Courier"} {
+			lappend couriers $u
 		}
 	}
 
@@ -427,44 +443,57 @@ proc processRegion {rid} {
 
 	# consider expansion
 	if {$rem == 0} {
-		set new_dir [selectNewHex $x $y $z]
+		set new_dir [selectNewHex $sitRep $x $y $z]
 
 		if {$new_dir ne ""} {
-			set rdata [db eval {
-				SELECT id, sells, race, tax
-				FROM detail
-				WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn
-				ORDER BY turn DESC LIMIT 1
-			}]
-			foreach {regionId sells peasants maxTax} $rdata {}
-			set ret [getBuyRace $sells $peasants]
-			foreach {maxRace raceList price} $ret {}
-			regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
+			if {[llength $couriers] == 0} {
+				set rdata [db eval {
+					SELECT id, sells, race, tax
+					FROM detail
+					WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn
+					ORDER BY turn DESC LIMIT 1
+				}]
+				foreach {regionId sells peasants maxTax} $rdata {}
+				set ret [getBuyRace $sells $peasants]
+				foreach {maxRace raceList price} $ret {}
+				regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
 
-			set form_unit [lindex $units 0]
-			set ol [$form_unit cget -orders]
-			lappend ol \
-				{FORM 20} \
-				{NAME UNIT "Courier"} \
-				"BUY 1 $abbr" \
-				{AVOID 1} \
-				{BEHIND 1} \
-				{NOAID 1} \
-				"MOVE $new_dir" \
-				{END}
+				set form_unit [lindex $units 0]
+				set ol [$form_unit cget -orders]
+				lappend ol \
+					{FORM 20} \
+					{NAME UNIT "Courier"} \
+					"BUY 1 $abbr" \
+					{AVOID 1} \
+					{BEHIND 1} \
+					{NOAID 1} \
+					"MOVE $new_dir" \
+					{END}
 
-			$form_unit configure -orders $ol
+				$form_unit configure -orders $ol
+				set courier_id "NEW 20"
+			} else {
+				set u [lindex $couriers 0]
+				set ol [$u cget -orders]
+				lappend ol "MOVE $new_dir"
+				$u configure -orders $ol
+				set courier_id [$u cget -num]
+			}
 
 			for {set i 0} {$totalSilver > 0 && $i < [llength $funds]} {incr i 2} {
 				set u [lindex $funds $i]
 				set s [lindex $funds $i+1]
+				if {[$u cget -num] == $courier_id} {
+					incr totalSilver -$s
+					continue
+				}
 
 				set s_give $s
 				set s_left 0
 
 				# create the give order
 				if {$s_give > 0} {
-					set order_text "GIVE NEW 20 $s_give SILV"
+					set order_text "GIVE $courier_id $s_give SILV"
 
 					set give_o [$u cget -orders]
 					lappend give_o $order_text
@@ -472,7 +501,6 @@ proc processRegion {rid} {
 
 					# update giving unit
 					$u setItem SILV $s_left
-					set funds [lreplace $funds $i+1 $i+1 $s_left]
 					incr totalSilver -$s_give
 				}
 			}
@@ -491,9 +519,9 @@ proc processRegion {rid} {
 	}
 }
 
-proc createOrders {sitRep} {
-	set units [$sitRep cget -unit_state]
-	if {[$sitRep cget -overall_state] == "start"} {
+itcl::body SitRep::createOrders {} {
+	set units $unit_state
+	if {$overall_state == "start"} {
 		# only one unit
 		set zlevel [lindex $units 2]
 		if {$zlevel == 0} {
@@ -517,10 +545,14 @@ proc createOrders {sitRep} {
 		GROUP BY detail.z, detail.x, detail.y
 	}]
 
+	foreach {x y z rid} $res {
+		set regions($x,$y,$z) $rid
+	}
+
 	# foreach region
 	set tax_regions [list]
 	foreach {x y z rid} $res {
-		processRegion $rid
+		processRegion $this $rid
 		set ct [curTax $rid 1e6]
 		if {$ct > 0} {
 			lappend tax_regions [list $x $y $z]
@@ -587,7 +619,6 @@ proc createOrders {sitRep} {
 		set courier_dists [lreplace $courier_dists $furthest_idx $furthest_idx]
 		set cmin_dists [lreplace $cmin_dists $furthest_idx $furthest_idx]
 	}
-
 }
 
 # main
@@ -627,7 +658,7 @@ if {![info exists debug]} {
 
 	# generate orders for current turn
 	set sitRep [SitRep #auto]
-	createOrders $sitRep
+	$sitRep createOrders
 
 	writeOrders [format {orders.%d} [expr {$::currentTurn + 1}]]
 }

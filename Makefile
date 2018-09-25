@@ -1,5 +1,5 @@
 GAME_DIR := ../Atlantis/ceran/cp1
-NUM_TURNS := 8
+NUM_TURNS := 9
 NUMS_TURNS := $(shell seq 1 $(NUM_TURNS))
 
 .PHONY: all
