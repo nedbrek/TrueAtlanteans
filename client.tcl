@@ -235,6 +235,10 @@ proc drawNexus {w data} {
 	set exitData [::db eval {
 		SELECT dir, dest from nexus_exits
 	}]
+	if {$exitData eq ""} {
+		$w configure -scrollregion [$w bbox all]
+		return
+	}
 
 	foreach {d col row} {Northwest 0 2 North 1 1 Northeast 2 2 Southwest 0 4 South 1 5 Southeast 2 4} {
 		set loc [dGet $exitData $d]

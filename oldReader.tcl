@@ -170,8 +170,10 @@ proc translateUndergroundName {zName} {
 }
 
 proc parseLocation {loc} {
-	regexp {\(([[:digit:]]+),([[:digit:]]+),?([0-9a-zA-Z ]+)?} \
-	   $loc -> x y z
+	if {![regexp {\(([[:digit:]]+),([[:digit:]]+),?([0-9a-zA-Z ]+)?} \
+	   $loc -> x y z]} {
+		return ""
+	}
 
 	set l [list $x $y]
 	lappend l [translateUndergroundName $z]
@@ -426,7 +428,7 @@ proc getRegion {f} {
 
 	set eout ""
 	foreach e $exits {
-		if {$e eq ""} continue
+		if {$e eq "" || $e eq "none"} continue
 		if {![string is list $e]} {
 			puts "odd '$e'"
 			puts "exits '$exits'"
@@ -439,6 +441,9 @@ proc getRegion {f} {
 
 		set loc [lindex $e 3]
 		set lxy [parseLocation $loc]
+		if {$lxy eq ""} {
+			puts "Failed to parseLocation '$exits'"
+		}
 
 		set ci [lsearch $e "contains"]
 		if {$ci == -1} {
