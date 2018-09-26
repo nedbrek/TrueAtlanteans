@@ -249,6 +249,20 @@ proc pickStartDirection {units} {
 		lappend exits $ex_n
 	}
 
+	if {$exits eq ""} {
+		# must jump
+		foreach {x y z unit_id name uid il ol} $units {
+			lappend ol "behind 1" "avoid 1"
+			lappend ol "CAST GATE RANDOM"
+			lappend ol "claim 100" "STUDY FORC"
+			db eval {
+				UPDATE units SET orders=$ol
+				WHERE id=$unit_id
+			}
+		}
+		return
+	}
+
 	# find the best
 	set sorted_exits [lsort -index 7 $exits]
 	set e [lindex $sorted_exits 0]
