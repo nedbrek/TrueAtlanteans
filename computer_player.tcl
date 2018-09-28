@@ -207,9 +207,77 @@ proc buyGuards {budget claim x y z taxers} {
 }
 
 proc rampFirstHex {units} {
-	foreach {x y z unit_id name uid il ol} $units {}
+	foreach {x y z unit_id name unum il ol} $units {}
+	set rid [::db onecolumn {SELECT id FROM detail WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn}]
+	set u [getUnitObjects $rid]
+	if {[llength $u] != 1} {
+		puts "Ramping first hex with more than one unit?"
+		exit 1
+	}
+	advanceLeader $u
+	set ol [$u cget -orders]
 
 	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
+	# or that we landed in a good spot
+	set no_exits [::db onecolumn { SELECT val FROM notes WHERE key="no_exits"}]
+	if {$no_exits ne ""} {
+		set max_jumps [::db onecolumn { SELECT val FROM notes WHERE key="jump"}]
+		if {$max_jumps eq ""} { set max_jumps 0 }
+		set num_jumps [::db onecolumn { SELECT val FROM notes WHERE key="num_jumps"}]
+		if {$num_jumps eq ""} { set num_jumps 0 }
+
+		# examine surrounding terrain
+		set ct_plain 0
+		set ct_forest 0
+		set ct_mountain 0
+		foreach d {n nw ne sw se s} {
+			set loc [moveCoord $x $y $d]
+			set nx [lindex $loc 0]
+			set ny [lindex $loc 1]
+			lappend loc $z
+
+			set terrain [::db eval {
+				SELECT type
+				FROM terrain
+				WHERE x=$nx AND y=$ny AND z=$z
+			}]
+			switch $terrain {
+				"plain" { incr ct_plain }
+				"mystforest" -
+				"forest" { incr ct_forest }
+				"mountain" { incr ct_mountain }
+			}
+		}
+
+		set stay 0; # probably bad
+		set near_jumps [expr {$num_jumps > $max_jumps - 2}]
+
+		# amazing!
+		if {$ct_plain > 4 || ($ct_plain > 3 && $ct_forest + $ct_mountain > 1)} {
+			set stay 1
+		} elseif {$near_jumps && $ct_plain > 2} {
+			# take anything ok
+			set stay 1
+		} elseif {$near_jumps && $ct_plain > 0 && $ct_forest + $ct_mountain > 2} {
+			# take anything ok
+			set stay 1
+		} elseif {$num_jumps >= $max_jumps} {
+			# out of time
+			set stay 1
+		}
+
+		if {!$stay} {
+			# TODO drop scout
+			lappend ol "CAST GATE RANDOM"
+			db eval {
+				UPDATE units SET orders=$ol
+				WHERE id=$unit_id
+			}
+			::db eval { UPDATE notes SET val=val + 1 WHERE key="num_jumps" }
+			return
+		}
+	}
+
 	# TODO calculate a good budget to use
 	set budget 2600
 
@@ -217,8 +285,6 @@ proc rampFirstHex {units} {
 	foreach {s_need form_orders rem} $ret {}
 
 	set ol [concat $ol $form_orders]
-	lappend ol "claim 100"
-	lappend ol "study FORC"
 
 	db eval {
 		UPDATE units SET orders=$ol
@@ -251,6 +317,10 @@ proc pickStartDirection {units} {
 
 	if {$exits eq ""} {
 		# must jump
+		::db eval {
+			INSERT OR REPLACE INTO notes
+			VALUES("no_exits", "1")
+		}
 		foreach {x y z unit_id name uid il ol} $units {
 			lappend ol "behind 1" "avoid 1"
 			lappend ol "CAST GATE RANDOM"
@@ -649,7 +719,18 @@ if {![info exists debug]} {
 	cd [lindex $argv 1]
 
 	if {$cmd eq "new"} {
+		if {[llength $argv] % 2 == 1} {
+			puts "Usage $argv0 new <dir> \[key value\]*"
+			exit 1
+		}
 		createDb "game.db"
+
+		foreach {k v} [lrange $argv 2 end] {
+			::db eval {
+				INSERT OR REPLACE INTO notes
+				VALUES($k, $v)
+			}
+		}
 		exit 0
 	}
 
