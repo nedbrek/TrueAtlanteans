@@ -327,7 +327,7 @@ proc getBuyRace {sells peasants} {
 
 		if {[lsearch $::men $race] == -1} {
 			set fullRace [lrange $saleItem 1 end-1]
-			if {[lsearch $peasants $fullRace] == -1} {
+			if {$peasants ne $fullRace} {
 				continue
 			}
 			lappend ::men $race
