@@ -379,12 +379,13 @@ proc getRegion {f} {
 
 	# weather
 	set v [getSection $f]
-	regexp {was (.*) last month; it will be (.*) next} $v -> old new
-	dict set region WeatherOld $old
-	dict set region WeatherNew $new
+	if {[regexp {was (.*) last month; it will be (.*) next} $v -> old new]} {
+		dict set region WeatherOld $old
+		dict set region WeatherNew $new
+		set v [getSection $f]
+	}
 
 	# check for Nexus
-	set v [getSection $f]
 	if {[regexp {Nexus is a} $v]} {
 		set v [getSection $f]
 	}
