@@ -206,7 +206,7 @@ proc buyGuards {budget claim x y z taxers} {
 		[expr {$taxersNeeded - $numBuy}]]
 }
 
-proc rampFirstHex {units} {
+proc rampFirstHex {sitRep units} {
 	foreach {x y z unit_id name unum il ol} $units {}
 	set rid [::db onecolumn {SELECT id FROM detail WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn}]
 	set u [getUnitObjects $rid]
@@ -214,8 +214,6 @@ proc rampFirstHex {units} {
 		puts "Ramping first hex with more than one unit?"
 		exit 1
 	}
-	advanceLeader $u
-	set ol [$u cget -orders]
 
 	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
 	# or that we landed in a good spot
@@ -267,7 +265,11 @@ proc rampFirstHex {units} {
 		}
 
 		if {!$stay} {
+			advanceLeader $u
+			set ol [$u cget -orders]
+
 			# TODO drop scout
+
 			lappend ol "CAST GATE RANDOM"
 			db eval {
 				UPDATE units SET orders=$ol
@@ -277,6 +279,33 @@ proc rampFirstHex {units} {
 			return
 		}
 	}
+
+	set get_out 0
+	set res [db eval {
+		SELECT name
+		FROM units
+		WHERE regionId=$rid AND detail<>'own' AND name="City Guard"
+	}]
+	if {$res ne ""} {
+		set get_out 1
+	}
+
+	if {$get_out} {
+		set new_dir [selectNewHex $sitRep $x $y $z]
+		if {$new_dir eq ""} {
+			puts "Where should I go!?"
+			exit 1
+		}
+		lappend ol "MOVE $new_dir"
+		db eval {
+			UPDATE units SET orders=$ol
+			WHERE id=$unit_id
+		}
+		return
+	}
+
+	advanceLeader $u
+	set ol [$u cget -orders]
 
 	# TODO calculate a good budget to use
 	set budget 2600
@@ -615,7 +644,7 @@ itcl::body SitRep::createOrders {} {
 			return
 		}
 		#else, exited nexus
-		rampFirstHex $units
+		rampFirstHex $this $units
 		return
 	}
 	#else post-start
