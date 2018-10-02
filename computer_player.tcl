@@ -253,10 +253,10 @@ proc rampFirstHex {sitRep units} {
 		# amazing!
 		if {$ct_plain > 4 || ($ct_plain > 3 && $ct_forest + $ct_mountain > 1)} {
 			set stay 1
-		} elseif {$near_jumps && $ct_plain > 2} {
+		} elseif {$near_jumps && $ct_plain > 1} {
 			# take anything ok
 			set stay 1
-		} elseif {$near_jumps && $ct_plain > 0 && $ct_forest + $ct_mountain > 2} {
+		} elseif {$near_jumps && $ct_plain + $ct_forest + $ct_mountain > 1} {
 			# take anything ok
 			set stay 1
 		} elseif {$num_jumps >= $max_jumps} {
