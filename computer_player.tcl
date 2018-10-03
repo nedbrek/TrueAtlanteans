@@ -251,13 +251,13 @@ proc rampFirstHex {sitRep units} {
 		set near_jumps [expr {$num_jumps > $max_jumps - 2}]
 
 		# amazing!
-		if {$ct_plain > 4 || ($ct_plain > 3 && $ct_forest + $ct_mountain > 1)} {
+		if {$ct_plain > 4 || ($ct_plain > 0 && $ct_forest + $ct_mountain > 2)} {
 			set stay 1
-		} elseif {$near_jumps && $ct_plain > 1} {
+		} elseif {$ct_plain + $ct_forest + $ct_mountain > 1} {
 			# take anything ok
 			set stay 1
-		} elseif {$near_jumps && $ct_plain + $ct_forest + $ct_mountain > 1} {
-			# take anything ok
+		} elseif {$near_jumps && $ct_plain + $ct_forest + $ct_mountain > 0} {
+			# take anything not terrible
 			set stay 1
 		} elseif {$num_jumps >= $max_jumps} {
 			# out of time
@@ -284,7 +284,7 @@ proc rampFirstHex {sitRep units} {
 	set res [db eval {
 		SELECT name
 		FROM units
-		WHERE regionId=$rid AND detail<>'own' AND name="City Guard"
+		WHERE regionId=$rid AND detail<>'own'
 	}]
 	if {$res ne ""} {
 		set get_out 1
@@ -510,6 +510,35 @@ proc processRegion {sitRep rid} {
 		}
 
 		advanceLeader $leader
+	}
+
+	if {[llength $units] == 1 && [llength $couriers] == 1} {
+		set get_out 0
+		set res [db eval {
+			SELECT name
+			FROM units
+			WHERE regionId=$rid AND detail<>'own'
+		}]
+		if {$res ne ""} {
+			set get_out 1
+		}
+
+		if {$get_out} {
+			set new_dir [selectNewHex $sitRep $x $y $z]
+			if {$new_dir eq ""} {
+				puts "Where should I go!?"
+				exit 1
+			}
+			set u [lindex $units 0]
+			set unit_id [$u cget -db_id]
+			set ol [$u cget -orders]
+			lappend ol "MOVE $new_dir"
+			db eval {
+				UPDATE units SET orders=$ol
+				WHERE id=$unit_id
+			}
+			return
+		}
 	}
 
 	# buy tax men
