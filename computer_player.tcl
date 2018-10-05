@@ -81,11 +81,6 @@ proc isCoast {x y z} {
 }
 
 proc selectNewHex {sitRep x y z} {
-	set start_cities [::db eval {
-		SELECT dest
-		FROM nexus_exits
-	}]
-
 	# TODO move strategy
 	set dirs {n nw ne sw se s}
 	set d_vals [list]
@@ -94,10 +89,14 @@ proc selectNewHex {sitRep x y z} {
 		set loc [moveCoord $x $y $d]
 		set nx [lindex $loc 0]
 		set ny [lindex $loc 1]
-		lappend loc $z
 
-		# don't go back to a start city
-		if {[lsearch $start_cities $loc] != -1} {
+		# don't go to a city
+		set res [::db onecolumn {
+			SELECT city
+			FROM terrain
+			WHERE x=$nx AND y=$ny AND z=$z
+		}]
+		if {$res ne ""} {
 			lappend d_vals 0
 			continue
 		}
@@ -206,6 +205,21 @@ proc buyGuards {budget claim x y z taxers} {
 		[expr {$taxersNeeded - $numBuy}]]
 }
 
+proc checkStay {rid} {
+	set res [db eval {
+		SELECT name
+		FROM units
+		WHERE regionId=$rid AND detail<>'own'
+	}]
+	foreach n $res {
+		if {$n eq "- Tribe of Centaurs"} {
+			continue
+		}
+		return 1
+	}
+	return 0
+}
+
 proc rampFirstHex {sitRep units} {
 	foreach {x y z unit_id name unum il ol} $units {}
 	set rid [::db onecolumn {SELECT id FROM detail WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn}]
@@ -280,17 +294,7 @@ proc rampFirstHex {sitRep units} {
 		}
 	}
 
-	set get_out 0
-	set res [db eval {
-		SELECT name
-		FROM units
-		WHERE regionId=$rid AND detail<>'own'
-	}]
-	if {$res ne ""} {
-		set get_out 1
-	}
-
-	if {$get_out} {
+	if {[checkStay $rid]} {
 		set new_dir [selectNewHex $sitRep $x $y $z]
 		if {$new_dir eq ""} {
 			puts "Where should I go!?"
@@ -513,17 +517,7 @@ proc processRegion {sitRep rid} {
 	}
 
 	if {[llength $units] == 1 && [llength $couriers] == 1} {
-		set get_out 0
-		set res [db eval {
-			SELECT name
-			FROM units
-			WHERE regionId=$rid AND detail<>'own'
-		}]
-		if {$res ne ""} {
-			set get_out 1
-		}
-
-		if {$get_out} {
+		if {[checkStay $rid]} {
 			set new_dir [selectNewHex $sitRep $x $y $z]
 			if {$new_dir eq ""} {
 				puts "Where should I go!?"
