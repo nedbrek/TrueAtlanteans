@@ -718,7 +718,7 @@ itcl::body SitRep::createOrders {} {
 
 		# calc distance to each taxing region
 		set cdist [list]
-		set min_dist 1e6
+		set min_dist 1000000
 		foreach tr $tax_regions {
 			set d [getDistance $x $y $z {*}$tr]
 			lappend cdist $d
