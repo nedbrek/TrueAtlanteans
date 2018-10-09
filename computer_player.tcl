@@ -348,20 +348,22 @@ proc pickStartDirection {units} {
 		lappend exits $ex_n
 	}
 
+	foreach {x y z unit_id name uid il ol} $units {
+	}
+	lappend ol "faction war 3 trade 2"
+	lappend ol "behind 1" "avoid 1"
+
 	if {$exits eq ""} {
 		# must jump
 		::db eval {
 			INSERT OR REPLACE INTO notes
 			VALUES("no_exits", "1")
 		}
-		foreach {x y z unit_id name uid il ol} $units {
-			lappend ol "behind 1" "avoid 1"
-			lappend ol "CAST GATE RANDOM"
-			lappend ol "claim 100" "STUDY FORC"
-			db eval {
-				UPDATE units SET orders=$ol
-				WHERE id=$unit_id
-			}
+		lappend ol "CAST GATE RANDOM"
+		lappend ol "claim 100" "STUDY FORC"
+		db eval {
+			UPDATE units SET orders=$ol
+			WHERE id=$unit_id
 		}
 		return
 	}
@@ -386,13 +388,10 @@ proc pickStartDirection {units} {
 		set dir2 se
 	}
 
-	foreach {x y z unit_id name uid il ol} $units {
-		lappend ol "behind 1" "avoid 1"
-		lappend ol [format {move %s %s} $best_dir $dir2]
-		db eval {
-			UPDATE units SET orders=$ol
-			WHERE id=$unit_id
-		}
+	lappend ol [format {move %s %s} $best_dir $dir2]
+	db eval {
+		UPDATE units SET orders=$ol
+		WHERE id=$unit_id
 	}
 }
 
