@@ -107,7 +107,14 @@ proc atl_install {turn_num} {
 }
 
 ### main
-foreach t [lsort $turns] {
+if {$cmd eq "next"} {
+	set t [lindex [lsort -dictionary $turns] end]
+	set turn_num [regsub {turn} [file tail $t] ""]
+	atl_regen $turn_num
+	exit
+}
+
+foreach t [lsort -dictionary $turns] {
 	set turn_num [regsub {turn} [file tail $t] ""]
 	if {$turn_num == 0} {
 		# nothing happening
