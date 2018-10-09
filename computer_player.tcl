@@ -107,7 +107,7 @@ proc selectNewHex {sitRep x y z} {
 			continue
 		}
 
-		set terrain [::db eval {
+		set terrain [::db onecolumn {
 			SELECT type
 			FROM terrain
 			WHERE x=$nx AND y=$ny AND z=$z
@@ -713,6 +713,11 @@ itcl::body SitRep::createOrders {} {
 		if {[string match -nocase {*move*} [$u cget -orders]]} {
 			continue
 		}
+		if {[llength $couriers] >= [llength $tax_regions]} {
+			# TODO trim far couriers (convert to scouts?)
+			break
+		}
+
 		lappend couriers $u
 
 		# calc distance to each taxing region
@@ -725,10 +730,6 @@ itcl::body SitRep::createOrders {} {
 		}
 		lappend cmin_dists $min_dist
 		lappend courier_dists $cdist
-	}
-
-	if {[llength $couriers] > [llength $tax_regions]} {
-		# TODO trim far coutiers (convert to scouts?)
 	}
 
 	while {[llength $couriers]} {

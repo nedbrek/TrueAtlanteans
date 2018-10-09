@@ -81,6 +81,9 @@ itcl::class Unit {
 			puts "Can't navigate between levels"
 			return
 		}
+		if {$x == $cur_x && $y == $cur_y} {
+			return
+		}
 		# TODO handle weight and weather
 		if {$cur_y < $y} {
 			set d "s"
