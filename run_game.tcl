@@ -1,4 +1,6 @@
 #!/usr/bin/env tclsh
+lappend ::auto_path [pwd]
+package require client_utils
 if {$argc < 3} {
 	puts "Usage $argv0 <command> <game_dir> <local_dir>"
 	exit 1
@@ -102,6 +104,33 @@ proc atl_install {turn_num} {
 			set cmd [list diff [file join $::local_path$player_num orders.$turn_num] [regsub {report} $r "orders"]]
 			puts $cmd
 			file copy -force [file join $::local_path$player_num orders.$turn_num] [regsub {report} $r "orders"]
+		}
+	}
+}
+
+proc atl_status {turn_num} {
+	set cur_dir [file join $::game_path [subst {turn$turn_num}]]
+	set reports [glob [file join $cur_dir "report.*"]]
+	foreach r $reports {
+		set player_num [regsub {report\.} [file tail $r] ""]
+		if {$player_num == 1} {
+			# GM report
+			continue
+		}
+		set local_dir [format {%s%s} $::local_path $player_num]
+		set errMsg [openDb [file join $local_dir game.db]]
+		if {$errMsg ne ""} {
+			puts "Could not open $local_dir game.db"
+			exit 1
+		}
+		set res [::db eval {
+			SELECT x,y,z,curTax(id,tax) as ct, tax
+			FROM detail
+			WHERE turn=$turn_num AND ct > 0
+			ORDER BY ct DESC
+		}]
+		foreach {x y z ct tax} $res {
+			puts "$player_num $turn_num $x $y $z $ct"
 		}
 	}
 }
