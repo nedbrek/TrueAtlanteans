@@ -24,7 +24,7 @@ set ::terrainColors {
 	jungle      #205020
 	lake        #0000ff
 	mountain    #704018
-	mystforest  #004000
+	mystforest  #008000
 	ocean       #000040
 	plain       #ffffc0
 	swamp       #a0a040
