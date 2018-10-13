@@ -81,8 +81,18 @@ proc isCoast {x y z} {
 }
 
 proc selectNewHex {sitRep x y z} {
-	# TODO move strategy
-	set dirs {n nw ne sw se s}
+	# TODO more move strategy
+	# move away from poles
+	if {$x < $::max_x / 2 - 2} {
+		# north pole
+		set dirs {s sw se nw ne n}
+	} elseif {$x > $::max_x / 2 +2} {
+		# south pole
+		set dirs {n nw ne sw se s}
+	} else {
+		# equator
+		set dirs {nw se sw ne n s}
+	}
 	set d_vals [list]
 
 	foreach d $dirs {
