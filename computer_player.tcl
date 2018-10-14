@@ -100,17 +100,6 @@ proc selectNewHex {sitRep x y z} {
 		set nx [lindex $loc 0]
 		set ny [lindex $loc 1]
 
-		# don't go to a city
-		set res [::db onecolumn {
-			SELECT city
-			FROM terrain
-			WHERE x=$nx AND y=$ny AND z=$z
-		}]
-		if {$res ne ""} {
-			lappend d_vals 0
-			continue
-		}
-
 		# don't go to a hex we're already in
 		if {[$sitRep inRegion $nx $ny $z]} {
 			lappend d_vals 0
@@ -122,22 +111,37 @@ proc selectNewHex {sitRep x y z} {
 			FROM terrain
 			WHERE x=$nx AND y=$ny AND z=$z
 		}]
+
+		# can't move into ocean
 		if {$terrain eq "ocean"} {
 			lappend d_vals 0
 			continue
 		}
 
-		# degrade moving to coast
-		if {[isCoast $nx $ny $z]} {
-			lappend d_vals 1
-			continue
+		switch $terrain {
+			"plain" { set base_val 9 }
+
+			"forest" -
+			"mystforest" -
+			"mountain" { set base_val 6 }
+
+			default { set base_val 3 }
 		}
 
-		if {$terrain eq "plain"} {
-			lappend d_vals 10
-		} else {
-			lappend d_vals 2
+		# degrade cities
+		set res [::db onecolumn {
+			SELECT city
+			FROM terrain
+			WHERE x=$nx AND y=$ny AND z=$z
+		}]
+		if {$res ne ""} {
+			incr base_val -2
+		} elseif {[isCoast $nx $ny $z]} {
+			# degrade moving to coast
+			incr base_val -1
 		}
+
+		lappend d_vals $base_val
 	}
 
 	set best_d [lindex [lsort -integer -decreasing -indices $d_vals] 0]
