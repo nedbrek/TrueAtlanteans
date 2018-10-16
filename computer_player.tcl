@@ -95,10 +95,17 @@ proc selectNewHex {sitRep x y z} {
 	}
 	set d_vals [list]
 
+	set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
+
 	foreach d $dirs {
 		set loc [moveCoord $x $y $d]
 		set nx [lindex $loc 0]
 		set ny [lindex $loc 1]
+
+		if {[lsearch $keep_out [list $nx $ny $z]] != -1} {
+			lappend d_vals 0
+			continue
+		}
 
 		# don't go to a hex we're already in
 		if {[$sitRep inRegion $nx $ny $z]} {
@@ -219,7 +226,7 @@ proc buyGuards {budget claim x y z taxers} {
 		[expr {$taxersNeeded - $numBuy}]]
 }
 
-proc checkStay {rid} {
+proc checkStay {rid x y z} {
 	set res [db eval {
 		SELECT name
 		FROM units
@@ -229,6 +236,9 @@ proc checkStay {rid} {
 		if {$n eq "- Tribe of Centaurs"} {
 			continue
 		}
+		set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
+		lappend keep_out [list $x $y $z]
+		::db eval { INSERT OR REPLACE INTO notes VALUES("keep_out", $keep_out)}
 		return 1
 	}
 	return 0
@@ -308,7 +318,7 @@ proc rampFirstHex {sitRep units} {
 		}
 	}
 
-	if {[checkStay $rid]} {
+	if {[checkStay $rid $x $y $z]} {
 		set new_dir [selectNewHex $sitRep $x $y $z]
 		if {$new_dir eq ""} {
 			puts "Where should I go!?"
@@ -530,7 +540,7 @@ proc processRegion {sitRep rid} {
 	}
 
 	if {[llength $units] == 1 && [llength $couriers] == 1} {
-		if {[checkStay $rid]} {
+		if {[checkStay $rid $x $y $z]} {
 			set new_dir [selectNewHex $sitRep $x $y $z]
 			if {$new_dir eq ""} {
 				puts "Where should I go!?"
