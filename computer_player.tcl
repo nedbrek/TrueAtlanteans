@@ -102,6 +102,11 @@ proc selectNewHex {sitRep x y z} {
 		set nx [lindex $loc 0]
 		set ny [lindex $loc 1]
 
+		if {$nx < 0 || $ny < 0 || $nx > $::max_x || $ny > $::max_y} {
+			lappend d_vals 0
+			continue
+		}
+
 		if {[lsearch $keep_out [list $nx $ny $z]] != -1} {
 			lappend d_vals 0
 			continue
@@ -320,14 +325,12 @@ proc rampFirstHex {sitRep units} {
 
 	if {[checkStay $rid $x $y $z]} {
 		set new_dir [selectNewHex $sitRep $x $y $z]
-		if {$new_dir eq ""} {
-			puts "Where should I go!?"
-			exit 1
-		}
-		lappend ol "MOVE $new_dir"
-		db eval {
-			UPDATE units SET orders=$ol
-			WHERE id=$unit_id
+		if {$new_dir ne ""} {
+			lappend ol "MOVE $new_dir"
+			db eval {
+				UPDATE units SET orders=$ol
+				WHERE id=$unit_id
+			}
 		}
 		return
 	}
@@ -542,17 +545,15 @@ proc processRegion {sitRep rid} {
 	if {[llength $units] == 1 && [llength $couriers] == 1} {
 		if {[checkStay $rid $x $y $z]} {
 			set new_dir [selectNewHex $sitRep $x $y $z]
-			if {$new_dir eq ""} {
-				puts "Where should I go!?"
-				exit 1
-			}
-			set u [lindex $units 0]
-			set unit_id [$u cget -db_id]
-			set ol [$u cget -orders]
-			lappend ol "MOVE $new_dir"
-			db eval {
-				UPDATE units SET orders=$ol
-				WHERE id=$unit_id
+			if {$new_dir ne ""} {
+				set u [lindex $units 0]
+				set unit_id [$u cget -db_id]
+				set ol [$u cget -orders]
+				lappend ol "MOVE $new_dir"
+				db eval {
+					UPDATE units SET orders=$ol
+					WHERE id=$unit_id
+				}
 			}
 			return
 		}
