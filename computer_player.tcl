@@ -542,11 +542,14 @@ proc processRegion {sitRep rid} {
 		advanceLeader $leader
 	}
 
-	if {[llength $units] == 1 && [llength $couriers] == 1} {
+	if {[llength $units] == [llength $couriers]} {
 		if {[checkStay $rid $x $y $z]} {
 			set new_dir [selectNewHex $sitRep $x $y $z]
-			if {$new_dir ne ""} {
-				set u [lindex $units 0]
+			if {$new_dir eq ""} {
+				return
+			}
+
+			foreach u $units {
 				set unit_id [$u cget -db_id]
 				set ol [$u cget -orders]
 				lappend ol "MOVE $new_dir"
