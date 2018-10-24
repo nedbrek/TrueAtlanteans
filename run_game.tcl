@@ -69,7 +69,8 @@ proc atl_regen {turn_num} {
 			exec tclsh computer_player.tcl new $local_dir max_x 32 max_y 32 jump $jmp
 		}
 		puts "tclsh computer_player.tcl add $local_dir turn$turn_num.$player_num"
-		exec tclsh computer_player.tcl add $local_dir turn$turn_num.$player_num
+		set res [exec tclsh computer_player.tcl add $local_dir turn$turn_num.$player_num]
+		if {$res ne ""} { puts $res }
 		puts "tclsh computer_player.tcl gen $local_dir"
 		set res [exec tclsh computer_player.tcl gen $local_dir]
 		if {$res ne ""} { puts $res }
