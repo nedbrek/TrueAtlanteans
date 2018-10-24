@@ -352,7 +352,7 @@ proc rampFirstHex {sitRep units} {
 	}
 }
 
-proc pickStartDirection {units} {
+proc pickStartDirection {rid units} {
 	set exits [list]
 
 	set res [db eval {
@@ -377,6 +377,7 @@ proc pickStartDirection {units} {
 
 	foreach {x y z unit_id name uid il ol} $units {
 	}
+	set u [getUnitObjects $rid]
 	lappend ol "faction war 3 trade 2"
 	lappend ol "behind 1" "avoid 1"
 
@@ -387,7 +388,9 @@ proc pickStartDirection {units} {
 			VALUES("no_exits", "1")
 		}
 		lappend ol "CAST GATE RANDOM"
-		lappend ol "claim 100" "STUDY FORC"
+		$u configure -orders $ol
+		advanceLeader $u
+		set ol [$u cget -orders]
 		db eval {
 			UPDATE units SET orders=$ol
 			WHERE id=$unit_id
@@ -683,22 +686,6 @@ proc processRegion {sitRep rid} {
 }
 
 itcl::body SitRep::createOrders {} {
-	set units $unit_state
-	if {$overall_state == "start"} {
-		# only one unit
-		set zlevel [lindex $units 2]
-		if {$zlevel == 0} {
-			# we're in the nexus
-			# choose an exit
-			pickStartDirection $units
-			return
-		}
-		#else, exited nexus
-		rampFirstHex $this $units
-		return
-	}
-	#else post-start
-
 	# pull all regions where we have units
 	set res [::db eval {
 		SELECT detail.x, detail.y, detail.z, detail.id
@@ -711,6 +698,22 @@ itcl::body SitRep::createOrders {} {
 	foreach {x y z rid} $res {
 		set regions($x,$y,$z) $rid
 	}
+
+	set units $unit_state
+	if {$overall_state == "start"} {
+		# only one unit
+		set zlevel [lindex $units 2]
+		if {$zlevel == 0} {
+			# we're in the nexus
+			# choose an exit
+			pickStartDirection $rid $units
+			return
+		}
+		#else, exited nexus
+		rampFirstHex $this $units
+		return
+	}
+	#else post-start
 
 	# foreach region
 	set tax_regions [list]
