@@ -345,6 +345,9 @@ proc parseUnit {v} {
 	# group 3 - skills
 	if {$quality eq "own"} {
 		set group3 [string map {"\n" " "} [lindex $groups 3]]
+		if {[regexp {Upkeep:} $group3]} {
+			set group3 [string map {"\n" " "} [lindex $groups 4]]
+		}
 		set skills [split [lrange $group3 1 end] ","]
 
 		dict set u Skills [fixSkills $skills]
@@ -746,8 +749,14 @@ proc parseFile {f} {
 	# Faction Name (number) (War n,Trade n, Magic n)
 	if {![regexp {([^(]+) \(([[:digit:]]+)\) \(War ([[:digit:]]+), Trade ([[:digit:]]+)(, Magic ([[:digit:]]+))?\)} $v -> \
 	   fact_name fact_num war_num trade_num magic_num]} {
-			puts "Error parsing faction name '$v'"
-			exit 1
+			if {![regexp {([^(]+) \(([[:digit:]]+)\)} $v -> fact_name fact_num]} {
+				puts "Error parsing faction name '$v'"
+				exit 1
+			}
+			# no faction points
+			set war_num 0
+			set trade_num 0
+			set magic_num 0
 	}
 
 	dict set turn FactName $fact_name
@@ -776,14 +785,22 @@ proc parseFile {f} {
 		if {$v eq "Faction Status:"} {
 			# tax
 			set v [getSection $f]
-			regexp {Tax Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> tax_use tax_max
+			if {[regexp {Tax Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> tax_use tax_max]} {
+				set v [getSection $f]
+			} else {
+				set tax_use 0
+				set tax_max 1000
+			}
 
 			# trade
-			set v [getSection $f]
-			regexp {Trade Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> trade_use trade_max
+			if {[regexp {Trade Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> trade_use trade_max]} {
+				set v [getSection $f]
+			} else {
+				set trade_use 0
+				set trade_max 1000
+			}
 
 			# mages
-			set v [getSection $f]
 			regexp {Mages: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> mage_use mage_max
 
 			# apprentices (if they exist)
