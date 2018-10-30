@@ -408,6 +408,9 @@ proc updateDb {db tdata} {
 
 	$db eval {BEGIN TRANSACTION}
 
+	set alignment [dGet $tdata Alignment]
+	$db eval {INSERT OR REPLACE INTO notes VALUES("alignment", $alignment)}
+
 	set regions [dGet $tdata Regions]
 	foreach r $regions {
 

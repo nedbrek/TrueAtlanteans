@@ -778,6 +778,7 @@ proc parseFile {f} {
 	set itemList [list]
 	set skillList [list]
 	set objList [list]
+	set alignment ""
 
 	set v [getSection $f]
 	while {![regexp {^Unclaimed silver:} $v]} {
@@ -817,6 +818,8 @@ proc parseFile {f} {
 			dict set turn Mage [list $mage_use $mage_max]
 			dict set turn Appr [list $appr_use $appr_max]
 
+		} elseif {[regexp {Your faction is (evil|neutral|good)} $v -> alignment]} {
+			set v [getSection $f]
 		} elseif {$v eq "Skill reports:"} {
 			#set skillF [open "skills.txt" a]
 
@@ -873,6 +876,7 @@ proc parseFile {f} {
 			set v [getSection $f]
 		}
 	}
+	dict set turn "Alignment" $alignment
 	dict set turn "Items" $itemList
 	dict set turn "Skills" $skillList
 	dict set turn "Objects" $objList
