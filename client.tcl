@@ -1,5 +1,6 @@
+#!/usr/bin/env wish
 package require Tk
-lappend ::auto_path [pwd]
+lappend ::auto_path [file dirname $argv0]
 package require client_utils
 
 wm withdraw .
