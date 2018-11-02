@@ -235,6 +235,30 @@ proc getDistance {x1 y1 z1 x2 y2 z2} {
 	return $maxx
 }
 
+proc moveToward {cur_x cur_y cur_z x y z} {
+	if {$cur_z != $z} {
+		puts "Can't navigate between levels"
+		return
+	}
+	if {$x == $cur_x && $y == $cur_y} {
+		return
+	}
+	# TODO handle weight and weather
+	if {$cur_y < $y} {
+		set d "s"
+	} else {
+		set d "n"
+	}
+	if {$cur_x < $x} {
+		append d "e"
+	} elseif {$cur_x > $x} {
+		append d "w"
+	}
+	# TODO decide when to use wrap
+	# TODO move multiple
+	return $d
+}
+
 proc moveCoord {x y dir} {
 	switch $dir {
 		n { incr y -2 }

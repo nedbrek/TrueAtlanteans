@@ -25,11 +25,17 @@ itcl::class SitRep {
 	public variable overall_state
 	public variable unit_state
 	public variable regions
+	public variable import_regions
 
 	constructor {} {
 		set ret [evaluateSituation]
 		set overall_state [dGet $ret State]
 		set unit_state [dGet $ret Units]
+		set import_regions [db onecolumn {SELECT val FROM notes WHERE key="import_regions"}]
+	}
+
+	method saveState {} {
+		db eval {UPDATE notes SET val=$import_regions WHERE key="import_regions"}
 	}
 
 	method inRegion {x y z} {
@@ -59,6 +65,7 @@ itcl::class SitRep {
 	}
 
 	method createOrders {}
+	method buyGuards {budget claim x y z taxers}
 }
 
 ###
@@ -163,7 +170,7 @@ proc selectNewHex {sitRep x y z} {
 	return [lindex $dirs $best_d]
 }
 
-proc buyGuards {budget claim x y z taxers} {
+itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
 		FROM detail
@@ -189,6 +196,27 @@ proc buyGuards {budget claim x y z taxers} {
 	set ret [getBuyRace $sells $peasants]
 	foreach {maxRace raceList price} $ret {}
 
+	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
+
+	set alignment [db onecolumn {SELECT val FROM notes WHERE key="alignment"}]
+	set race_align [db onecolumn {SELECT val FROM notes WHERE key="race_align"}]
+	if {$race_align eq ""} {
+		set ra "neutral"
+	} else {
+		set ra [dGet $race_align $abbr]
+		if {$ra eq ""} {
+			puts "No alignment for '$abbr'"
+		}
+	}
+
+	if {$alignment ne "" && $alignment ne "neutral"} {
+		if {$alignment ne $ra} {
+			# note region for import of guards matching alignment
+			lappend import_regions [list $x $y $z]
+			return [list "" "" 0]
+		}
+	}
+
 	# limit by cash on hand
 	# start without maintenance cost
 	set maxBuy [expr {$budget / ($price + 10)}]
@@ -205,8 +233,6 @@ proc buyGuards {budget claim x y z taxers} {
 	if {$numBuy == 0} {
 		return [list "" "" 1]
 	}
-
-	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
 
 	lappend ol "form 1" "name unit Guard"
 
@@ -341,7 +367,7 @@ proc rampFirstHex {sitRep units} {
 	# TODO calculate a good budget to use
 	set budget 2600
 
-	set ret [buyGuards $budget 1 $x $y $z 0]
+	set ret [$sitRep buyGuards $budget 1 $x $y $z 0]
 	foreach {s_need form_orders rem} $ret {}
 
 	set ol [concat $ol $form_orders]
@@ -566,7 +592,7 @@ proc processRegion {sitRep rid} {
 	}
 
 	# buy tax men
-	set ret [buyGuards $totalSilver 0 $x $y $z $taxers]
+	set ret [$sitRep buyGuards $totalSilver 0 $x $y $z $taxers]
 	foreach {s_need form_orders rem} $ret {}
 
 	if {$s_need > 0} {
@@ -626,18 +652,65 @@ proc processRegion {sitRep rid} {
 
 				set form_unit [lindex $units 0]
 				set ol [$form_unit cget -orders]
-				lappend ol \
-					{FORM 20} \
-					{NAME UNIT "Courier"} \
-					"BUY 1 $abbr" \
-					{AVOID 1} \
-					{BEHIND 1} \
-					{NOAID 1} \
-					"MOVE $new_dir" \
-					{END}
+
+				set will_export 0
+				set import_regions [$sitRep cget -import_regions]
+				for {set i 0} {$i < [llength $import_regions]} {incr i} {
+					set ir [lindex $import_regions $i]
+					set d [getDistance $x $y $z {*}$ir]
+					if {$d == 1} {
+						foreach {tx ty tz} $ir break
+						set tax [db onecolumn {
+							SELECT tax
+							FROM detail
+							WHERE x=$tx AND y=$ty AND z=$tz
+							ORDER BY turn DESC LIMIT 1
+						}]
+						set taxers_needed [expr {$tax / 50}]
+						set budget $totalSilver
+						set maxBuy [expr {$budget / ($price + 10 + 10 + 10)}]
+						set numBuy [expr {min($taxers_needed, $maxBuy, $maxRace)}]
+						if {$numBuy == 0} {
+							break
+						}
+						set will_export 1
+
+						set dir [moveToward $x $y $z {*}$ir]
+						set courier_id "NEW 30"
+						lappend ol \
+						    {FORM 30} \
+						    {NAME UNIT "Guard"} \
+						    "BUY $numBuy $abbr" \
+						    {NOAID 1} \
+							 {STUDY COMB} \
+							 {TURN} \
+						    "MOVE $dir" \
+							 {ENDTURN} \
+							 {TURN} \
+						    "@tax" \
+							 {ENDTURN} \
+						    {END}
+
+						set import_regions [lreplace $import_regions $i $i]
+						$sitRep configure -import_regions $import_regions
+						break
+					}
+				}
+
+				if {!$will_export} {
+					set courier_id "NEW 20"
+					lappend ol \
+					    {FORM 20} \
+					    {NAME UNIT "Courier"} \
+					    "BUY 1 $abbr" \
+					    {AVOID 1} \
+					    {BEHIND 1} \
+					    {NOAID 1} \
+					    "MOVE $new_dir" \
+					    {END}
+				}
 
 				$form_unit configure -orders $ol
-				set courier_id "NEW 20"
 			} else {
 				set u [lindex $couriers 0]
 				set ol [$u cget -orders]
@@ -809,9 +882,29 @@ if {![info exists debug]} {
 		createDb "game.db"
 
 		foreach {k v} [lrange $argv 2 end] {
-			::db eval {
-				INSERT OR REPLACE INTO notes
-				VALUES($k, $v)
+			if {$k eq "-f"} {
+				set f [open $v]
+				set l [gets $f]
+				while {![eof $f]} {
+					set k1 [lindex $l 0]
+					set v1 [lindex $l 1]
+					if {[llength $l] != 2} {
+						puts "Bad key/value '$k1' '$v1'"
+						exit
+					}
+
+					::db eval {
+						INSERT OR REPLACE INTO notes
+						VALUES($k1, $v1)
+					}
+
+					set l [gets $f]
+				}
+			} else {
+				::db eval {
+					INSERT OR REPLACE INTO notes
+					VALUES($k, $v)
+				}
 			}
 		}
 		exit 0
@@ -837,6 +930,8 @@ if {![info exists debug]} {
 	# generate orders for current turn
 	set sitRep [SitRep #auto]
 	$sitRep createOrders
+
+	$sitRep saveState
 
 	writeOrders [format {orders.%d} [expr {$::currentTurn + 1}]]
 }
