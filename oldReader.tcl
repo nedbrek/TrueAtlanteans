@@ -253,8 +253,7 @@ proc unitItemsIdx {fields} {
 	while {![regexp {\[[[:alnum:]]{3,4}\]} [lindex $fields $i]]} {
 		incr i
 		if {$i > [llength $fields]} {
-			puts "Error in $fields"
-			exit
+			error "Error in $fields"
 		}
 	}
 	return $i
@@ -298,6 +297,10 @@ proc parseUnit {v} {
 	# get unit name
 	set comma [string first "," $v]
 	set n [string range $v 2 $comma-1]
+	if {[regexp {\.} $n]} {
+		set n2 [string map {. "_"} $n]
+		set v [string replace $v 2 $comma-1 $n2]
+	}
 
 	# strip description
 	set d [regexp {;(.*)$} $v -> desc]
@@ -311,7 +314,9 @@ proc parseUnit {v} {
 	set groups [split $v "."]
 
 	set group0 [split [lindex $groups 0] ","]
-	set itemIdx [unitItemsIdx $group0]
+	if {[catch {unitItemsIdx $group0} itemIdx]} {
+		error "parseUnit: '$v'"
+	}
 
 	set uflags ""
 	set fact ""
