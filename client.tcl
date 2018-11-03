@@ -1431,6 +1431,51 @@ proc itemView {} {
 	}
 }
 
+proc showSkills {} {
+	# build the window
+	set t .tShowSkills
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Skill Viewer"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	}
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	set cols ""
+	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv column 1 -width 65
+	$t.fTop.tv column 2 -width 79
+	$t.fTop.tv column 3 -width 34
+	$t.fTop.tv column #0 -stretch 0
+	$t.fTop.tv column 1 -stretch 0
+	$t.fTop.tv column 2 -stretch 0
+	$t.fTop.tv column 3 -stretch 0
+	$t.fTop.tv heading 1 -text "Abbr"
+	$t.fTop.tv heading 2 -text "Level"
+	$t.fTop.tv heading 3 -text "Cost"
+	$t.fTop.tv heading 4 -text "Desc"
+
+	::db eval {
+		SELECT name, abbr, level, cost, desc
+		FROM skills
+		ORDER BY name
+	} {
+		set par [$t.fTop.tv insert {} end -text $name -values [list $abbr $level $cost ""]]
+		foreach d $desc {
+			$t.fTop.tv insert $par end -text "" -values [list "" "" "" $d]
+		}
+	}
+}
+
 # return number of hexes where production is underway
 proc ctProd {} {
 	set res [db eval {
@@ -2138,11 +2183,9 @@ wm title .t "True Atlanteans - <no game open>"
 menu .mTopMenu -tearoff 0
 menu .mTopMenu.mFile -tearoff 0
 menu .mTopMenu.mView -tearoff 0
-menu .mTopMenu.mReports -tearoff 0
 
 .mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
 .mTopMenu add cascade -label "View" -menu .mTopMenu.mView -underline 0
-.mTopMenu add cascade -label "Reports" -menu .mTopMenu.mReports -underline 0
 
 # file menu
 .mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
@@ -2153,16 +2196,15 @@ menu .mTopMenu.mReports -tearoff 0
 .mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
 
 # view menu
-.mTopMenu.mView add command -label "Mark active hexes" -command markActive -underline 0
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
+.mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
+.mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
+.mTopMenu.mView add command -label "Mark active hexes" -command markActive -underline 0
+.mTopMenu.mView add command -label "My Units" -command showAllUnits -underline 3
+.mTopMenu.mView add command -label "Taxers" -command reportTax -underline 0
+.mTopMenu.mView add command -label "Resources" -command reportResources -underline 0
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
-
-# reports menu
-.mTopMenu.mReports add command -label "My Units" -command showAllUnits -underline 0
-.mTopMenu.mReports add command -label "Idle Units" -command findIdleUnits -underline 0
-.mTopMenu.mReports add command -label "Foreign Units" -command findForeignUnits -underline 0
-.mTopMenu.mReports add command -label "Resources" -command reportResources -underline 0
-.mTopMenu.mReports add command -label "Taxers" -command reportTax -underline 0
+.mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
 
 .t configure -menu .mTopMenu
 
