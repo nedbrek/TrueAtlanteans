@@ -626,8 +626,11 @@ proc displayRegion {x y nexus} {
 	$t insert end "[lGet $rdata 3] peasants "
 	$t insert end "([lGet $rdata 4]), \$[lGet $rdata 5].\n"
 	$t insert end "------------------------------------\n"
-	$t insert end "The weather was [lGet $weather 0] last month;\n"
-	$t insert end "it will be [lGet $weather 1] next month.\n"
+	set cur_weather [lGet $weather 0]
+	if {$cur_weather ne ""} {
+		$t insert end "The weather was $cur_weather last month;\n"
+		$t insert end "it will be [lGet $weather 1] next month.\n"
+	}
 
 	$t insert end "Wages: \$[lGet $wages 0] (Max: \$[lGet $wages 1]).\n"
 	$t insert end "Entertainment: \$[lindex $rdata 6].\n"
@@ -644,29 +647,32 @@ proc displayRegion {x y nexus} {
 	}
 
 	# region resources for production
-	.t.fL.lProd configure -text [join [lindex $rdata 8]]
+	set resources [lindex $rdata 8]
+	if {$resources ne ""} {
+		set tvi [.t.fL.fMarket.tv insert {} 0 -text "Resources" -open 1]
+		foreach r $resources {
+			.t.fL.fMarket.tv insert $tvi end -text $r
+		}
+	}
 
 	# market
 	set sells [lindex $rdata 9]
 	set wants [lindex $rdata 10]
 	if {[llength $sells] == 0} {
-		.t.fL.fMarket.tv insert {} 0 -text "Nothing for sale" -open $gui::forSaleOpen
+		.t.fL.fMarket.tv insert {} end -text "Nothing for sale" -open $gui::forSaleOpen
 	} else {
-		set tvi [.t.fL.fMarket.tv insert {} 0 -text "For sale" -open $gui::forSaleOpen]
+		set tvi [.t.fL.fMarket.tv insert {} end -text "For sale" -open $gui::forSaleOpen]
 	}
 
 	foreach {i c} $sells {
 		.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
 	}
 
-	if {[llength $wants] == 0} {
-		.t.fL.fMarket.tv insert {} end -text "Wanted: nothing"
-	} else {
+	if {[llength $wants] > 0 && [lindex $wants 0] ne "none"} {
 		set tvi [.t.fL.fMarket.tv insert {} end -text "Wanted"]
-	}
-
-	foreach {i c} $wants {
-		.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
+		foreach {i c} $wants {
+			.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
+		}
 	}
 
 	# unit processing
@@ -913,6 +919,7 @@ proc newGame {} {
 
 	createDb $ofile
 	.t.fR.screen delete all
+	enableMenus
 }
 
 proc doOpen {} {
@@ -949,6 +956,7 @@ proc doOpen {} {
 	}
 
 	drawDB .t.fR.screen db
+	enableMenus
 }
 
 proc doAdd {} {
@@ -2190,10 +2198,15 @@ menu .mTopMenu.mView -tearoff 0
 # file menu
 .mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
 .mTopMenu.mFile add command -label "Open"        -command doOpen  -underline 0 -accelerator "Ctrl+O"
-.mTopMenu.mFile add command -label "Add Report"  -command doAdd   -underline 0
-.mTopMenu.mFile add command -label "Save Orders" -command saveOrders -underline 0
+.mTopMenu.mFile add command -label "Add Report"  -command doAdd   -underline 0 -state disabled
+.mTopMenu.mFile add command -label "Save Orders" -command saveOrders -underline 0 -state disabled
 .mTopMenu.mFile add separator
 .mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
+
+proc enableMenus {} {
+	.mTopMenu.mFile entryconfigure 2 -state normal
+	.mTopMenu.mFile entryconfigure 3 -state normal
+}
 
 # view menu
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
