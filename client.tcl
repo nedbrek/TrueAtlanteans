@@ -2191,9 +2191,11 @@ wm title .t "True Atlanteans - <no game open>"
 menu .mTopMenu -tearoff 0
 menu .mTopMenu.mFile -tearoff 0
 menu .mTopMenu.mView -tearoff 0
+menu .mTopMenu.mHelp -tearoff 0
 
 .mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
 .mTopMenu add cascade -label "View" -menu .mTopMenu.mView -underline 0
+.mTopMenu add cascade -label "Help" -menu .mTopMenu.mHelp -underline 0
 
 # file menu
 .mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
@@ -2218,6 +2220,10 @@ proc enableMenus {} {
 .mTopMenu.mView add command -label "Resources" -command reportResources -underline 0
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
 .mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
+
+# help menu
+.mTopMenu.mHelp add command -label "Check Orders" -command checkAllOrders -underline 0
+.mTopMenu.mHelp add command -label "Version" -command {tk_messageBox -message "0.1"} -underline 0
 
 .t configure -menu .mTopMenu
 
