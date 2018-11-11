@@ -65,8 +65,8 @@ proc atl_regen {turn_num} {
 			if {$player_num == 4} {
 				set jmp 0
 			}
-			puts "tclsh computer_player.tcl new $local_dir max_x 32 max_y 32 jump $jmp"
-			exec tclsh computer_player.tcl new $local_dir max_x 32 max_y 32 jump $jmp
+			puts "tclsh computer_player.tcl new $local_dir -f ../rules_m.txt jump $jmp"
+			exec tclsh computer_player.tcl new $local_dir -f ../rules_m.txt jump $jmp
 		}
 		puts "tclsh computer_player.tcl add $local_dir turn$turn_num.$player_num"
 		set res [exec tclsh computer_player.tcl add $local_dir turn$turn_num.$player_num]
