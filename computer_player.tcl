@@ -35,7 +35,10 @@ itcl::class SitRep {
 	}
 
 	method saveState {} {
-		db eval {UPDATE notes SET val=$import_regions WHERE key="import_regions"}
+		::db eval {
+			INSERT OR REPLACE INTO notes
+			VALUES("import_regions", $import_regions)
+		}
 	}
 
 	method inRegion {x y z} {
@@ -635,80 +638,84 @@ proc processRegion {sitRep rid} {
 
 	# consider expansion
 	if {$rem == 0} {
-		set new_dir [selectNewHex $sitRep $x $y $z]
+		set courier_id ""
+		set rdata [db eval {
+			SELECT id, sells, race, tax
+			FROM detail
+			WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn
+			ORDER BY turn DESC LIMIT 1
+		}]
+		foreach {regionId sells peasants maxTax} $rdata {}
+		set ret [getBuyRace $sells $peasants]
+		foreach {maxRace raceList price} $ret {}
+		regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
+
+		set form_unit [lindex $units 0]
+		set ol [$form_unit cget -orders]
+
+		set will_export 0
+		set import_regions [$sitRep cget -import_regions]
+		for {set i 0} {$i < [llength $import_regions]} {incr i} {
+			set ir [lindex $import_regions $i]
+			set d [getDistance $x $y $z {*}$ir]
+			if {$d == 1} {
+				foreach {tx ty tz} $ir break
+				set tax [db onecolumn {
+					SELECT tax
+					FROM detail
+					WHERE x=$tx AND y=$ty AND z=$tz
+					ORDER BY turn DESC LIMIT 1
+				}]
+				set taxers_needed [expr {$tax / 50}]
+				set budget $totalSilver
+				set maxBuy [expr {$budget / ($price + 10 + 10 + 10)}]
+				set numBuy [expr {min($taxers_needed, $maxBuy, $maxRace)}]
+				if {$numBuy == 0} {
+					break
+				}
+				set will_export 1
+
+				set dir [moveToward $x $y $z {*}$ir]
+				set courier_id "NEW 30"
+				lappend ol \
+					 {FORM 30} \
+					 {NAME UNIT "Guard"} \
+					 "BUY $numBuy $abbr" \
+					 {NOAID 1} \
+					 {STUDY COMB} \
+					 {TURN} \
+					 "MOVE $dir" \
+					 {ENDTURN} \
+					 {TURN} \
+					 "@tax" \
+					 {ENDTURN} \
+					 {END}
+
+				$form_unit configure -orders $ol
+
+				set import_regions [lreplace $import_regions $i $i]
+				$sitRep configure -import_regions $import_regions
+				break
+			}
+		}
+
+		set new_dir ""
+		if {!$will_export} {
+			set new_dir [selectNewHex $sitRep $x $y $z]
+		}
 
 		if {$new_dir ne ""} {
 			if {[llength $couriers] == 0} {
-				set rdata [db eval {
-					SELECT id, sells, race, tax
-					FROM detail
-					WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn
-					ORDER BY turn DESC LIMIT 1
-				}]
-				foreach {regionId sells peasants maxTax} $rdata {}
-				set ret [getBuyRace $sells $peasants]
-				foreach {maxRace raceList price} $ret {}
-				regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
-
-				set form_unit [lindex $units 0]
-				set ol [$form_unit cget -orders]
-
-				set will_export 0
-				set import_regions [$sitRep cget -import_regions]
-				for {set i 0} {$i < [llength $import_regions]} {incr i} {
-					set ir [lindex $import_regions $i]
-					set d [getDistance $x $y $z {*}$ir]
-					if {$d == 1} {
-						foreach {tx ty tz} $ir break
-						set tax [db onecolumn {
-							SELECT tax
-							FROM detail
-							WHERE x=$tx AND y=$ty AND z=$tz
-							ORDER BY turn DESC LIMIT 1
-						}]
-						set taxers_needed [expr {$tax / 50}]
-						set budget $totalSilver
-						set maxBuy [expr {$budget / ($price + 10 + 10 + 10)}]
-						set numBuy [expr {min($taxers_needed, $maxBuy, $maxRace)}]
-						if {$numBuy == 0} {
-							break
-						}
-						set will_export 1
-
-						set dir [moveToward $x $y $z {*}$ir]
-						set courier_id "NEW 30"
-						lappend ol \
-						    {FORM 30} \
-						    {NAME UNIT "Guard"} \
-						    "BUY $numBuy $abbr" \
-						    {NOAID 1} \
-							 {STUDY COMB} \
-							 {TURN} \
-						    "MOVE $dir" \
-							 {ENDTURN} \
-							 {TURN} \
-						    "@tax" \
-							 {ENDTURN} \
-						    {END}
-
-						set import_regions [lreplace $import_regions $i $i]
-						$sitRep configure -import_regions $import_regions
-						break
-					}
-				}
-
-				if {!$will_export} {
-					set courier_id "NEW 20"
-					lappend ol \
-					    {FORM 20} \
-					    {NAME UNIT "Courier"} \
-					    "BUY 1 $abbr" \
-					    {AVOID 1} \
-					    {BEHIND 1} \
-					    {NOAID 1} \
-					    "MOVE $new_dir" \
-					    {END}
-				}
+				set courier_id "NEW 20"
+				lappend ol \
+					 {FORM 20} \
+					 {NAME UNIT "Courier"} \
+					 "BUY 1 $abbr" \
+					 {AVOID 1} \
+					 {BEHIND 1} \
+					 {NOAID 1} \
+					 "MOVE $new_dir" \
+					 {END}
 
 				$form_unit configure -orders $ol
 			} else {
@@ -718,11 +725,13 @@ proc processRegion {sitRep rid} {
 				$u configure -orders $ol
 				set courier_id [$u cget -num]
 			}
+		}
 
+		if {$courier_id ne ""} {
 			for {set i 0} {$totalSilver > 0 && $i < [llength $funds]} {incr i 2} {
 				set u [lindex $funds $i]
 				set s [lindex $funds $i+1]
-				if {[$u cget -num] == $courier_id} {
+				if {[$u cget -num] eq $courier_id} {
 					incr totalSilver -$s
 					continue
 				}
@@ -888,6 +897,9 @@ if {![info exists debug]} {
 				while {![eof $f]} {
 					set k1 [lindex $l 0]
 					set v1 [lindex $l 1]
+					if {$k1 eq ""} {
+						break
+					}
 					if {[llength $l] != 2} {
 						puts "Bad key/value '$k1' '$v1'"
 						exit
