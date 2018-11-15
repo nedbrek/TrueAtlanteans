@@ -299,6 +299,30 @@ proc moveCoord {x y dir} {
 	return [list $x $y]
 }
 
+proc parseMan {t} {
+	set ret [dict create]
+
+	set i [lsearch $t "*This race may study *"]
+	set skill_spec [lindex $t $i]
+
+	if {[regexp { *This race may study all skills to level (.*)} $skill_spec -> all_level]} {
+		dict set ret ALL $all_level
+	} else {
+		regexp { *This race may study (.*) to level (.*) and all others to level ([^ ]*)} $skill_spec -> specs spec_level other_level
+		dict set ret SPEC_LVL $spec_level
+		dict set ret OTH_LVL $other_level
+
+		foreach s [split $specs ","] {
+			regexp {.* \[(.*)\]} $s -> skill_name
+			dict lappend ret SPEC $skill_name
+		}
+	}
+
+	dict set ret DESC [lreplace $t $i $i]
+
+	return $ret
+}
+
 proc loadData {filename} {
 	set tfile [open $filename]
 
