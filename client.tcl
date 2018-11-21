@@ -2281,7 +2281,7 @@ pack [scrollbar .t.fL.fMarket.vs -command ".t.fL.fMarket.tv yview" \
 -orient vertical] -side left -fill y
 
 # next, unit combobox
-pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45] -side top
+pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45 -exportselection 0] -side top
 if {$tcl_platform(os) eq "Linux"} {
 	# for some reason, the combox is much wider on Linux
 	.t.fL.cbMyUnits configure -width 36
