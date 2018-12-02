@@ -67,6 +67,7 @@ set ::boats {
 namespace eval gui {
 
 	set viewLevel 1
+	set draw_all 1
 
 	set prevUnit ""
 	set prevId   ""
@@ -390,6 +391,19 @@ proc drawDB {w db} {
 		if {$hasOtherBuild} {
 			$w create text [expr $x+2*$::n] [expr $y] -text "B" \
 			  -anchor ne -tags icon
+		}
+	}
+
+	if {$gui::draw_all} {
+		for {set y 0} {$y < $::max_y} {incr y 2} {
+			for {set x 0} {$x < $::max_x} {incr x} {
+				set col $x
+				set row [expr {($x & 1) ? $y + 1 : $y}]
+				if {[info exists drawn($col,$row)]} {continue} 
+				set drawn($col,$row) ""
+
+				set hexId [plot_hex_num $w $col $row]
+			}
 		}
 	}
 
@@ -2168,6 +2182,10 @@ proc finishForm {t} {
 	destroy $t
 }
 
+proc toggleDrawAll {} {
+	drawDB .t.fR.screen db
+}
+
 proc loadGlob {patt} {
 	set files [glob $patt]
 	foreach f $files {
@@ -2225,6 +2243,7 @@ proc enableMenus {} {
 }
 
 # view menu
+.mTopMenu.mView add checkbutton -label "All Hexes" -command toggleDrawAll -underline 0 -variable gui::draw_all
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
 .mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
