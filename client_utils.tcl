@@ -308,7 +308,7 @@ proc parseMan {t} {
 	if {[regexp { *This race may study all skills to level (.*)} $skill_spec -> all_level]} {
 		dict set ret ALL $all_level
 	} else {
-		regexp { *This race may study (.*) to level (.*) and all others to level ([^ ]*)} $skill_spec -> specs spec_level other_level
+		regexp { *This race may study (.*) to level (.*) and all other.* to level ([^ ]*)} $skill_spec -> specs spec_level other_level
 		dict set ret SPEC_LVL $spec_level
 		dict set ret OTH_LVL $other_level
 
@@ -316,6 +316,7 @@ proc parseMan {t} {
 			regexp {.* \[(.*)\]} $s -> skill_name
 			dict lappend ret SPEC $skill_name
 		}
+		# TODO magic level is next list index
 	}
 
 	dict set ret DESC [lreplace $t $i $i]
