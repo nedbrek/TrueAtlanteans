@@ -646,31 +646,36 @@ proc parseItem {v} {
 
 	set type [lindex $l1 end]
 	dict set d Type $type
-	dict set d Desc [lrange $l 2 end]
 	switch $type {
 		monster {
+			dict set d Desc [lrange $l 2 end]
 		}
 
 		armor {
+			dict set d Desc [lrange $l 2 end]
 			dict set d Protect [lindex $l 2]
 			dict set d Produce [lindex $l 3]
 		}
 
 		tool {
+			dict set d Desc [lrange $l 2 end]
 			dict set d Boost [lindex $l 2]
 			dict set d Produce [lindex $l 3]
 		}
 
 		good {
+			dict set d Desc [lrange $l 2 end]
 			dict set d Bought  [lindex $l 2]
 			dict set d Sold    [lindex $l 3]
 			dict set d Produce [lindex $l 4]
 		}
 
 		mount {
+			dict set d Desc [lrange $l 2 end]
 		}
 
 		weapon {
+			dict set d Desc [lrange $l 1 end]
 			dict set d Skill [lindex $l 2]
 		}
 	}
