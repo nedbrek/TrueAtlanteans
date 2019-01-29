@@ -249,8 +249,8 @@ proc unitItemsIdx {fields} {
 	# field 0 - name (and report type)
 	# field 1 - faction, sometimes...
 	# fields 2+ flags
-	set i 1
-	while {![regexp {\[[[:alnum:]]{3,4}\]} [lindex $fields $i]]} {
+	set i 0
+	while {![regexp {\[[[:alnum:]]{3,6}\]} [lindex $fields $i]]} {
 		incr i
 		if {$i > [llength $fields]} {
 			error "Error in $fields"
@@ -295,11 +295,11 @@ proc parseUnit {v} {
 	}
 
 	# get unit name
-	set comma [string first "," $v]
-	set n [string range $v 2 $comma-1]
+	set paren [string first ")" $v]
+	set n [string range $v 2 $paren]
 	if {[regexp {\.} $n]} {
 		set n2 [string map {. "_"} $n]
-		set v [string replace $v 2 $comma-1 $n2]
+		set v [string replace $v 2 $paren $n2]
 	}
 
 	# strip description
@@ -311,7 +311,7 @@ proc parseUnit {v} {
 		set v [regsub {;.*$} $v ""]
 	}
 
-	set groups [split $v "."]
+	set groups [split [string range $v $paren+3 end] "."]
 
 	set group0 [split [lindex $groups 0] ","]
 	if {[catch {unitItemsIdx $group0} itemIdx]} {
@@ -320,7 +320,7 @@ proc parseUnit {v} {
 
 	set uflags ""
 	set fact ""
-	set flags [lrange $group0 1 $itemIdx-1]
+	set flags [lrange $group0 0 $itemIdx-1]
 	foreach f $flags {
 		set f [string trim $f]
 		set f [regsub -all { +} $f " "]
