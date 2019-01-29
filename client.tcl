@@ -47,17 +47,6 @@ set ::directions {
 	Northwest
 }
 
-set ::unitFlags {
-	GUARD   g
-	AVOID   a
-	BEHIND  b
-	HOLD    h
-	AUTOTAX t
-	NOAID   i
-	NOCROSS x
-	SHARE   s
-}
-
 set ::boats {
 	Longboat
 	Clipper
@@ -65,6 +54,17 @@ set ::boats {
 }
 
 namespace eval gui {
+
+	set unitFlags {
+		GUARD   g
+		AVOID   a
+		BEHIND  b
+		HOLD    h
+		AUTOTAX t
+		NOAID   i
+		NOCROSS x
+		SHARE   s
+	}
 
 	set viewLevel 1
 	set draw_all 1
@@ -520,7 +520,7 @@ proc showUnit {name} {
 	$t configure -state normal
 
 	$t insert end "Flags: "
-	foreach {f l} $::unitFlags {
+	foreach {f l} $gui::unitFlags {
 		set v [dGet $flags $f]
 		if {$v eq "1"} {
 			$t insert end "$l "
