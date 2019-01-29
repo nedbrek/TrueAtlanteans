@@ -2222,10 +2222,12 @@ wm title .t "True Atlanteans - <no game open>"
 ### top menu
 menu .mTopMenu -tearoff 0
 menu .mTopMenu.mFile -tearoff 0
+menu .mTopMenu.mAction -tearoff 0
 menu .mTopMenu.mView -tearoff 0
 menu .mTopMenu.mHelp -tearoff 0
 
 .mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
+.mTopMenu add cascade -label "Action" -menu .mTopMenu.mAction -underline 0
 .mTopMenu add cascade -label "View" -menu .mTopMenu.mView -underline 0
 .mTopMenu add cascade -label "Help" -menu .mTopMenu.mHelp -underline 0
 
@@ -2242,12 +2244,15 @@ proc enableMenus {} {
 	.mTopMenu.mFile entryconfigure 3 -state normal
 }
 
+# action menu
+.mTopMenu.mAction add command -label "Mark active hexes" -command markActive -underline 0
+.mTopMenu.mAction add command -label "Check Orders" -command checkAllOrders -underline 0
+
 # view menu
 .mTopMenu.mView add checkbutton -label "All Hexes" -command toggleDrawAll -underline 0 -variable gui::draw_all
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
 .mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
-.mTopMenu.mView add command -label "Mark active hexes" -command markActive -underline 0
 .mTopMenu.mView add command -label "My Units" -command showAllUnits -underline 3
 .mTopMenu.mView add command -label "Taxers" -command reportTax -underline 0
 .mTopMenu.mView add command -label "Resources" -command reportResources -underline 0
@@ -2255,8 +2260,7 @@ proc enableMenus {} {
 .mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
 
 # help menu
-.mTopMenu.mHelp add command -label "Check Orders" -command checkAllOrders -underline 0
-.mTopMenu.mHelp add command -label "Version" -command {tk_messageBox -message "0.1"} -underline 0
+.mTopMenu.mHelp add command -label "Version" -command {tk_messageBox -message "0.2"} -underline 0
 
 .t configure -menu .mTopMenu
 
