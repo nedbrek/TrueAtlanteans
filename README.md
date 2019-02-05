@@ -12,6 +12,7 @@ The Tcl package requirements are fairly minimal (any "batteries included" instal
 If everything is set up correctly, you should be able to just load "client.tcl" into your wish executable (on UNIX 'wish client.tcl', on Windows, double-click client.tcl or open wish and source it).
 
 On some stock Linux machines you might need the package libsqlite3-tcl (`apt-get install libsqlite3-tcl`)
+And itcl3 (`apt-get install itcl3`)
 
 # Starting a new game
 All your turn history is stored in a database. You'll want a database for each game of Atlantis you play.
