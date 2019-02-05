@@ -130,6 +130,7 @@ itcl::body Unit::filterInstantOrders {} {
 		guard
 		nocross
 		autotax
+		share
 	}
 	set enum_flags {
 		consume
@@ -150,6 +151,7 @@ itcl::body Unit::filterInstantOrders {} {
 	for {set i 0} {$i < [llength $orders]} {incr i} {
 		set o [cleanOrder [lindex $orders $i]]
 		set cmd [string tolower [lindex $o 0]]
+		set upper_cmd [string toupper [lindex $o 0]]
 
 		if {$skip} {
 			if {$cmd eq "endturn"} {
@@ -166,10 +168,27 @@ itcl::body Unit::filterInstantOrders {} {
 		# handle bool flags
 		if {[lsearch $bool_flags $cmd] != -1} {
 			set arg [lindex $o 1]
-			if {[checkBool $arg]} {
+			# apply flags
+			if {$arg == 1} {
+				# set flag
+				if {[dict exists $flags $upper_cmd]} {
+					# already set
+				} else {
+					lappend flags $upper_cmd 1
+				}
+			} elseif {$arg == 0} {
+				# remove flag
+				set ki [lsearch $flags $upper_cmd]
+				if {$ki != -1} {
+					# set - unset it
+					set flags [lreplace $flags $ki $ki+1]
+				} else {
+					# not set - nothing to do
+				}
+			} else {
 				puts "$name ($x, $y, $z) $cmd bad argument $arg"
 			}
-			# TODO: apply flags
+
 			continue
 		}
 

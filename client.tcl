@@ -1536,10 +1536,22 @@ proc ctProd {} {
 	return [llength [array names prod]]
 }
 
+proc findSharingUnits {units} {
+	set ret [list]
+	foreach u $units {
+		if {[lsearch [$u cget -flags] SHARE] != -1} {
+			lappend ret $u
+		}
+	}
+	return $ret
+}
+
 proc checkOrder {u o x y z ctxt} {
 	if {$o eq ""} {
 		return 0
 	}
+	set units [dGet $ctxt Units]
+	set sharing_units [findSharingUnits [dict get $ctxt UnitObj]]
 
 	set op [split $o " "]
 	set c [lindex $op 0]
@@ -1624,7 +1636,6 @@ proc checkOrder {u o x y z ctxt} {
 
 		give {
 			# give an item
-			set units [dGet $ctxt Units]
 
 			## check receiver
 			set recv [lindex $op 1]
@@ -1708,11 +1719,33 @@ proc checkOrder {u o x y z ctxt} {
 			set cost [expr {$skill_cost * $men}]
 
 			set cur_silv [$u countItem SILV]
-			if {$cur_silv < $cost} {
+			if {$cur_silv > 0} {
+				if {$cur_silv >= $cost} {
+					$u setItem SILV [expr {$cur_silv - $cost}]
+					set cost 0
+				} else {
+					$u setItem SILV 0
+					set cost [expr {$cost - $cur_silv}]
+				}
+			}
+
+			if {$cost > 0} {
+				# look for a sharing source
+				foreach su $sharing_units {
+					set s_silv [$su countItem SILV]
+					if {$s_silv >= $cost} {
+						$su setItem SILV [expr {$s_silv - $cost}]
+						return 0
+					}
+
+					if {$s_silv > 0} {
+						$su setItem SILV 0
+						set cost [expr {$cost - $s_silv}]
+					}
+				}
 				return [list -1 "STUDY: not enough funds"]
 			}
 
-			$u setItem SILV [expr {$cur_silv - $cost}]
 			return 0
 		}
 
@@ -1896,6 +1929,7 @@ proc checkAllOrders {} {
 
 		set ctxt [dict create]
 		dict set ctxt Units $unit_map
+		dict set ctxt UnitObj $units
 
 		# run claim/give before other orders
 		lappend ret {*}[checkOrderType "claim" $x $y $z $ctxt]
