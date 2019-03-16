@@ -1997,6 +1997,10 @@ proc showAllUnits {} {
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$::currentTurn and units.detail='own'
+		ORDER BY
+		    cast(detail.z as integer),
+		    cast(detail.y as integer),
+		    cast(detail.x as integer)
 	}]
 
 	# build the window
