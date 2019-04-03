@@ -692,15 +692,23 @@ proc parseBattle {f} {
 	set ret [dict create]
 
 	# Attacker (Id) attacks defender (id) in terrain (x,y) in region
-	if {![regexp {([^()]+) \(([[:digit:]]+)\) attacks ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in .+!} $v -> attacker att_id defender def_id x y z]} {
+	if {[regexp {([^()]+) \(([[:digit:]]+)\) attacks ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in .+!} $v -> attacker att_id defender def_id x y z]} {
+		dict set ret "Attacker" $attacker
+		dict set ret "AttId" $att_id
+		dict set ret "Defender" $defender
+		dict set ret "DefId" $def_id
+		dict set ret "XY" [list $x $y]
+	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) is assassinated in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in} $v -> defender def_id x y z]} {
+		dict set ret "Attacker" "assassin"
+		dict set ret "AttId" 0
+		dict set ret "Defender" $defender
+		dict set ret "DefId" $def_id
+		dict set ret "XY" [list $x $y]
+		return $ret
+	} else {
 		puts "Parse error in battle on '$v'"
 		exit 1
 	}
-	dict set ret "Attacker" $attacker
-	dict set ret "AttId" $att_id
-	dict set ret "Defender" $defender
-	dict set ret "DefId" $def_id
-	dict set ret "XY" [list $x $y]
 
 	set v [getSection $f]
 	# Attackers:
