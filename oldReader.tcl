@@ -698,6 +698,12 @@ proc parseBattle {f} {
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
 		dict set ret "XY" [list $x $y]
+	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) attempts to assassinate ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in .+!} $v -> attacker att_id defender def_id x y z]} {
+		dict set ret "Attacker" $attacker
+		dict set ret "AttId" $att_id
+		dict set ret "Defender" $defender
+		dict set ret "DefId" $def_id
+		dict set ret "XY" [list $x $y]
 	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) is assassinated in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in} $v -> defender def_id x y z]} {
 		dict set ret "Attacker" "assassin"
 		dict set ret "AttId" 0
