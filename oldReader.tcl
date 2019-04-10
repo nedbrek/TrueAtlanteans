@@ -311,6 +311,16 @@ proc parseUnit {v} {
 		set v [regsub {;.*$} $v ""]
 	}
 
+	# filter . from faction
+	set paren2 [string first ")" $v $paren+1]
+	if {$paren2 != -1} {
+		set fac_substr [string range $v 2 $paren2]
+		if {[regexp {\.} $fac_substr]} {
+			set n2 [string map {. "_"} $fac_substr]
+			set v [string replace $v 2 $paren2 $n2]
+		}
+	}
+
 	set groups [split [string range $v $paren+3 end] "."]
 
 	set group0 [split [lindex $groups 0] ","]
