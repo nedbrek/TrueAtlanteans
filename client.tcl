@@ -519,6 +519,56 @@ proc showUnit {name} {
 	set t .t.fL.fItems.t
 	$t configure -state normal
 
+	set cap_types [list walking riding flying swimming]
+	foreach tp $cap_types {
+		set cap($tp) 0
+	}
+
+	set skip 0
+	foreach i $items {
+		set ct [lindex $i 0]
+		set full_abbr [lindex $i 2]
+		if {[regexp {\[(.*)\]} $i -> abbr]} {
+			if {$abbr eq "SILV"} {
+				set wt   0
+				set lcap ""
+			} else {
+				set data [db onecolumn {SELECT desc FROM items WHERE abbr=$abbr}]
+				set wt   [dGet $data Weight]
+				set lcap [dGet $data Capacity]
+				if {$wt eq ""} {
+					set skip 1
+					break
+				}
+			}
+
+			foreach tp $cap_types {
+				set v [dGet $lcap $tp]
+				if {$v ne ""} {
+					incr cap($tp) [expr {$v * $ct}]
+				} else {
+					incr cap($tp) [expr {-$ct * $wt}]
+				}
+			}
+		} else {
+			error "Item with no abbr $i"
+		}
+	}
+
+	if {!$skip} {
+		if {$cap(walking) < 0} {
+			$t insert end "Cannot move $cap(walking)\n"
+		} else {
+			$t insert end "walking capacity: $cap(walking)\n"
+			$t insert end "riding capacity: $cap(riding)\n"
+			foreach tp {flying swimming} {
+				if {$cap($tp) >= 0} {
+					$t insert end "$tp capacity: $cap($tp)\n"
+				}
+			}
+		}
+	}
+
 	$t insert end "Flags: "
 	foreach {f l} $gui::unitFlags {
 		set v [dGet $flags $f]
