@@ -633,8 +633,6 @@ proc displayRegion {x y nexus} {
 	# clean up
 	orderBoxReset .t.fL.tOrd
 
-	.t.fL.lProd configure -text ""
-
 	set mt .t.fL.fMarket.tv
 	set marketChildren [$mt children {}]
 	if {[llength $marketChildren]} {
@@ -2382,8 +2380,6 @@ pack [frame .t.fL] -side left -anchor nw
 
 # top, region description
 pack [text .t.fL.tDesc -width 42 -height 9] -side top
-
-pack [label .t.fL.lProd -wraplength 300] -side top
 
 pack [frame .t.fL.fMarket] -side top -expand 1 -fill x
 pack [ttk::treeview .t.fL.fMarket.tv -show tree \
