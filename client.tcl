@@ -2041,7 +2041,8 @@ proc centerCanvas {w cx cy} {
 
 proc showAllUnits {} {
 	set units [db eval {
-		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items, units.orders
+		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items,
+		   units.orders, units.skills
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$::currentTurn and units.detail='own'
@@ -2073,7 +2074,7 @@ proc showAllUnits {} {
 
 	# configure all the columns
 	set hdrs {
-		"Id" "Loc" "men" "silv" "Horses" "orders"
+		"Id" "Loc" "Skills" "Men" "Silv" "Horses" "Orders"
 	}
 	set cols ""
 	for {set i 1} {$i <= [llength $hdrs]} {incr i} { lappend cols $i }
@@ -2084,12 +2085,12 @@ proc showAllUnits {} {
 	for {set i 1} {$i < [llength $hdrs]} {incr i} {
 		$tv heading $i -text [lindex $hdrs $i-1]
 		$tv column $i -width 34
-		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 6}]]
+		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 7}]]
 	}
 	$tv heading $i -text [lindex $hdrs $i-1]
 	$tv heading $i -command [list sortAllUnits $tv $i 0]
 
-	foreach {x y z name uid items orders} $units {
+	foreach {x y z name uid items orders skills} $units {
 		if {![info exists id($x,$y,$z)]} {
 			set terrain_type [::db onecolumn {SELECT type FROM terrain WHERE x=$x AND y=$y AND z=$z}]
 			set id($x,$y,$z) [$t.fTop.tv insert {} end -text $terrain_type -values [list "" "($x,$y,$z)" "" "" ""]]
@@ -2099,6 +2100,31 @@ proc showAllUnits {} {
 		set vals [list]
 		lappend vals $uid
 		lappend vals "($x,$y,$z)"
+		if {[llength $skills] == 1} {
+			# only one skill - easy
+			lappend vals [lindex $skills 0 3]
+		} else {
+			# figure out which one to show
+			#
+			# assume mages are FORC + FIRE
+			set i [lsearch -index 1 $skills FORC]
+			if {$i != -1} {
+				lappend vals "mage"
+			} else {
+				# not a mage
+				# check for soldier
+				set i [lsearch -index 1 $skills COMB]
+				if {$i != -1} {
+					# soldier of some sort
+					set comb [lindex $skills $i 3]
+					set rskills [lreplace $skills $i $i]
+					lappend vals [format {%d/%s} $comb [join [lmap i $rskills {lindex $i 3}] "/"]]
+				} else {
+					# non-combat
+					lappend vals [join [lmap i $skills {lindex $i 3}] "/"]
+				}
+			}
+		}
 		lappend vals [countMen $items]
 		lappend vals [countItem $items SILV]
 		lappend vals [countItem $items HORS]
