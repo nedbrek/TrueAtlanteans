@@ -769,6 +769,17 @@ proc parseBattle {f} {
 	return $ret
 }
 
+proc isHeader {v} {
+	if {$v eq "Skill reports:"} { return 1 }
+	if {$v eq "Object reports:"} { return 1 }
+	if {$v eq "Item reports:"} { return 1 }
+	if {$v eq "Battles during turn:"} { return 1 }
+	if {$v eq "Errors during turn:"} { return 1 }
+	if {[regexp {^Declared Attitudes} $v]} { return 1 }
+
+	return 0
+}
+
 proc parseFile {f} {
 	variable nextLine
 	set nextLine ""
@@ -812,6 +823,7 @@ proc parseFile {f} {
 	set itemList [list]
 	set skillList [list]
 	set objList [list]
+	set eventList [list]
 	set alignment ""
 
 	set v [getSection $f]
@@ -903,14 +915,43 @@ proc parseFile {f} {
 			}
 			dict set turn "Battles" $battleList
 
-			set v [getSection $f]
+			# battles always followed by events
+			set v {Events during turn:}
 
+		} elseif {$v eq "Errors during turn:"} {
+			set v [getSection $f]
+			while {![isHeader $v]} {
+				# add as event
+				if {![regexp {[^(]+\(([[:digit:]]+)\): (.*)} $v -> unit_num event_desc]} {
+					puts "Error parsing '$v'"
+					exit 1
+				}
+				lappend eventList [dict create TYPE ERROR UNIT $unit_num DESC $event_desc]
+				set v [getSection $f]
+			}
+		} elseif {$v eq "Events during turn:"} {
+			set v [getSection $f]
+			while {![isHeader $v]} {
+				# add as event
+				if {[regexp {Times reward of ([[:digit:]]+) silver.} $v -> reward]} {
+					lappend eventList [dict create TYPE REWARD AMT $reward]
+				} elseif {[regexp {[^(]+\(([[:digit:]]+)\): (.*)} $v -> unit_num event_desc]} {
+					lappend eventList [dict create TYPE EVENT UNIT $unit_num DESC $event_desc]
+				} elseif {[regexp {.* sails from .* to } $v]} {
+					lappend eventList [dict create TYPE SAIL DESC $v]
+				} else {
+					puts "Error parsing '$v'"
+					exit 1
+				}
+				set v [getSection $f]
+			}
 		} else {
 			# Events during turn:
 			set v [getSection $f]
 		}
 	}
 	dict set turn "Alignment" $alignment
+	dict set turn "Events" $eventList
 	dict set turn "Items" $itemList
 	dict set turn "Skills" $skillList
 	dict set turn "Objects" $objList
@@ -951,8 +992,10 @@ proc parseFile {f} {
 	return $turn
 }
 
+}
+
 ################
-if {![info exists debug]} {
+if {!$reader::debug} {
 	if {$argc < 1} {
 		puts "Usage $argv0 <filename>"
 		exit
@@ -965,12 +1008,10 @@ if {![info exists debug]} {
 		set ofile [format {%s%s} "c" $l]
 
 		set chn [open $ofile "w"]
-		puts $chn [parseFile $f]
+		puts $chn [reader::parseFile $f]
 
 		close $f
 		close $chn
 	}
-}
-
 }
 

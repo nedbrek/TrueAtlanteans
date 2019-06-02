@@ -496,5 +496,29 @@ proc updateDb {db tdata} {
 
 	set ::men [db eval {select abbr from items where type="race"}]
 	set ::currentTurn [db eval {select max(turn) from detail}]
+
+	# only store events for latest turn
+	if {$turnNo == $::currentTurn} {
+		$db eval {DROP TABLE IF EXISTS events}
+		$db eval {
+			CREATE TABLE events(
+			id INTEGER PRIMARY KEY,
+			type TEXT not null,
+			val TEXT not null
+			)
+		}
+
+		$db eval {BEGIN TRANSACTION}
+		foreach e [dGet $tdata Events] {
+			set t [dict get $e TYPE]
+			set val [dict remove $e TYPE]
+			$db eval {
+				INSERT INTO events
+				(type, val)
+				VALUES($t, $val)
+			}
+		}
+		$db eval {END TRANSACTION}
+	}
 }
 
