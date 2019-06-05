@@ -78,6 +78,7 @@ proc registerFunctions {} {
 	::db function curProduce curProduce
 	::db function countItem countItem
 	::db function countMen countMen
+	::db function dGet dGet
 }
 
 proc createDb {filename} {

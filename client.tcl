@@ -493,6 +493,7 @@ proc showUnit {name} {
 
 	## got it, use it to retrieve the unit
 	set regionId [lindex $detail 0]
+	set is_current [expr {[lindex $detail 1] == $::currentTurn}]
 
 	set gui::prevUnit $name
 
@@ -519,6 +520,21 @@ proc showUnit {name} {
 	set t .t.fL.fItems.t
 	$t configure -state normal
 
+	if {$is_current} {
+		set data [db eval {
+			SELECT type, val
+			FROM events
+			WHERE (type="ERROR" or type="EVENT") and dGet(val, "UNIT") = $uid
+		}]
+		foreach {tp v} $data {
+			if {$tp eq "ERROR"} {
+				$t insert end "Error: "
+			}
+			$t insert end "[dGet $v DESC]\n"
+		}
+	}
+
+	### capacities
 	set cap_types [list walking riding flying swimming]
 	foreach tp $cap_types {
 		set cap($tp) 0
