@@ -2055,6 +2055,20 @@ proc centerCanvas {w cx cy} {
 	$w yview moveto $ypos
 }
 
+proc countItemsByType {il type} {
+	set count 0
+	foreach i $il {
+		set abbr [string trim [lindex $i 2] {[]}]
+		set t [::db onecolumn {
+			SELECT type FROM items WHERE abbr=$abbr
+		}]
+		if {$t eq $type} {
+			incr count [lindex $i 0]
+		}
+	}
+	return $count
+}
+
 proc showAllUnits {} {
 	set units [db eval {
 		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items,
@@ -2090,7 +2104,7 @@ proc showAllUnits {} {
 
 	# configure all the columns
 	set hdrs {
-		"Id" "Loc" "Skills" "Men" "Silv" "Horses" "Orders"
+		"Id" "Loc" "Skills" "Men" "Silv" "Weapons" "Armor" "Horses" "Orders"
 	}
 	set cols ""
 	for {set i 1} {$i <= [llength $hdrs]} {incr i} { lappend cols $i }
@@ -2101,7 +2115,7 @@ proc showAllUnits {} {
 	for {set i 1} {$i < [llength $hdrs]} {incr i} {
 		$tv heading $i -text [lindex $hdrs $i-1]
 		$tv column $i -width 34
-		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 7}]]
+		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 9}]]
 	}
 	$tv heading $i -text [lindex $hdrs $i-1]
 	$tv heading $i -command [list sortAllUnits $tv $i 0]
@@ -2143,6 +2157,8 @@ proc showAllUnits {} {
 		}
 		lappend vals [countMen $items]
 		lappend vals [countItem $items SILV]
+		lappend vals [countItemsByType $items weapon]
+		lappend vals [countItemsByType $items armor]
 		lappend vals [countItem $items HORS]
 		lappend vals [join $orders ";"]
 		$t.fTop.tv insert $id($x,$y,$z) end -text $name -values $vals
