@@ -775,6 +775,7 @@ proc isHeader {v} {
 	if {$v eq "Item reports:"} { return 1 }
 	if {$v eq "Battles during turn:"} { return 1 }
 	if {$v eq "Errors during turn:"} { return 1 }
+	if {$v eq "Events during turn:"} { return 1 }
 	if {[regexp {^Declared Attitudes} $v]} { return 1 }
 
 	return 0
