@@ -237,18 +237,41 @@ itcl::body Unit::filterInstantOrders {} {
 }
 
 ### other functions
-proc getDistance {x1 y1 z1 x2 y2 z2} {
-	set maxy [expr {abs($y1 - $y2)}]
-	set maxx [expr {abs($x1 - $x2)}]
+proc getLevelXscale {z} {
+	# TODO figure out for particular game
+	set scales { 1 1 1 2 }
+	return [lindex $scales $z]
+}
 
-	set max2 [expr {abs($x1 + $::max_x - $x2)}]
+proc getLevelYscale {z} {
+	# TODO figure out for particular game
+	set scales { 1 1 2 4 }
+	return [lindex $scales $z]
+}
+
+proc getDistance {x1 y1 z1 x2 y2 z2 {penalty 4}} {
+	set one_x [expr $x1 * [getLevelXscale $z1]]
+	set one_y [expr $y1 * [getLevelYscale $z1]]
+
+	set two_x [expr $x2 * [getLevelXscale $z2]]
+	set two_y [expr $y2 * [getLevelYscale $z2]]
+
+	set maxy [expr {abs($one_y - $two_y)}]
+	set maxx [expr {abs($one_x - $two_x)}]
+
+	set max2 [expr {abs($one_x + $::max_x - $two_x)}]
 	set maxx [expr {min($maxx, $max2)}]
 
-	set max2 [expr {abs($x1 - ($x2 + $::max_x))}]
+	set max2 [expr {abs($one_x - ($two_x + $::max_x))}]
 	set maxx [expr {min($maxx, $max2)}]
 
 	if {$maxy > $maxx} {
-		return [expr {($maxx + $maxy) / 2}]
+		set maxx [expr {($maxx + $maxy) / 2}]
+	}
+
+	if {$z1 != $z2} {
+		set zdist [expr {abs($z1 -$z2)}]
+		incr maxx [expr {$penalty * $zdist}]
 	}
 
 	return $maxx
