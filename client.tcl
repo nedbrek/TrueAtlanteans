@@ -2230,7 +2230,6 @@ proc formUnit {} {
 	set ret [getBuyRace $sells $peasants]
 	set maxRace [lindex $ret 0]
 	set raceList [lindex $ret 1]
-	if {$maxRace == 0} { return }
 
 	# get units in hex
 	set rdata [db eval {
@@ -2291,8 +2290,10 @@ proc formUnit {} {
 	#$t.fTop.cbParent configure -values $unitList
 	#$t.fTop.cbParent current 0
 	$t.fTop.sAlias set [expr {$maxAlias + 1}]
-	$t.fTop.cbRaces configure -values $raceList
-	$t.fTop.cbRaces current 0
+	if {[llength $raceList] > 0} {
+		$t.fTop.cbRaces configure -values $raceList
+		$t.fTop.cbRaces current 0
+	}
 	$t.fTop.sCt configure -to $maxRace
 	$t.fTop.sCt set [formTaxers $regionId]
 }
