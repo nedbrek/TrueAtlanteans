@@ -1158,6 +1158,60 @@ proc selectUnitFromList {w} {
 	showUnit $name
 }
 
+proc selectUnitFromView {w} {
+	set sel [lindex [$w selection] 0]; # should only be one on double click anyway
+	if {$sel eq ""} { return }
+	set vals [$w item $sel -values]
+	set name [$w item $sel -text]
+
+	set cols [$w cget -columns]
+	set x -1
+	set y -1
+	set z -1
+	foreach c $cols {
+		set col_name [$w heading $c -text]
+		set val [lindex $vals $c-1]
+
+		if {$col_name eq "Loc"} {
+			if {![regexp {\(([[:digit:]]+),([[:digit:]]+),([[:digit:]])\)} $val -> x y z]} {
+				tk_messageBox -message "Unable to parse Loc column $val"
+				return
+			}
+		} elseif {$col_name eq "x"} {
+			set x $val
+		} elseif {$col_name eq "y"} {
+			set y $val
+		} elseif {$col_name eq "z"} {
+			set z $val
+		} elseif {$col_name eq "Id"} {
+			append name [format { (%d)} $val]
+		}
+	}
+	if {$z == -1} {
+		tk_messageBox -message "Unable to get xyz values in window $w"
+		return
+	}
+
+	set sel_xy [getSelectionXY]
+	set sel_x [lindex $sel_xy 0]
+	set sel_y [lindex $sel_xy 1]
+	set zlevel [getZlevel]
+
+	if {$zlevel ne $z} {
+		# change level
+		set gui::viewLevel $z
+		drawDB .t.fR.screen db
+		# must select region
+		selectRegion .t.fR.screen $x $y [expr {$z == 0}]
+	} elseif {$sel_x != $x || $sel_y != $y} {
+		# region change
+		selectRegion .t.fR.screen $x $y [expr {$z == 0}]
+	}
+
+	.t.fL.cbMyUnits set $name
+	showUnit $name
+}
+
 proc makeUnitListbox {t title res} {
 	if {![winfo exists $t]} {
 		toplevel $t
@@ -1424,6 +1478,7 @@ proc searchUnits {} {
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
 		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+		bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
@@ -2092,6 +2147,7 @@ proc showAllUnits {} {
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
 		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+		bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
