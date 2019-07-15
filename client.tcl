@@ -2061,6 +2061,8 @@ proc checkAllOrders {} {
 	}
 	if {$ret ne ""} {
 		tk_messageBox -message [join $ret "\n"]
+	} else {
+		tk_messageBox -message "No errors"
 	}
 	return $ret
 }
