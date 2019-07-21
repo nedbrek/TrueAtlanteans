@@ -440,9 +440,9 @@ proc orderBoxReset {w} {
 		saveUnitOrders $gui::prevId $w
 	}
 
-	.t.fL.fItems.t configure -state normal
-	.t.fL.fItems.t delete 1.0 end
-	.t.fL.fItems.t configure -state disabled
+	.t.fItems.t configure -state normal
+	.t.fItems.t delete 1.0 end
+	.t.fItems.t configure -state disabled
 
 	$w configure -state normal
 	$w delete 1.0 end
@@ -472,7 +472,7 @@ proc getSelectionXY {} {
 
 # make the unit with 'name' active from the combox
 proc showUnit {name} {
-	orderBoxReset .t.fL.tOrd
+	orderBoxReset .t.tOrd
 
 	set w .t.fR.screen
 
@@ -517,7 +517,7 @@ proc showUnit {name} {
 	set desc        [lindex $data 7]
 
 	# fill the items box (stick skills in too)
-	set t .t.fL.fItems.t
+	set t .t.fItems.t
 	$t configure -state normal
 
 	if {$is_current} {
@@ -632,24 +632,24 @@ proc showUnit {name} {
 
 	# populate orders box
 	foreach o $orders {
-		.t.fL.tOrd insert end "$o\n"
+		.t.tOrd insert end "$o\n"
 	}
-	.t.fL.tOrd edit modified 0
+	.t.tOrd edit modified 0
 
 	# don't let people modify foreign unit orders
 	if {$detail eq "own"} {
-		.t.fL.tOrd configure -state normal
+		.t.tOrd configure -state normal
 	} else {
-		.t.fL.tOrd configure -state disabled
+		.t.tOrd configure -state disabled
 	}
 }
 
 # update the left frame with all the region details
 proc displayRegion {x y nexus} {
 	# clean up
-	orderBoxReset .t.fL.tOrd
+	orderBoxReset .t.tOrd
 
-	set mt .t.fL.fMarket.tv
+	set mt .t.fMarket.tv
 	set marketChildren [$mt children {}]
 	if {[llength $marketChildren]} {
 		set gui::forSaleOpen [$mt item [lindex $marketChildren 0] -open]
@@ -657,10 +657,10 @@ proc displayRegion {x y nexus} {
 	$mt delete $marketChildren
 
 	# clear current unit, in case there is none
-	.t.fL.cbMyUnits set ""
-	.t.fL.cbMyUnits configure -values ""
+	.t.cbMyUnits set ""
+	.t.cbMyUnits configure -values ""
 
-	set t .t.fL.tDesc
+	set t .t.tDesc
 	$t delete 1.0 end
 
 	# pull region terrain info
@@ -727,9 +727,9 @@ proc displayRegion {x y nexus} {
 	# region resources for production
 	set resources [lindex $rdata 8]
 	if {$resources ne ""} {
-		set tvi [.t.fL.fMarket.tv insert {} 0 -text "Resources" -open 1]
+		set tvi [.t.fMarket.tv insert {} 0 -text "Resources" -open 1]
 		foreach r $resources {
-			.t.fL.fMarket.tv insert $tvi end -text $r
+			.t.fMarket.tv insert $tvi end -text $r
 		}
 	}
 
@@ -737,19 +737,19 @@ proc displayRegion {x y nexus} {
 	set sells [lindex $rdata 9]
 	set wants [lindex $rdata 10]
 	if {[llength $sells] == 0} {
-		.t.fL.fMarket.tv insert {} end -text "Nothing for sale" -open $gui::forSaleOpen
+		.t.fMarket.tv insert {} end -text "Nothing for sale" -open $gui::forSaleOpen
 	} else {
-		set tvi [.t.fL.fMarket.tv insert {} end -text "For sale" -open $gui::forSaleOpen]
+		set tvi [.t.fMarket.tv insert {} end -text "For sale" -open $gui::forSaleOpen]
 	}
 
 	foreach {i c} $sells {
-		.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
+		.t.fMarket.tv insert $tvi end -text "$i @ \$$c"
 	}
 
 	if {[llength $wants] > 0 && [lindex $wants 0] ne "none"} {
-		set tvi [.t.fL.fMarket.tv insert {} end -text "Wanted"]
+		set tvi [.t.fMarket.tv insert {} end -text "Wanted"]
 		foreach {i c} $wants {
-			.t.fL.fMarket.tv insert $tvi end -text "$i @ \$$c"
+			.t.fMarket.tv insert $tvi end -text "$i @ \$$c"
 		}
 	}
 
@@ -777,10 +777,10 @@ proc displayRegion {x y nexus} {
 		lappend unitList [format {%s (%d)} $name $uid]
 	}
 
-	.t.fL.cbMyUnits configure -values $unitList
+	.t.cbMyUnits configure -values $unitList
 	if {[llength $unitList] != 0} {
-		.t.fL.cbMyUnits current 0
-		showUnit [.t.fL.cbMyUnits get]
+		.t.cbMyUnits current 0
+		showUnit [.t.cbMyUnits get]
 	}
 }
 
@@ -1154,7 +1154,7 @@ proc selectUnitFromList {w} {
 		drawDB .t.fR.screen db
 	}
 	selectRegion .t.fR.screen $x $y
-	.t.fL.cbMyUnits set $name
+	.t.cbMyUnits set $name
 	showUnit $name
 }
 
@@ -1208,7 +1208,7 @@ proc selectUnitFromView {w} {
 		selectRegion .t.fR.screen $x $y [expr {$z == 0}]
 	}
 
-	.t.fL.cbMyUnits set $name
+	.t.cbMyUnits set $name
 	showUnit $name
 }
 
@@ -2357,29 +2357,29 @@ proc formUnit {} {
 }
 
 proc finishForm {t} {
-	.t.fL.tOrd insert end "\nform [$t.fTop.sAlias get]\n"
+	.t.tOrd insert end "\nform [$t.fTop.sAlias get]\n"
 
 	set name [$t.fTop.eName get]
 	if {$name ne ""} {
-		.t.fL.tOrd insert end "name unit \"$name\"\n"
+		.t.tOrd insert end "name unit \"$name\"\n"
 	}
 
 	set ct [$t.fTop.sCt get]
 	if {$ct > 0} {
 		set race [$t.fTop.cbRaces get]
 		regexp {\[(.+)\]} $race -> abbr
-		.t.fL.tOrd insert end "buy $ct $abbr\n"
+		.t.tOrd insert end "buy $ct $abbr\n"
 	}
 
 	set orders [$t.fTop.orders get 1.0 end]
 	if {$orders ne ""} {
-		.t.fL.tOrd insert end "$orders\n"
+		.t.tOrd insert end "$orders\n"
 	}
-	.t.fL.tOrd insert end "end\n"
+	.t.tOrd insert end "end\n"
 
 	# TODO use parent listbox
 	if {$gui::prevUnit ne ""} {
-		saveUnitOrders $gui::prevId .t.fL.tOrd
+		saveUnitOrders $gui::prevId .t.tOrd
 	}
 
 	destroy $t
@@ -2469,7 +2469,7 @@ proc enableMenus {} {
 
 ### left/right panes
 pack [ttk::panedwindow .t.pwMain -orient horizontal] -expand 1 -fill both
-.t.pwMain add [frame .t.fL]
+.t.pwMain add [ttk::panedwindow .t.pwLeft -orient vertical]
 .t.pwMain add [frame .t.fR]
 
 ### right frame
@@ -2499,38 +2499,39 @@ pack .t.fR.screen  -side right  -fill both -expand 1
 ### left frame
 
 # top, region description
-pack [text .t.fL.tDesc -width 42 -height 9] -side top
+.t.pwLeft add [text .t.tDesc -width 42 -height 9]
 
-pack [frame .t.fL.fMarket] -side top -expand 1 -fill x
-pack [ttk::treeview .t.fL.fMarket.tv -show tree \
--yscrollcommand ".t.fL.fMarket.vs set"] -side left -expand 1 -fill x
-pack [scrollbar .t.fL.fMarket.vs -command ".t.fL.fMarket.tv yview" \
+.t.pwLeft add [frame .t.fMarket]
+pack [ttk::treeview .t.fMarket.tv -show tree \
+-yscrollcommand ".t.fMarket.vs set"] -side left -expand 1 -fill x
+pack [scrollbar .t.fMarket.vs -command ".t.fMarket.tv yview" \
 -orient vertical] -side left -fill y
 
-# next, unit combobox
-pack [ttk::combobox .t.fL.cbMyUnits -state readonly -width 45 -exportselection 0] -side top
+# next, unit combobox and orders
+.t.pwLeft add [frame .t.fLunitOrders]
+pack [ttk::combobox .t.cbMyUnits -state readonly -width 45 -exportselection 0] -side top -in .t.fLunitOrders
 if {$tcl_platform(os) eq "Linux"} {
 	# for some reason, the combox is much wider on Linux
-	.t.fL.cbMyUnits configure -width 36
+	.t.cbMyUnits configure -width 36
 }
 
 # next, unit items (text + scrollbar)
-pack [frame .t.fL.fItems] -side top
-pack [text .t.fL.fItems.t -width 40 -height 10 -state disabled \
--yscrollcommand ".t.fL.fItems.vs set"] -side left
+pack [frame .t.fItems] -side top -in .t.fLunitOrders
+pack [text .t.fItems.t -width 40 -height 20 -state disabled \
+-yscrollcommand ".t.fItems.vs set"] -side left
 
-pack [scrollbar .t.fL.fItems.vs -command ".t.fL.fItems.t yview" \
+pack [scrollbar .t.fItems.vs -command ".t.fItems.t yview" \
 -orient vertical] -side left -fill y
 
 # next, orders box
-pack [text .t.fL.tOrd -width 42 -height 9 -undo 1] -side top
+.t.pwLeft add [text .t.tOrd -width 42 -height 9 -undo 1]
 
 ### bindings
 ## canvas
 # canvas normally doesn't want focus
 bind $w <Enter> {switchFocus %W}
-bind .t.fL.tDesc <Enter> {switchFocus %W}
-bind .t.fL.tOrd  <Enter> {switchFocus %W}
+bind .t.tDesc <Enter> {switchFocus %W}
+bind .t.tOrd  <Enter> {switchFocus %W}
 
 # bind mousewheel to vertical scrolling
 bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
@@ -2578,8 +2579,8 @@ bind $w <n> {formUnit}
 
 ## orders
 # update orders on unit dropdown change
-bind .t.fL.cbMyUnits <<ComboboxSelected>> {showUnit [%W get]}
+bind .t.cbMyUnits <<ComboboxSelected>> {showUnit [%W get]}
 
 # redo should be default on Windows, but needed on Linux
-bind .t.fL.tOrd <Control-y> {%W edit redo}
+bind .t.tOrd <Control-y> {%W edit redo}
 
