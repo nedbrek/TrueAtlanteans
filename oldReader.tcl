@@ -941,6 +941,10 @@ proc parseFile {f} {
 					lappend eventList [dict create TYPE EVENT UNIT $unit_num DESC $event_desc]
 				} elseif {[regexp {.* sails from .* to } $v]} {
 					lappend eventList [dict create TYPE SAIL DESC $v]
+				} elseif {[regexp {.* is caught attempting to assassinate [^(]* \(([[:digit:]]+)\)} $v -> unit_num]} {
+					lappend eventList [dict create TYPE EVENT UNIT $unit_num DESC $v]
+				} elseif {[regexp {.* is stopped by guards } $v]} {
+					lappend eventList [dict create TYPE SAIL DESC $v]
 				} else {
 					puts "Error parsing '$v'"
 					exit 1
