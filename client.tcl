@@ -717,11 +717,11 @@ proc displayRegion {x y nexus} {
 
 	# pull buildings
 	set objects [db eval {
-		SELECT name, desc FROM objects
+		SELECT name, desc, flags FROM objects
 		WHERE regionId=$regionId
 	}]
-	foreach {name desc} $objects {
-		$t insert end "$name - $desc\n"
+	foreach {name desc flags} $objects {
+		$t insert end [format "%s - %s %s\n" $name $desc [join $flags ","]]
 	}
 
 	# region resources for production

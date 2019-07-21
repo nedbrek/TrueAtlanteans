@@ -185,6 +185,7 @@ proc createDb {filename} {
 			regionId INTEGER not null,
 			name not null,
 			desc not null,
+			flags not null,
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 				ON DELETE CASCADE
 				ON UPDATE CASCADE
@@ -462,11 +463,12 @@ proc updateDb {db tdata} {
 		foreach o $objects {
 			set oname [dGet $o Name]
 			set odesc [dGet $o ObjectName]
+			set oflags [dGet $o Flags]
 			$db eval {
 				INSERT OR REPLACE INTO objects
-				(regionId, name, desc)
+				(regionId, name, desc, flags)
 				VALUES(
-				$regionId, $oname, $odesc
+				$regionId, $oname, $odesc, $oflags
 				)
 			}
 			set objectId [$db last_insert_rowid]

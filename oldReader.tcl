@@ -508,6 +508,7 @@ proc getRegion {f} {
 
 			set objFlags [split [string trimright $odesc "."] ","]
 			dict set object ObjectName [lindex $objFlags 0]
+			dict set object Flags [lrange $objFlags 1 end]
 
 			if {[llength $lines] == 1} {
 				dict lappend region Objects $object
