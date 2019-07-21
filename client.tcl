@@ -2467,8 +2467,12 @@ proc enableMenus {} {
 
 .t configure -menu .mTopMenu
 
+### left/right panes
+pack [ttk::panedwindow .t.pwMain -orient horizontal] -expand 1 -fill both
+.t.pwMain add [frame .t.fL]
+.t.pwMain add [frame .t.fR]
+
 ### right frame
-pack [frame .t.fR] -side right -fill both -expand 1
 
 # need scrollbars to navigate
 scrollbar .t.fR.canvasX -command ".t.fR.screen xview" -orient horizontal
@@ -2493,7 +2497,6 @@ pack .t.fR.canvasY -side right  -fill y
 pack .t.fR.screen  -side right  -fill both -expand 1
 
 ### left frame
-pack [frame .t.fL] -side left -anchor nw
 
 # top, region description
 pack [text .t.fL.tDesc -width 42 -height 9] -side top
