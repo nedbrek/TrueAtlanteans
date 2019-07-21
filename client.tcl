@@ -2503,22 +2503,23 @@ pack .t.fR.screen  -side right  -fill both -expand 1
 
 .t.pwLeft add [frame .t.fMarket]
 pack [ttk::treeview .t.fMarket.tv -show tree \
--yscrollcommand ".t.fMarket.vs set"] -side left -expand 1 -fill x
+-yscrollcommand ".t.fMarket.vs set"] -side left -expand 1 -fill both
 pack [scrollbar .t.fMarket.vs -command ".t.fMarket.tv yview" \
 -orient vertical] -side left -fill y
 
 # next, unit combobox and orders
 .t.pwLeft add [frame .t.fLunitOrders]
-pack [ttk::combobox .t.cbMyUnits -state readonly -width 45 -exportselection 0] -side top -in .t.fLunitOrders
+pack [ttk::combobox .t.cbMyUnits -state readonly -width 45 -exportselection 0] \
+-side top -in .t.fLunitOrders -expand 1 -fill both
 if {$tcl_platform(os) eq "Linux"} {
 	# for some reason, the combox is much wider on Linux
 	.t.cbMyUnits configure -width 36
 }
 
 # next, unit items (text + scrollbar)
-pack [frame .t.fItems] -side top -in .t.fLunitOrders
+pack [frame .t.fItems] -side top -in .t.fLunitOrders -expand 1 -fill both
 pack [text .t.fItems.t -width 40 -height 20 -state disabled \
--yscrollcommand ".t.fItems.vs set"] -side left
+-yscrollcommand ".t.fItems.vs set"] -side left -expand 1 -fill both
 
 pack [scrollbar .t.fItems.vs -command ".t.fItems.t yview" \
 -orient vertical] -side left -fill y
