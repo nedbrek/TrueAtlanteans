@@ -16,6 +16,11 @@ variable unitFlags {
 	{revealing faction} {REVEAL FACTION}
 	{taxing} {AUTOTAX 1}
 	{sharing} {SHARE 1}
+	{walking battle spoils} {SPOILS WALK}
+	{riding battle spoils} {SPOILS RIDE}
+	{flying battle spoils} {SPOILS FLY}
+	{weightless battle spoils} {SPOILS NONE}
+	{won't cross water} {NOCROSS 1}
 }
 
 proc dGet {d k} {
@@ -46,14 +51,31 @@ proc getSection {f} {
 		set i2 [lindex $i2 0]
 		if {$l eq "" || [lindex $i1 1] == [lindex $i2 1]} {
 			set nextLine $l
-			return $ret
+			return [regsub -all { +} $ret " "]
 		}
 		append ret $l
 
 		set l [gets $f]
 	}
 
-	return $ret
+	return [regsub -all { +} $ret " "]
+}
+
+proc getOrderSection {f} {
+	set v [getSection $f]
+	if {[string range $v 0 3] != ";***"} {
+		return $v
+	}
+
+	if {[lindex $v end] ne "***"} {
+		set v2 [getSection $f]
+		if {[string range $v 0 0] != ";"} {
+			puts "Error in getOrderSection(): '$v' '$v2'"
+			exit 1
+		}
+		append v [string range $v2 1 end]
+	}
+	return $v
 }
 
 proc searchListOfDict {l i key val} {
@@ -70,7 +92,7 @@ proc searchListOfDict {l i key val} {
 # try and pull a unit's orders (unit is in region xy)
 proc doRegionOrders {f regionVar xy} {
 	variable nextLine
-	set v [getSection $f]
+	set v [getOrderSection $f]
 	if {[eof $f]} { return "" }
 
 	if {[lindex $v 0] ne "unit"} {
@@ -924,11 +946,30 @@ proc parseFile {f} {
 			set v [getSection $f]
 			while {![isHeader $v]} {
 				# add as event
-				if {![regexp {[^(]+\(([[:digit:]]+)\): (.*)} $v -> unit_num event_desc]} {
-					puts "Error parsing '$v'"
+				if {[regexp {[^(]+\(([[:digit:]]+)\): (.*)} $v -> unit_num event_desc]} {
+					lappend eventList [dict create TYPE ERROR UNIT $unit_num DESC $event_desc]
+				} elseif {[regexp {QUIT: Must give the correct password.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {Incorrect password on #atlantis line.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {Order given without a unit selected.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp { is not your unit.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {DECLARE: Non-existent faction} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {DECLARE: Invalid attitude.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {DECLARE: Can't declare towards your own faction.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {END: without FORM.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {ENDTURN: without TURN.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} else {
+					puts "Error parsing error '$v'"
 					exit 1
 				}
-				lappend eventList [dict create TYPE ERROR UNIT $unit_num DESC $event_desc]
 				set v [getSection $f]
 			}
 		} elseif {$v eq "Events during turn:"} {
@@ -937,7 +978,9 @@ proc parseFile {f} {
 				# add as event
 				if {[regexp {Times reward of ([[:digit:]]+) silver.} $v -> reward]} {
 					lappend eventList [dict create TYPE REWARD AMT $reward]
-				} elseif {[regexp {[^(]+\(([[:digit:]]+)\): (.*)} $v -> unit_num event_desc]} {
+				} elseif {[regexp {Reward of ([[:digit:]]+) silver.} $v -> reward]} {
+					lappend eventList [dict create TYPE REWARD AMT $reward]
+				} elseif {[regexp {[^(]+\(([[:digit:]]+)\):? (.*)} $v -> unit_num event_desc]} {
 					lappend eventList [dict create TYPE EVENT UNIT $unit_num DESC $event_desc]
 				} elseif {[regexp {.* sails from .* to } $v]} {
 					lappend eventList [dict create TYPE SAIL DESC $v]
@@ -945,8 +988,12 @@ proc parseFile {f} {
 					lappend eventList [dict create TYPE EVENT UNIT $unit_num DESC $v]
 				} elseif {[regexp {.* is stopped by guards } $v]} {
 					lappend eventList [dict create TYPE SAIL DESC $v]
+				} elseif {[regexp {Times will be sent to your faction.} $v]} {
+				} elseif {[regexp {Password is now: } $v]} {
+				} elseif {[regexp {The address of } $v]} {
+					lappend eventList [dict create TYPE EVENT DESC $v]
 				} else {
-					puts "Error parsing '$v'"
+					puts "Error parsing event '$v'"
 					exit 1
 				}
 				set v [getSection $f]
@@ -985,7 +1032,7 @@ proc parseFile {f} {
 	dict set turn PlayerPass [lindex $v 2]
 
 	# orders
-	set v [getSection $f]
+	set v [getOrderSection $f]
 	set loc [lindex $v 2]
 	set xy [string map {( "" ) "" , " "} $loc]
 
