@@ -92,7 +92,7 @@ proc ordersMatch {ol str} {
 		}
 
 		# check for match
-		if {[regexp -nocase "^@?$str\\M" $o]} {
+		if {[regexp -nocase "^@? *$str\\M" $o]} {
 			return $idx
 		}
 	}
