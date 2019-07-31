@@ -37,10 +37,19 @@ proc getSection {f} {
 	set i1 [lindex $i1 0]
 	set l [string trimright [gets $f]]
 
+	set in_building 0
+	if {[string range $nextLine 0 0] eq "+"} {
+		set in_building 1
+	}
+
 	while {![eof $f]} {
 		if {$nextLine eq ""} {
 			append ret $l
 			set nextLine $l
+			set in_building 0
+			if {[string range $nextLine 0 0] eq "+"} {
+				set in_building 1
+			}
 			set i1 [regexp -inline -indices {^[ \t]*[^ \t]} $nextLine]
 			set i1 [lindex $i1 0]
 			set l [gets $f]
@@ -49,7 +58,8 @@ proc getSection {f} {
 
 		set i2 [regexp -inline -indices {^[ \t]*[^ \t]} $l]
 		set i2 [lindex $i2 0]
-		if {$l eq "" || [lindex $i1 1] == [lindex $i2 1]} {
+		set first_char [string range $l 2 2]
+		if {$l eq "" || [lindex $i1 1] == [lindex $i2 1] || ($in_building && ($first_char == "*" || $first_char == "-"))} {
 			set nextLine $l
 			return [regsub -all { +} $ret " "]
 		}
@@ -523,50 +533,29 @@ proc getRegion {f} {
 		if {[lindex $v 0] eq "+"} {
 			set hadBuilding 1
 
-			set lines [split [string trimright $v "."] "."]
-			set hdr [lindex $lines 0]
-			regexp {\+ ([^:]+) : (.*)} $hdr -> oname odesc
+			regexp {\+ ([^:]+) : ([^;]*);?(.*)?} $v -> oname odesc ocomment
 			set object [dict create Name $oname]
 
 			set objFlags [split [string trimright $odesc "."] ","]
 			dict set object ObjectName [lindex $objFlags 0]
 			dict set object Flags [lrange $objFlags 1 end]
-
-			if {[llength $lines] == 1} {
-				dict lappend region Objects $object
-
-				set oldNextLine $nextLine
-				set filePtr [tell $f]
-
-				set v [getSection $f]
-
-				continue
-			}
-
-			set i 1
-			set j 2
-			while {$i < [llength $lines]} {
-				while {$j < [llength $lines] &&
-				       [lindex [lindex $lines $j] 0] ne "*" &&
-				       [lindex [lindex $lines $j] 0] ne "-"} {
-					incr j
-				}
-
-				set v1 [join [lrange $lines $i $j-1] "."]
-				set u [parseUnit $v1]
-
-				dict lappend object Units $u
-
-				set i $j
-				incr j
-			}
-
-			dict lappend region Objects $object
+			dict set object Comment [string trimleft $ocomment]
 
 			set oldNextLine $nextLine
 			set filePtr [tell $f]
+			set next_v [getSection $f]
+			while {[string range $next_v 0 0] == " "} {
+				set u [parseUnit [string range $next_v 1 end]]
+				dict lappend object Units $u
 
-			set v [getSection $f]
+				set oldNextLine $nextLine
+				set filePtr [tell $f]
+				set next_v [getSection $f]
+			}
+
+			dict lappend region Objects $object
+			set v $next_v
+
 			continue
 		}
 
