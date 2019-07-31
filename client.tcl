@@ -716,12 +716,13 @@ proc displayRegion {x y nexus} {
 	set regionId [lindex $rdata 7]
 
 	# pull buildings
-	set objects [db eval {
-		SELECT name, desc, flags FROM objects
+	array set objects ""
+	db eval {
+		SELECT id, name, desc, flags FROM objects
 		WHERE regionId=$regionId
-	}]
-	foreach {name desc flags} $objects {
+	} {
 		$t insert end [format "%s - %s %s\n" $name $desc [join $flags ","]]
+		set objects($id) [dict create NAME $name]
 	}
 
 	# region resources for production
@@ -755,7 +756,7 @@ proc displayRegion {x y nexus} {
 
 	# unit processing
 	set units [db eval {
-		SELECT name, uid, detail, faction
+		SELECT id, name, uid, detail, faction
 		FROM units
 		WHERE regionId=$regionId
 		ORDER BY detail DESC
@@ -764,7 +765,18 @@ proc displayRegion {x y nexus} {
 	## set up units combox
 	set unitList {}
 	set state "start"
-	foreach {name uid detail fact} $units {
+	foreach {id name uid detail fact} $units {
+		set obj_id [db onecolumn {
+			SELECT objectId
+			FROM object_unit_map
+			WHERE unitId=$id
+		}]
+		set unit_entry [format {%s (%d)} $name $uid]
+		if {$obj_id ne ""} {
+			dict lappend objects($obj_id) UNITS $unit_entry
+			continue
+		}
+
 		if {$detail eq "own"} {
 			## don't show owned units from the past
 			if {$turn != $::currentTurn} { continue }
@@ -774,7 +786,19 @@ proc displayRegion {x y nexus} {
 			lappend unitList "-----"
 		}
 
-		lappend unitList [format {%s (%d)} $name $uid]
+		lappend unitList $unit_entry
+	}
+
+	set prev_k ""
+	foreach {k v} [array get objects] {
+		set obj_units [dGet $v UNITS]
+		if {$obj_units ne "" && $k ne $prev_k} {
+			lappend unitList [format {+ %s} [dGet $v NAME]]
+			set prev_k $k
+		}
+		foreach u $obj_units {
+			lappend unitList $u
+		}
 	}
 
 	.t.cbMyUnits configure -values $unitList
