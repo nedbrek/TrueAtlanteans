@@ -73,7 +73,7 @@ proc getSection {f} {
 
 proc getOrderSection {f} {
 	set v [getSection $f]
-	if {[string range $v 0 3] != ";***"} {
+	if {[string range $v 0 3] ne ";***"} {
 		return $v
 	}
 

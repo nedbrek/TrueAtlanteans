@@ -335,8 +335,8 @@ proc moveCoord {x y dir} {
 
 	# wrap around
 	set maxX [::db eval { SELECT max(cast(x as integer)) FROM terrain }]
-	if {$x < 0} { incr x $maxX }
-	if {$x >= $maxX} { incr x -$maxX }
+	if {$x < 0} { set x $maxX }
+	if {$x > $maxX} { set x 0 }
 
 	return [list $x $y]
 }
