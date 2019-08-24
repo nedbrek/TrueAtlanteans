@@ -347,7 +347,9 @@ proc parseMan {t} {
 	set i [lsearch $t "*This race may study *"]
 	set skill_spec [lindex $t $i]
 
-	if {[regexp { *This race may study all skills to level (.*)} $skill_spec -> all_level]} {
+	if {[regexp { *This race may study all skills to level ([[:digit:]]+)} $skill_spec -> all_level]} {
+		dict set ret ALL $all_level
+	} elseif {[regexp { *This race may study all non-magic skills to level ([[:digit:]]+)} $skill_spec -> all_level]} {
 		dict set ret ALL $all_level
 	} else {
 		regexp { *This race may study (.*) to level (.*) and all other.* to level ([^ ]*)} $skill_spec -> specs spec_level other_level
