@@ -73,12 +73,23 @@ proc countItem {ils item} {
 	return 0
 }
 
+proc skillLevel {skill_list skill_name} {
+	set i [lsearch $skill_list [format {*%s*} $skill_name]]
+	if {$i == -1} { return 0 }
+	if {[lindex $skill_list $i 0] ne $skill_name && [lindex $skill_list $i 1] ne $skill_name} {
+		puts "Mismatch in skillLevel '$skill_list' '$skill_name'"
+		exit
+	}
+	return [lindex $skill_list $i 2]
+}
+
 proc registerFunctions {} {
 	::db function curTax curTax
 	::db function curProduce curProduce
 	::db function countItem countItem
 	::db function countMen countMen
 	::db function dGet dGet
+	::db function skillLevel skillLevel
 }
 
 proc createDb {filename} {
