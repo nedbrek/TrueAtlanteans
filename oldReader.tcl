@@ -162,6 +162,33 @@ proc doRegionOrders {f regionVar xy} {
 		# update region
 		dict set r Units $units
 		set regions [lreplace $regions $i $i $r]
+		return $xy
+	}
+
+	#else check objects
+	set objs [dGet $r Objects]
+	for {set oi 0} {$oi < [llength $objs]} {incr oi} {
+		set o [lindex $objs $i]
+		set units [dGet $o Units]
+		set j 0
+		while {$j < [llength $units] &&
+		       ![searchListOfDict $units $j "Name" $unitName]} {
+			incr j
+		}
+		if {$j < [llength $units]} {
+			# put the orders into the unit list
+			set u [lindex $units $j]
+			dict set u "Orders" $orders
+			set units [lreplace $units $j $j $u]
+
+			# update object
+			dict set o Units $units
+			set objs [lreplace $objs $oi $oi $o]
+
+			# update region
+			dict set r Objects $objs
+			set regions [lreplace $regions $i $i $r]
+		}
 	}
 
 	return $xy
