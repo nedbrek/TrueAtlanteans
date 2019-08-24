@@ -2483,6 +2483,11 @@ proc enableMenus {} {
 .mTopMenu.mView add command -label "My Units" -command showAllUnits -underline 3
 .mTopMenu.mView add command -label "Taxers" -command reportTax -underline 0
 .mTopMenu.mView add command -label "Resources" -command reportResources -underline 0
+.mTopMenu.mView add command -label "Unclaimed" -command {
+	tk_messageBox -message [format {$%d} [db onecolumn {
+		SELECT val FROM notes WHERE key="unclaimed"
+	}]]
+} -underline 0
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
 .mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
 

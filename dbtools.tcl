@@ -508,6 +508,12 @@ proc updateDb {db tdata} {
 
 	$db eval {END TRANSACTION}
 
+	set unclaimed [dGet $tdata Unclaimed]
+	$db eval {
+		INSERT OR REPLACE INTO notes
+		VALUES("unclaimed", $unclaimed)
+	}
+
 	set ::men [db eval {select abbr from items where type="race"}]
 	set ::currentTurn [db eval {select max(turn) from detail}]
 
