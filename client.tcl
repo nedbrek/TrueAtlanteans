@@ -2409,6 +2409,174 @@ proc finishForm {t} {
 	destroy $t
 }
 
+proc splitUnit {} {
+	# pull current hex info
+	set xy [getSelectionXY]
+	if {$xy eq ""} { return }
+	set x [lindex $xy 0]
+	set y [lindex $xy 1]
+	set zlevel [getZlevel]
+	## get most recent details
+	set rdata [db eval {
+		SELECT id, turn
+		FROM detail
+		WHERE x=$x AND y=$y AND z=$zlevel
+		ORDER BY turn DESC LIMIT 1
+	}]
+	if {[llength $rdata] == 0} { return }
+	foreach {regionId turn} $rdata {}
+	if {$turn != $::currentTurn} { return }
+
+	# get units in hex
+	set rdata [db eval {
+		SELECT name, uid, orders, flags, items
+		FROM units
+		WHERE regionId=$regionId AND detail="own"
+	}]
+
+	set maxAlias 0
+	set unitList [list]
+	set unitOrders [list]
+	set unitFlags [list]
+	set start_items ""
+	foreach {name uid orders flags items} $rdata {
+		set full_name [format {%s (%d)} $name $uid]
+		lappend unitList $full_name
+		if {$full_name eq $gui::prevUnit} {
+			set start_items $items
+		}
+		lappend unitOrders $orders
+		lappend unitFlags $flags
+
+		foreach o $orders {
+			if {[regexp -nocase "^@?form\\M" $o]} {
+				set maxAlias [expr {max($maxAlias, [lindex $o 1])}]
+			}
+		}
+	}
+
+	# build the window
+	set t .tSplitUnit
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Split Unit"
+
+		pack [frame $t.fTop] -side top -expand -1 -fill y
+		grid [label $t.fTop.lAlias -text "Alias"] -row 0 -column 0
+		grid [ttk::spinbox $t.fTop.sAlias -from 1 -to 100] -row 0 -column 1 -sticky we -columnspan 2
+
+		grid [label $t.fTop.lName -text "Name"] -row 1 -column 0
+		grid [entry $t.fTop.eName] -row 1 -column 1 -sticky we -columnspan 2
+		grid columnconfigure $t.fTop 1 -weight 1
+
+		pack [frame $t.fMid] -side top -expand 1 -fill both
+		grid [ttk::treeview $t.fMid.lbKeep -selectmode browse -columns {0 1}] -row 0 -column 0
+		grid [frame $t.fMid.fMovers] -row 0 -column 1
+		grid [ttk::treeview $t.fMid.lbGive -selectmode browse -columns {0 1}] -row 0 -column 2
+		grid columnconfigure $t.fMid 0 -weight 1
+		grid columnconfigure $t.fMid 2 -weight 1
+
+		pack [button $t.fMid.fMovers.bAdd -text "<" -command [list splitAdd 1]] -side top
+		pack [button $t.fMid.fMovers.bSub -text ">" -command [list splitSub 1]] -side top
+		bind $t.fMid.fMovers.bAdd <Shift-1> {splitAdd 10; break}
+		bind $t.fMid.fMovers.bAdd <Control-1> {splitAdd 100; break}
+		bind $t.fMid.fMovers.bAdd <Control-Shift-1> {splitAdd 1000; break}
+
+		bind $t.fMid.fMovers.bSub <Shift-1> {splitSub 10; break}
+		bind $t.fMid.fMovers.bSub <Control-1> {splitSub 100; break}
+		bind $t.fMid.fMovers.bSub <Control-Shift-1> {splitSub 1000; break}
+
+		pack [label $t.lOrders -text "Orders"] -side top
+		pack [text $t.orders -height 24 -width 42] -side top -expand 1 -fill both
+
+		pack [frame $t.fButtons] -side top
+		pack [button $t.fButtons.bOk -text "Ok" -command [list finishSplit $t]] -side left
+		pack [button $t.fButtons.bCancel -text "Cancel" -command [list destroy $t]] -side left
+	}
+
+	$t.fTop.sAlias set [expr {$maxAlias + 1}]
+	foreach i $start_items {
+		set ct [lindex $i 0]
+		set abbr [lindex $i end]
+		set name [lrange $i 1 end-1]
+		$t.fMid.lbKeep insert {} end -text $name -values [list $abbr $ct]
+	}
+}
+
+proc splitMv {w w2 v} {
+	set sel [$w selection]
+	if {$sel eq ""} { return }
+
+	set name [$w item $sel -text]
+	set i [$w item $sel -values]
+	set ct [lindex $i 1]
+	set abbr [lindex $i 0]
+
+	if {$v > $ct} { set v $ct }
+	incr ct -$v
+
+	if {$ct > 0} {
+		$w item $sel -values [list $abbr $ct]
+	} else {
+		$w delete $sel
+	}
+
+	foreach item [$w2 children {}] {
+		set i [$w2 item $item -values]
+		set ct2 [lindex $i 1]
+		set abbr2 [lindex $i 0]
+		if {$abbr2 eq $abbr} {
+			incr ct2 $v
+			$w2 item $item -values [list $abbr $ct2]
+			return
+		}
+	}
+	$w2 insert {} end -text $name -values [list $abbr $v]
+}
+
+proc splitAdd {v} {
+	set w2 .tSplitUnit.fMid.lbKeep
+	set w .tSplitUnit.fMid.lbGive
+	splitMv $w $w2 $v
+}
+
+proc splitSub {v} {
+	set w .tSplitUnit.fMid.lbKeep
+	set w2 .tSplitUnit.fMid.lbGive
+	splitMv $w $w2 $v
+}
+
+proc finishSplit {t} {
+	set alias [$t.fTop.sAlias get]
+	.t.tOrd insert end "\nform $alias\n"
+
+	set name [$t.fTop.eName get]
+	if {$name ne ""} {
+		.t.tOrd insert end "name unit \"$name\"\n"
+	}
+
+	set orders [$t.orders get 1.0 end]
+	if {$orders ne ""} {
+		.t.tOrd insert end "$orders\n"
+	}
+	.t.tOrd insert end "end\n"
+
+	# give
+	foreach i [$t.fMid.lbGive children {}] {
+		set vals [$t.fMid.lbGive item $i -values]
+		set ct [lindex $vals 1]
+		set abbr [string map {[ "" ] ""} [lindex $vals 0]]
+		.t.tOrd insert end "give new $alias $ct $abbr\n"
+	}
+
+	# TODO use parent listbox
+	if {$gui::prevUnit ne ""} {
+		saveUnitOrders $gui::prevId .t.tOrd
+	}
+
+	destroy $t
+}
+
 proc toggleDrawAll {} {
 	drawDB .t.fR.screen db
 }
@@ -2606,6 +2774,7 @@ bind $w <F5> {drawDB %W db} ;# refresh
 bind $w <d> {clearNotDoneCur %W}
 bind $w <c> {keyCenter %W}
 bind $w <n> {formUnit}
+bind $w <s> {splitUnit}
 
 ## orders
 # update orders on unit dropdown change

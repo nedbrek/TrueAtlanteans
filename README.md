@@ -38,6 +38,7 @@ When done, use File->Save Orders to export all your orders into a file suitable 
 * c - center map (also, double click)
 * d - done with hex (clear blue highlight)
 * n - form new unit
+* s - split current unit
 * arrow keys for navigation (left and right will try to keep you in a straight line, Home/End/PgUp/PgDn allow you to move diagonally)
 * +/- zoom in, zoom out
 
