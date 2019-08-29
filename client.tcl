@@ -2040,6 +2040,7 @@ proc checkOrderType {tgt_ord x y z ctxt} {
 }
 
 proc checkAllOrders {} {
+	saveUnitOrders $gui::prevId .t.tOrd
 	# pull all hexes that we have details for
 	set res [::db eval {
 		SELECT DISTINCT id, x, y, z
@@ -2092,6 +2093,7 @@ proc checkAllOrders {} {
 }
 
 proc saveOrders {} {
+	saveUnitOrders $gui::prevId .t.tOrd
 	set filename [format {orders%d.txt} $::currentTurn]
 	set ofile [tk_getSaveFile -initialfile $filename ]
 	if {$ofile eq ""} { return }
