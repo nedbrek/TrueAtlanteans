@@ -538,6 +538,13 @@ proc updateDb {db tdata} {
 				VALUES($t, $val)
 			}
 		}
+		foreach b [dGet $tdata Battles] {
+			$db eval {
+				INSERT INTO events
+				(type, val)
+				VALUES("BATTLE", $b)
+			}
+		}
 		$db eval {END TRANSACTION}
 	}
 }

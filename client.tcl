@@ -1491,6 +1491,52 @@ proc reportResources {} {
 	}
 }
 
+proc showBattles {} {
+	set t .tShowBattles
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Battles"
+
+		scrollbar $t.vs -command "$t.tv yview"
+		ttk::treeview $t.tv -yscrollcommand "$t.vs set"
+		bind $t.tv <Double-1> [list selectUnitFromView %W]
+
+		pack $t.vs -side right -fill y
+		pack $t.tv -side left -expand 1 -fill both
+	}
+	$t.tv delete [$t.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 2} {incr i} { lappend cols $i }
+	$t.tv configure -columns $cols
+
+	$t.tv column 1 -width 34
+	$t.tv column 2 -width 34
+	$t.tv heading 1 -text "Id"
+	$t.tv heading 2 -text "Loc"
+
+	# populate it
+	db eval {
+		SELECT val
+		FROM events
+		WHERE type = "BATTLE"
+	} {
+		set att [dGet $val Attacker]
+		set id [dGet $val AttId]
+		set loc [dGet $val XY]
+		if {[llength $loc] == 2} {
+			foreach {x y} $loc {}
+			set z 1
+		} else {
+			foreach {x y z} $loc {}
+		}
+		set loc [format {(%d,%d,%d)} $x $y $z]
+		$t.tv insert {} end -text $att -values [list $id $loc]
+	}
+}
+
 proc searchUnits {} {
 	# build the window
 	set t .tSearchUnits
@@ -2647,6 +2693,7 @@ proc enableMenus {} {
 
 # view menu
 .mTopMenu.mView add checkbutton -label "All Hexes" -command toggleDrawAll -underline 0 -variable gui::draw_all
+.mTopMenu.mView add command -label "Battles" -command showBattles -underline 0
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
 .mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
