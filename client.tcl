@@ -1509,13 +1509,11 @@ proc showBattles {} {
 
 	# configure all the columns
 	set cols ""
-	for {set i 1} {$i <= 2} {incr i} { lappend cols $i }
+	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
 	$t.tv configure -columns $cols
 
 	$t.tv column 1 -width 34
-	$t.tv column 2 -width 34
-	$t.tv heading 1 -text "Id"
-	$t.tv heading 2 -text "Loc"
+	$t.tv heading 1 -text "Loc"
 
 	# populate it
 	db eval {
@@ -1532,8 +1530,17 @@ proc showBattles {} {
 		} else {
 			foreach {x y z} $loc {}
 		}
+		set att_name [format {%s (%d)} $att $id]
 		set loc [format {(%d,%d,%d)} $x $y $z]
-		$t.tv insert {} end -text $att -values [list $id $loc]
+		set row [$t.tv insert {} end -text $att_name -values [list $loc]]
+
+		set tact_unit [dGet $val Tactics]
+		if {$tact_unit ne ""} {
+			$t.tv insert $row end -text "$tact_unit gets a free round of attacks"
+		}
+		foreach l [dGet $val RAW] {
+			$t.tv insert $row end -text $l
+		}
 	}
 }
 

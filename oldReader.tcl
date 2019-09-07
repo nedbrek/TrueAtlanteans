@@ -799,6 +799,7 @@ proc parseBattle {f} {
 
 	set v [getSection $f]
 	while {![regexp {^Spoils: ([^.]+).} $v -> spoils]} {
+		dict lappend ret RAW $v
 		set v [getSection $f]
 	}
 
