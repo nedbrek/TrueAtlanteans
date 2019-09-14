@@ -255,24 +255,7 @@ proc createDb {filename} {
 	registerFunctions
 }
 
-proc openDb {ofile} {
-	if {[info exists ::db]} {
-		::db close
-	}
-	sqlite3 ::db $ofile
-	set res [db eval {SELECT name from sqlite_master}]
-	if {[lsearch $res terrain] == -1 ||
-	    [lsearch $res detail]  == -1} {
-		::db close
-		unset ::db
-		return "Error file $ofile is invalid"
-	}
-
-	registerFunctions
-
-	set ::men [db eval {select abbr from items where type="race"}]
-	set ::currentTurn [db eval {select max(turn) from detail}]
-
+proc setMaxXY {} {
 	set maxx [::db onecolumn {SELECT val FROM notes WHERE key = "max_x"}]
 	if {$maxx eq ""} {
 		set maxx [::db onecolumn { SELECT max(cast(x as integer)) FROM terrain WHERE z=1}]
@@ -292,6 +275,27 @@ proc openDb {ofile} {
 	} else {
 		set ::max_y $maxy
 	}
+}
+
+proc openDb {ofile} {
+	if {[info exists ::db]} {
+		::db close
+	}
+	sqlite3 ::db $ofile
+	set res [db eval {SELECT name from sqlite_master}]
+	if {[lsearch $res terrain] == -1 ||
+	    [lsearch $res detail]  == -1} {
+		::db close
+		unset ::db
+		return "Error file $ofile is invalid"
+	}
+
+	registerFunctions
+
+	set ::men [db eval {select abbr from items where type="race"}]
+	set ::currentTurn [db eval {select max(turn) from detail}]
+
+	setMaxXY
 
 	return ""
 }
@@ -547,5 +551,6 @@ proc updateDb {db tdata} {
 		}
 		$db eval {END TRANSACTION}
 	}
+	setMaxXY
 }
 
