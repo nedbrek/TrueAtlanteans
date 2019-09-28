@@ -1735,7 +1735,7 @@ proc ctProd {} {
 proc findSharingUnits {units} {
 	set ret [list]
 	foreach u $units {
-		if {[lsearch [$u cget -flags] SHARE] != -1} {
+		if {[lsearch [{*}$u cget -flags] SHARE] != -1} {
 			lappend ret $u
 		}
 	}
@@ -1815,8 +1815,8 @@ proc checkOrder {u o x y z ctxt} {
 			# pull funds from faction bank
 			set amt [lindex $op 1]
 			# TODO check against unclaimed amount
-			set cur_silv [$u countItem SILV]
-			$u setItem SILV [expr {$cur_silv + $amt}]
+			set cur_silv [{*}$u countItem SILV]
+			{*}$u setItem SILV [expr {$cur_silv + $amt}]
 			return 0
 		}
 
@@ -1856,7 +1856,7 @@ proc checkOrder {u o x y z ctxt} {
 			}
 
 			# check inventory
-			set cur_ct [$u countItem $item_id]
+			set cur_ct [{*}$u countItem $item_id]
 			set ct [lindex $op $i]
 			if {$ct eq "all"} {
 				set ct $cur_ct
@@ -1867,10 +1867,10 @@ proc checkOrder {u o x y z ctxt} {
 			}
 
 			# execute
-			$u setItem $item_id [expr {$cur_ct - $ct}]
+			{*}$u setItem $item_id [expr {$cur_ct - $ct}]
 			if {$recv_obj ne ""} {
-				set recv_ct [$recv_obj countItem $item_id]
-				$recv_obj setItem $item_id [expr {$recv_ct + $ct}]
+				set recv_ct [{*}$recv_obj countItem $item_id]
+				{*}$recv_obj setItem $item_id [expr {$recv_ct + $ct}]
 			}
 
 			return 0
@@ -1911,16 +1911,16 @@ proc checkOrder {u o x y z ctxt} {
 				puts "Warning: no skill cost for $skill_name"
 				return 0
 			}
-			set men [countMen [$u cget -items]]
+			set men [countMen [{*}$u cget -items]]
 			set cost [expr {$skill_cost * $men}]
 
-			set cur_silv [$u countItem SILV]
+			set cur_silv [{*}$u countItem SILV]
 			if {$cur_silv > 0} {
 				if {$cur_silv >= $cost} {
-					$u setItem SILV [expr {$cur_silv - $cost}]
+					{*}$u setItem SILV [expr {$cur_silv - $cost}]
 					set cost 0
 				} else {
-					$u setItem SILV 0
+					{*}$u setItem SILV 0
 					set cost [expr {$cost - $cur_silv}]
 				}
 			}
@@ -1928,14 +1928,14 @@ proc checkOrder {u o x y z ctxt} {
 			if {$cost > 0} {
 				# look for a sharing source
 				foreach su $sharing_units {
-					set s_silv [$su countItem SILV]
+					set s_silv [{*}$su countItem SILV]
 					if {$s_silv >= $cost} {
-						$su setItem SILV [expr {$s_silv - $cost}]
+						{*}$su setItem SILV [expr {$s_silv - $cost}]
 						return 0
 					}
 
 					if {$s_silv > 0} {
-						$su setItem SILV 0
+						{*}$su setItem SILV 0
 						set cost [expr {$cost - $s_silv}]
 					}
 				}
@@ -2057,10 +2057,10 @@ proc checkOrderType {tgt_ord x y z ctxt} {
 	set ret [list]
 	set unit_map [dict get $ctxt Units]
 	dict for {u v} $unit_map {
-		set ol [$v cget -orders]
+		set ol [{*}$v cget -orders]
 		if {$ol eq ""} continue
 
-		set il [$v cget -items]
+		set il [{*}$v cget -items]
 
 		set new_orders [list]
 
@@ -2087,7 +2087,7 @@ proc checkOrderType {tgt_ord x y z ctxt} {
 				puts "$u ($x, $y, $z) Turn should have been handled"
 			}
 		}
-		$v configure -orders $new_orders
+		{*}$v configure -orders $new_orders
 	}
 	return $ret
 }
@@ -2109,7 +2109,7 @@ proc checkAllOrders {} {
 
 		set new_units [list]
 		foreach u $units {
-			set lret [$u filterInstantOrders]
+			set lret [{*}$u filterInstantOrders]
 			if {$lret ne ""} {
 				lappend new_units {*}$lret
 			}
@@ -2121,7 +2121,7 @@ proc checkAllOrders {} {
 		# stash unit ids
 		set unit_map [dict create]
 		foreach u $units {
-			dict set unit_map [$u cget -num] $u
+			dict set unit_map [{*}$u cget -num] $u
 		}
 
 		set ctxt [dict create]

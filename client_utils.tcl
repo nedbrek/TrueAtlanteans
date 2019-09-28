@@ -225,9 +225,9 @@ itcl::body Unit::filterInstantOrders {} {
 		set new_unit [itcl::code [Unit #auto Num "new $new_id" Orders $new_o Flags $flags Region $region Object $object]]
 		lappend new_units $new_unit
 
-		set tmp [$new_unit filterInstantOrders]
+		set tmp [{*}$new_unit filterInstantOrders]
 		if {$tmp ne ""} {
-			puts "Error: nested FORM will not work [$u cget -name] ($x, $y, $z)"
+			puts "Error: nested FORM will not work [{*}$u cget -name] ($x, $y, $z)"
 			itcl:delete object $tmp
 		}
 	}
