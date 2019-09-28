@@ -2494,11 +2494,13 @@ proc splitUnit {} {
 	set unitOrders [list]
 	set unitFlags [list]
 	set start_items ""
+	set unit_name ""
 	foreach {name uid orders flags items} $rdata {
 		set full_name [format {%s (%d)} $name $uid]
 		lappend unitList $full_name
 		if {$full_name eq $gui::prevUnit} {
 			set start_items $items
+			set unit_name $name
 		}
 		lappend unitOrders $orders
 		lappend unitFlags $flags
@@ -2522,6 +2524,7 @@ proc splitUnit {} {
 
 		grid [label $t.fTop.lName -text "Name"] -row 1 -column 0
 		grid [entry $t.fTop.eName] -row 1 -column 1 -sticky we -columnspan 2
+		$t.fTop.eName insert end $unit_name
 		grid columnconfigure $t.fTop 1 -weight 1
 
 		pack [frame $t.fMid] -side top -expand 1 -fill both
