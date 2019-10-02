@@ -1544,6 +1544,39 @@ proc showBattles {} {
 	}
 }
 
+proc updateSearch {new_txt} {
+	set t .tSearchUnits
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv column 1 -width 40
+	$t.fTop.tv column 2 -width 34
+	$t.fTop.tv column 3 -width 34
+	$t.fTop.tv column 4 -width 34
+	$t.fTop.tv heading 1 -text "Id"
+	$t.fTop.tv heading 2 -text "x"
+	$t.fTop.tv heading 3 -text "y"
+	$t.fTop.tv heading 4 -text "z"
+
+	# populate it
+	set res [getUnits [format {%%%s%%} $new_txt]]
+	foreach {x y z name uid} $res {
+		$t.fTop.tv insert {} end -text $name -values [list $uid $x $y $z]
+	}
+
+	# allow sorting
+	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
+	for {set i 1} {$i <= 3} {incr i} {
+		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i 1]
+	}
+
+	return 1
+}
+
 proc searchUnits {} {
 	# build the window
 	set t .tSearchUnits
@@ -1551,6 +1584,12 @@ proc searchUnits {} {
 	if {![winfo exists $t]} {
 		toplevel $t
 		wm title $t "Find Units"
+
+		# TODO allow search by id
+		pack [frame $t.fEntry] -side top -fill x
+		pack [label $t.fEntry.l -text "Unit name"] -side left
+		pack [entry $t.fEntry.e -validate key -validatecommand {updateSearch %P}] -side left -expand 1 -fill x
+
 		pack [frame $t.fTop] -side top -expand 1 -fill both
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
@@ -1559,33 +1598,11 @@ proc searchUnits {} {
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
-	}
-	$t.fTop.tv delete [$t.fTop.tv children {}]
 
-	# configure all the columns
-	set cols ""
-	for {set i 1} {$i <= 3} {incr i} { lappend cols $i }
-	$t.fTop.tv configure -columns $cols
-
-	$t.fTop.tv column 1 -width 34
-	$t.fTop.tv column 2 -width 34
-	$t.fTop.tv column 3 -width 34
-	$t.fTop.tv heading 1 -text "x"
-	$t.fTop.tv heading 2 -text "y"
-	$t.fTop.tv heading 3 -text "z"
-
-	# populate it
-	# TODO allow user to edit name
-	set res [getUnits "Courier%"]
-	foreach {x y z name uid} $res {
-		set n [format {%s (%d)} $name $uid]
-		$t.fTop.tv insert {} end -text $n -values [list $x $y $z]
-	}
-
-	# allow sorting
-	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
-	for {set i 1} {$i <= 3} {incr i} {
-		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i 1]
+		# start with courier
+		$t.fEntry.e insert 0 "Courier"
+	} else {
+		raise $t
 	}
 }
 
