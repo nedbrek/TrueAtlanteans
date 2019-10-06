@@ -1,0 +1,11 @@
+1. Make a directory for the reports (and orders)
+2. Create the database
+   a. Make sure the max_x/y are correct in rules_m.txt (as well as alignments)
+   b. tclsh computer_player.tcl new <dir> -f ../../rules_m.txt jump <n>
+3. Each turn:
+   a. Get the report: curl -F id=<p> -F password=<pass> -F orders_download=GO http://twilight.net/atlantis/ > <dir>/turn<T>.<p>
+   b. Back up the database! yes | cp <dir>/game.db <dir>/game.db.good
+   c. Add the report: tclsh computer_player.tcl add <dir> turn<T>.<p>
+   d. Generate orders: tclsh computer_player.tcl gen <dir>
+   e. Upload the orders: curl -F id=<p> -F password=<pass> -F orders=@<filename> http://twilight.net/atlantis/\?g=<gamename>
+
