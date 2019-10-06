@@ -44,6 +44,7 @@ itcl::class Unit {
 	public variable flags
 	public variable region
 	public variable object
+	public variable parent
 
 	constructor {args} {
 		set db_id  [dGet $args Id]
@@ -55,6 +56,7 @@ itcl::class Unit {
 		set flags  [dGet $args Flags]
 		set region [dGet $args Region]
 		set object [dGet $args Object]
+		set parent [dGet $args Parent]
 
 		set orig_orders $orders
 
@@ -208,7 +210,7 @@ itcl::body Unit::filterInstantOrders {} {
 		}
 
 		# anything but form
-		if {![regexp {^form +(.*)} $o -> new_id]} {
+		if {![regexp -nocase {^form +(.*)} $o -> new_id]} {
 			lappend new_orders $o
 			continue
 		}
@@ -216,13 +218,14 @@ itcl::body Unit::filterInstantOrders {} {
 		set new_o [list]
 		for {incr i} {$i < [llength $orders]} {incr i} {
 			set o [lindex $orders $i]
-			if {[regexp { *end *$} $o]} {
+			if {[regexp -nocase { *end *$} $o]} {
 				break
 			}
 			lappend new_o $o
 		}
 
-		set new_unit [itcl::code [Unit #auto Num "new $new_id" Orders $new_o Flags $flags Region $region Object $object]]
+		set new_unit [itcl::code [Unit #auto Num "new $new_id" Orders $new_o \
+		    Flags $flags Region $region Object $object Parent $this]]
 		lappend new_units $new_unit
 
 		set tmp [{*}$new_unit filterInstantOrders]
