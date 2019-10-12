@@ -448,7 +448,7 @@ proc fixSales {sells} {
 proc getRegion {f} {
 	variable nextLine
 	set v [getSection $f]
-	if {[regexp {^Orders Template \(.* Format\):$} $v]} {
+	if {[eof $f] || [regexp {^Orders Template \(.* Format\):$} $v]} {
 		return ""
 	}
 	set region [parseRegion $v]
