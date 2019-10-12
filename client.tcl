@@ -995,18 +995,42 @@ proc zoomIn {} {
 	set i [lsearch $::zoomLevels $::n]
 	if {$i == -1 || $i+1 == [llength $::zoomLevels]} {return}
 
+	set xy [getSelectionXY]
+	if {$xy ne ""} {
+		foreach {x y} $xy {}
+	}
+
+	# increase zoom level
 	incr i
 	setN [lindex $::zoomLevels $i]
 	drawDB .t.fR.screen db
+
+	if {$xy ne ""} {
+		# reselect active
+		selectRegion .t.fR.screen $x $y
+		centerHex .t.fR.screen $x $y
+	}
 }
 
 proc zoomOut {} {
 	set i [lsearch $::zoomLevels $::n]
 	if {$i == -1 || $i == 0} {return}
 
+	set xy [getSelectionXY]
+	if {$xy ne ""} {
+		foreach {x y} $xy {}
+	}
+
+	# decrease zoom level
 	incr i -1
 	setN [lindex $::zoomLevels $i]
 	drawDB .t.fR.screen db
+
+	if {$xy ne ""} {
+		# reselect active
+		selectRegion .t.fR.screen $x $y
+		centerHex .t.fR.screen $x $y
+	}
 }
 
 proc newGame {} {
