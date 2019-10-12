@@ -2833,6 +2833,8 @@ bind .t.tOrd  <Enter> {switchFocus %W}
 
 # bind mousewheel to vertical scrolling
 bind $w <MouseWheel> {%W yview scroll [expr %D < 0 ? 1 : -1] units}
+bind $w <4> {%W yview scroll -1 units}
+bind $w <5> {%W yview scroll 1 units}
 
 # bind click
 bind $w <1> {hexClick %W %x %y}
