@@ -2246,6 +2246,21 @@ proc countItemsByType {il type} {
 	return $count
 }
 
+proc typeMen {il} {
+	set type "none?"
+	foreach i $il {
+		set abbr [string trim [lindex $i 2] {[]}]
+		if {[lsearch $::men $abbr] != -1} {
+			if {$type eq "none?"} {
+				set type $abbr
+			} else {
+				return "MIX"
+			}
+		}
+	}
+	return $type
+}
+
 proc showAllUnits {} {
 	set units [db eval {
 		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items,
@@ -2282,7 +2297,10 @@ proc showAllUnits {} {
 
 	# configure all the columns
 	set hdrs {
-		"Id" "Loc" "Skills" "Men" "Silv" "Weapons" "Armor" "Horses" "Orders"
+		"Id" "Loc" "Skills" "Men" "Type" "Silv" "Weapons" "Armor" "Horses" "Orders"
+	}
+	set widths {
+		126 54 93 87 90 81 95 78 87 94 329
 	}
 	set cols ""
 	for {set i 1} {$i <= [llength $hdrs]} {incr i} { lappend cols $i }
@@ -2290,9 +2308,10 @@ proc showAllUnits {} {
 
 	set tv $t.fTop.tv
 	$tv heading #0 -command [list sortAllUnits $tv 0 0]
+	$tv column #0 -width [lindex $widths 0]
 	for {set i 1} {$i < [llength $hdrs]} {incr i} {
 		$tv heading $i -text [lindex $hdrs $i-1]
-		$tv column $i -width 34
+		$tv column $i -width [lindex $widths $i]
 		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 9}]]
 	}
 	$tv heading $i -text [lindex $hdrs $i-1]
@@ -2334,6 +2353,7 @@ proc showAllUnits {} {
 			}
 		}
 		lappend vals [countMen $items]
+		lappend vals [typeMen $items]
 		lappend vals [countItem $items SILV]
 		lappend vals [countItemsByType $items weapon]
 		lappend vals [countItemsByType $items armor]
