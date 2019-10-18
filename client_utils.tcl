@@ -465,3 +465,96 @@ proc getUnitObjects {id} {
 	return $ret
 }
 
+# output a list like in the original report
+proc outputList {f lvals} {
+	if {$lvals eq ""} {
+		puts $f " none."
+	} else {
+		puts -nonewline $f " [lindex $lvals 0]"
+		foreach v [lrange $lvals 1 end] {
+			puts -nonewline $f ", $v"
+		}
+		puts $f "."
+	}
+}
+
+proc writeMap {fname} {
+	set data [db eval {
+	    SELECT x, y, z, type, city, region, wages, pop, race, tax, entertainment, products, sells, wants, detail.exitDirs
+	    FROM terrain join detail
+	    USING(x,y,z)
+	    GROUP BY terrain.x, terrain.y, terrain.z
+	    ORDER BY detail.turn
+	}]
+
+	set f [open $fname "w"]
+	foreach {x y z type city region wages pop race tax entertainment products sells wants exits} $data {
+		puts -nonewline $f "$type ($x,$y"
+		if {$z > 1} {
+			puts -nonewline $f ",$z"
+		}
+		puts -nonewline $f ") in $region"
+		if {$city ne ""} {
+			puts -nonewline $f ", contains [lindex $city 0] \[[lindex $city 1]\]"
+		}
+		if {$pop ne ""} {
+			puts -nonewline $f ", $pop peasants ($race), \$$tax"
+		}
+		puts $f "."
+
+		puts $f "------------------------------------------------------------"
+		set wg [lindex $wages 0]
+		set mwg [lindex $wages 1]
+		if {$wg eq ""} { set wg 0 }
+		if {$mwg eq ""} { set mwg 0 }
+		puts $f "  Wages: \$$wg (Max: \$$mwg)."
+
+		puts -nonewline $f "  Wanted:"
+		outputList $f $wants
+
+		puts -nonewline $f "  For Sale:"
+		outputList $f $sells
+
+		if {$entertainment eq "none"} { set entertainment 0 }
+		puts $f "  Entertainment available: \$$entertainment."
+
+		puts -nonewline $f "  Products:"
+		outputList $f $products
+
+		puts $f ""
+		set dir_map {
+			North n
+			Northwest nw
+			Northeast ne
+			South s
+			Southwest sw
+			Southeast se
+		}
+		puts $f "Exits:"
+		foreach e $exits {
+			set new_loc [moveCoord $x $y [dict get $dir_map $e]]
+			foreach {x2 y2} $new_loc {}
+			set d2 [db eval {SELECT type, region, city FROM terrain WHERE x=$x2 AND y=$y2 AND z=$z}]
+			foreach {t2 r2 c2} $d2 {}
+
+			puts -nonewline $f "  $e: $t2 ($x2,$y2"
+			if {$z > 1} {
+				puts -nonewline $f ",$z"
+			}
+			puts -nonewline $f ") in $r2"
+			if {$c2 ne ""} {
+				puts -nonewline $f ", contains [lindex $c2 0] \[[lindex $c2 1]\]"
+			}
+			puts $f "."
+		}
+		if {[llength $exits] == 0} {
+			puts $f "  none"
+		}
+
+		puts $f ""
+		puts $f ""
+		puts $f ""
+	}
+	close $f
+}
+

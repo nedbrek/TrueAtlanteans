@@ -2195,6 +2195,13 @@ proc saveOrders {} {
 	writeOrders $ofile
 }
 
+proc exportMap {} {
+	set ofile [tk_getSaveFile]
+	if {$ofile eq ""} { return }
+
+	writeMap $ofile
+}
+
 proc rightCenter {} {
 	recenter .t.fR.screen $gui::rightX $gui::rightY
 }
@@ -2750,12 +2757,14 @@ menu .mTopMenu.mHelp -tearoff 0
 .mTopMenu.mFile add command -label "Open"        -command doOpen  -underline 0 -accelerator "Ctrl+O"
 .mTopMenu.mFile add command -label "Add Report"  -command doAdd   -underline 0 -state disabled
 .mTopMenu.mFile add command -label "Save Orders" -command saveOrders -underline 0 -state disabled
+.mTopMenu.mFile add command -label "Export Map"   -command exportMap -underline 0 -state disabled
 .mTopMenu.mFile add separator
 .mTopMenu.mFile add command -label "Exit"        -command exit    -underline 1 -accelerator "Ctrl+Q"
 
 proc enableMenus {} {
 	.mTopMenu.mFile entryconfigure 2 -state normal
 	.mTopMenu.mFile entryconfigure 3 -state normal
+	.mTopMenu.mFile entryconfigure 4 -state normal
 }
 
 # action menu
