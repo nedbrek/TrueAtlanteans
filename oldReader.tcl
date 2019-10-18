@@ -514,21 +514,32 @@ proc getRegion {f} {
 			exit
 		}
 
-		lappend eout [lindex $e 0]
-		set terrain  [lindex $e 2]
+		# check for "Direction: terrain (loc) in region
+		# versus "Direction <space> :"
+		set off 3
+		if {[regexp {[A-Z][a-z]*:} $e]} {
+			# no space
+			lappend eout [string trimright [lindex $e 0]]
+			set terrain  [lindex $e 1]
+			incr off -1
+		} else {
+			lappend eout [lindex $e 0]
+			set terrain  [lindex $e 2]
+		}
 
-		set loc [lindex $e 3]
+		set loc [lindex $e $off]
 		set lxy [parseLocation $loc]
 		if {$lxy eq ""} {
 			puts "Failed to parseLocation '$exits'"
 		}
+		incr off 2
 
 		set ci [lsearch $e "contains"]
 		if {$ci == -1} {
-			set exRegion [lrange $e 5 end]
+			set exRegion [lrange $e $off end]
 			set town ""
 		} else {
-			set exRegion [string trimright [lrange $e 5 $ci-1] ","]
+			set exRegion [string trimright [lrange $e $off $ci-1] ","]
 
 			set townName [lrange $e $ci+1 end-1]
 			set townType [string trimright [lindex $e end] "."]

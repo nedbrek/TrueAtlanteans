@@ -558,3 +558,40 @@ proc writeMap {fname} {
 	close $f
 }
 
+proc readMap {fname} {
+	set f [open $fname]
+	set regions ""
+	set regionData [reader::getRegion $f]
+	while {$regionData ne ""} {
+		lappend regions $regionData
+		set regionData [reader::getRegion $f]
+	}
+	close $f
+	return $regions
+}
+
+proc importRegionData {db regions} {
+	$db eval {BEGIN TRANSACTION}
+
+	foreach r $regions {
+
+		set loc [dGet $r Location]
+		set x [lindex $loc 0]
+		set y [lindex $loc 1]
+		set z [lindex $loc 2]
+
+		set dirs [doExits $db [dGet $r Exits] $z]
+
+		set ttype [dGet $r Terrain]
+
+		set city    [dGet $r Town]
+		set region  [dGet $r Region]
+
+		$db eval {
+			INSERT OR IGNORE INTO terrain VALUES
+			($x, $y, $z, $ttype, $city, $region);
+		}
+	}
+	$db eval {END TRANSACTION}
+}
+
