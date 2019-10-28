@@ -1565,6 +1565,10 @@ proc showBattles {} {
 		foreach l [dGet $val RAW] {
 			$t.tv insert $row end -text $l
 		}
+		set spoil_row [$t.tv insert $row end -text "Spoils" -open 1]
+		foreach s [split [dGet $val "Spoils"] ","] {
+			$t.tv insert $spoil_row end -text $s
+		}
 	}
 }
 
