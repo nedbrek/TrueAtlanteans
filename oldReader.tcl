@@ -416,18 +416,40 @@ proc parseUnit {v} {
 	dict set u Faction $fact
 	dict set u Flags $uflags
 
+	# group 1 - weight (ignore)
+	# group 2 - capacity (ignore)
 	# group 3 - skills
+	set i 3
 	if {$quality eq "own"} {
-		set group3 [string map {"\n" " "} [lindex $groups 3]]
+		set group3 [string map {"\n" " "} [lindex $groups $i]]
 		if {[regexp {Upkeep:} $group3]} {
-			set group3 [string map {"\n" " "} [lindex $groups 4]]
+			incr i
+			set group3 [string map {"\n" " "} [lindex $groups $i]]
 		}
 		set skills [split [lrange $group3 1 end] ","]
 
 		dict set u Skills [fixSkills $skills]
 	}
 
-	# group 4 - can study
+	# group 4 - combat spell
+	incr i
+	set group4 [lindex $groups $i]
+	if {$group4 ne ""} {
+		if {[regexp { *Combat spell: *(.*)} $group4 -> cspell]} {
+			dict set u CombatSpell $cspell
+			incr i
+		}
+	}
+
+	# group 5 - can study
+	set group5 [lindex $groups $i]
+	if {$group5 ne ""} {
+		if {![regexp { *Can Study: *(.*)} $group5 -> cstudy]} {
+			puts "Error CanStudy: '$group5'"
+			exit
+		}
+		dict set u CanStudy [split $cstudy ","]
+	}
 
 	return $u
 }

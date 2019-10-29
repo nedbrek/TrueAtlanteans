@@ -92,6 +92,15 @@ proc registerFunctions {} {
 	::db function skillLevel skillLevel
 }
 
+proc createObjDef {} {
+	::db eval {
+		CREATE TABLE object_defs(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			desc TEXT not null unique on conflict replace
+		)
+	}
+}
+
 proc createDb {filename} {
 	if {[info exists ::db]} {
 		::db close
@@ -115,7 +124,7 @@ proc createDb {filename} {
 	::db eval {
 		INSERT INTO settings
 		(id, version, player_id, player_pass, geom_top, zoom_level, view_level, forSale_open)
-		VALUES(1, 1, 0, "", "", 0, 0, 0)
+		VALUES(1, 2, 0, "", "", 0, 0, 0)
 	}
 
 	::db eval {
@@ -183,6 +192,7 @@ proc createDb {filename} {
 			items not null,
 			skills not null,
 			flags not null,
+			other,
 			FOREIGN KEY (regionId) REFERENCES detail(id)
 			  ON DELETE CASCADE
 			  ON UPDATE CASCADE
@@ -241,6 +251,8 @@ proc createDb {filename} {
 		)
 	}
 
+	createObjDef
+
 	# active markers
 	::db eval {
 		CREATE TABLE active_markers(
@@ -288,6 +300,18 @@ proc openDb {ofile} {
 		::db close
 		unset ::db
 		return "Error file $ofile is invalid"
+	}
+	set version [db onecolumn {SELECT version FROM settings}]
+	if {$version == 1} {
+		createObjDef
+
+		db eval {
+			ALTER TABLE units
+			ADD COLUMN other
+		}
+		db eval {
+			UPDATE settings SET version = 2
+		}
 	}
 
 	registerFunctions
@@ -384,6 +408,9 @@ proc dbInsertUnit {db regionId u} {
 	set items  [dGet $u Items]
 	set skills [dGet $u Skills]
 	set flags  [dGet $u Flags]
+	set can_study [dGet $u CanStudy]
+	set combat_spell [dGet $u CombatSpell]
+	set other [dict create CanStudy $can_study CombatSpell $combat_spell]
 
 	set r [extractUnitNameNum $name]
 	set n [lindex $r 0]
@@ -391,9 +418,9 @@ proc dbInsertUnit {db regionId u} {
 
 	$db eval {
 		INSERT INTO units
-		(regionId, name, uid, desc, faction, detail, orders, items, skills, flags)
+		(regionId, name, uid, desc, faction, detail, orders, items, skills, flags, other)
 		VALUES(
-		$regionId, $n, $uid, $desc, $fact, $detail, $orders, $items, $skills, $flags
+		$regionId, $n, $uid, $desc, $fact, $detail, $orders, $items, $skills, $flags, $other
 		);
 	}
 	return [$db last_insert_rowid]
@@ -508,6 +535,14 @@ proc updateDb {db tdata} {
 	set skills [dGet $tdata Skills]
 	foreach skill $skills {
 		insertSkill $skill
+	}
+
+	foreach obj_def [dGet $tdata Objects] {
+		$db eval {
+			INSERT OR REPLACE INTO object_defs
+			(desc)
+			VALUES($obj_def)
+		}
 	}
 
 	$db eval {END TRANSACTION}

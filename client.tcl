@@ -622,6 +622,16 @@ proc showUnit {name} {
 		$t insert end "'$desc'\n"
 	}
 
+	set other [db onecolumn {SELECT other FROM units WHERE id=$gui::prevId}]
+	set combat_spell [dGet $other CombatSpell]
+	if {$combat_spell ne ""} {
+		$t insert end "Combat spell: $combat_spell\n"
+	}
+	set can_study [dGet $other CanStudy]
+	if {$can_study ne ""} {
+		$t insert end "Can study: [join $can_study ","]\n"
+	}
+
 	$t insert end "-------- [countMen $items] men\n"
 
 	foreach i $items {
@@ -1705,6 +1715,47 @@ proc itemView {} {
 	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
 	for {set i 1} {$i <= 4} {incr i} {
 		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i [expr {$i == 3}]]
+	}
+}
+
+proc showObjectDefs {} {
+	# build the window
+	set t .tObjectDefs
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Object Definitions"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	}
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv column 1 -width 65
+	$t.fTop.tv heading #0 -text "Object"
+	$t.fTop.tv heading 1 -text "Type"
+
+	# populate it
+	db eval {
+		SELECT desc
+		FROM object_defs
+	} {
+		set col0 [lindex $desc 0]
+		regexp {([^:]*): This is a (.*)} $col0 -> name type
+
+		set row [$t.fTop.tv insert {} end -text $name -values [list $type]]
+		foreach l [lrange $desc 1 end] {
+			$t.fTop.tv insert $row end -values [list $l]
+		}
 	}
 }
 
@@ -2799,6 +2850,7 @@ proc enableMenus {} {
 	}]]
 } -underline 0
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
+.mTopMenu.mView add command -label "Objects" -command showObjectDefs -underline 3
 .mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
 
 # help menu
