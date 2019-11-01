@@ -1043,6 +1043,30 @@ proc zoomOut {} {
 	}
 }
 
+proc saveSettings {} {
+	# if no db open, done
+	if {[info commands ::db] eq ""} {
+		return
+	}
+	saveUnitOrders $gui::prevId .t.tOrd
+
+	set top_geom [winfo geometry .t]
+	set x_scroll [.t.fR.canvasX get]
+	set y_scroll [.t.fR.canvasY get]
+
+	set geom [list $top_geom $x_scroll $y_scroll]
+
+	set i [lsearch $::zoomLevels $::n]
+	::db eval {
+		UPDATE settings SET
+		geom_top = $geom,
+		zoom_level = $i,
+		view_level = $gui::viewLevel,
+		forSale_open = $gui::forSaleOpen
+		WHERE id=1
+	}
+}
+
 proc newGame {} {
 	set types {
 		{{Game Database} {.db}}
@@ -1053,6 +1077,7 @@ proc newGame {} {
 
 	wm title .t "True Atlanteans - [file tail $ofile]"
 
+	saveSettings
 	createDb $ofile
 	.t.fR.screen delete all
 	enableMenus
@@ -1069,6 +1094,7 @@ proc doOpen {} {
 	set ofile [tk_getOpenFile -filetypes $types]
 	if {$ofile eq ""} { return }
 
+	saveSettings
 	set errMsg [openDb $ofile]
 	if {$errMsg ne ""} {
 		tk_messageBox -message $errMsg
@@ -1085,7 +1111,14 @@ proc doOpen {} {
 	}]
 
 	foreach {geom zoom view forSale} $res {
-		wm geometry .t $geom
+		if {[llength $geom] == 1} {
+			wm geometry .t $geom
+		} else {
+			wm geometry .t [lindex $geom 0]
+			.t.fR.screen xview moveto [lindex $geom 1 0]
+			.t.fR.screen yview moveto [lindex $geom 2 0]
+		}
+
 		setN [lindex $::zoomLevels $zoom]
 		set gui::viewLevel $view
 		set gui::forSaleOpen $forSale
@@ -2780,19 +2813,6 @@ proc loadGlob {patt} {
 
 rename exit origExit
 proc exit {} {
-	if {[info commands ::db] ne ""} {
-		set geom [winfo geometry .t]
-		set i [lsearch $::zoomLevels $::n]
-		::db eval {
-			UPDATE settings SET
-			geom_top = $geom,
-			zoom_level = $i,
-			view_level = $gui::viewLevel,
-			forSale_open = $gui::forSaleOpen
-			WHERE id=1
-		}
-		::db close
-	}
 	origExit
 }
 
