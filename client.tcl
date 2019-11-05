@@ -1568,6 +1568,68 @@ proc reportResources {} {
 	}
 }
 
+proc showEvents {} {
+	set t .tShowEvents
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Events"
+
+		scrollbar $t.vs -command "$t.tv yview"
+		ttk::treeview $t.tv -yscrollcommand "$t.vs set"
+
+		pack $t.vs -side right -fill y
+		pack $t.tv -side left -expand 1 -fill both
+	}
+	$t.tv delete [$t.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
+	$t.tv configure -columns $cols
+
+	$t.tv column 1 -width 34
+	$t.tv heading #0 -text "Unit"
+	$t.tv heading 1 -text "Event"
+
+	# populate it
+	set par ""
+	db eval {
+		SELECT type, val
+		FROM events
+		WHERE type = "REWARD"
+	} {
+		if {$par eq ""} {
+			set par [$t.tv insert {} end -text "Times Reward"]
+		}
+		$t.tv insert $par end -values [dGet $val AMT]
+	}
+
+	set par ""
+	db eval {
+		SELECT type, val
+		FROM events
+		WHERE type = "ERROR"
+	} {
+		if {$par eq ""} {
+			set par [$t.tv insert {} end -text "Errors"]
+		}
+		$t.tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
+	}
+
+	set par ""
+	db eval {
+		SELECT type, val
+		FROM events
+		WHERE type = "EVENT" OR type = "SAIL"
+	} {
+		if {$par eq ""} {
+			set par [$t.tv insert {} end -text "Events"]
+		}
+		$t.tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
+	}
+}
+
 proc showBattles {} {
 	set t .tShowBattles
 
@@ -2868,6 +2930,7 @@ proc enableMenus {} {
 # view menu
 .mTopMenu.mView add checkbutton -label "All Hexes" -command toggleDrawAll -underline 0 -variable gui::draw_all
 .mTopMenu.mView add command -label "Battles" -command showBattles -underline 0
+.mTopMenu.mView add command -label "Events" -command showEvents -underline 0
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
 .mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
@@ -2880,7 +2943,7 @@ proc enableMenus {} {
 	}]]
 } -underline 0
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
-.mTopMenu.mView add command -label "Objects" -command showObjectDefs -underline 3
+.mTopMenu.mView add command -label "Objects" -command showObjectDefs -underline 2
 .mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
 
 # help menu
