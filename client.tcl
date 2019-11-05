@@ -1126,6 +1126,11 @@ proc doOpen {} {
 
 	drawDB .t.fR.screen db
 	enableMenus
+
+	set has_battles [db onecolumn {SELECT count(val) FROM events WHERE type = "BATTLE"}]
+	if {$has_battles} {
+		tk_messageBox -message "You have battles this turn"
+	}
 }
 
 proc doAdd {} {
@@ -1140,6 +1145,11 @@ proc doAdd {} {
 	wm title .t "True Atlanteans - [lindex $txt 3] Turn $::currentTurn"
 
 	drawDB .t.fR.screen db
+
+	set has_battles [db onecolumn {SELECT count(val) FROM events WHERE type = "BATTLE"}]
+	if {$has_battles} {
+		tk_messageBox -message "You have battles this turn"
+	}
 }
 
 proc drawMarkers {w db} {
