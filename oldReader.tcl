@@ -168,7 +168,7 @@ proc doRegionOrders {f regionVar xy} {
 	#else check objects
 	set objs [dGet $r Objects]
 	for {set oi 0} {$oi < [llength $objs]} {incr oi} {
-		set o [lindex $objs $i]
+		set o [lindex $objs $oi]
 		set units [dGet $o Units]
 		set j 0
 		while {$j < [llength $units] &&
