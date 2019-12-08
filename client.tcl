@@ -2971,6 +2971,7 @@ proc enableMenus {} {
 
 # view menu
 .mTopMenu.mView add checkbutton -label "All Hexes" -command toggleDrawAll -underline 0 -variable gui::draw_all
+.mTopMenu.mView add separator
 .mTopMenu.mView add command -label "Battles" -command showBattles -underline 0
 .mTopMenu.mView add command -label "Events" -command showEvents -underline 0
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
@@ -2978,6 +2979,7 @@ proc enableMenus {} {
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mView add command -label "My Units" -command showAllUnits -underline 3
 .mTopMenu.mView add command -label "Not Done" -command showNotDone -underline 0
+.mTopMenu.mView add command -label "Production Count" -command {tk_messageBox -message [ctProd]} -underline 0
 .mTopMenu.mView add command -label "Taxers" -command reportTax -underline 0
 .mTopMenu.mView add command -label "Resources" -command reportResources -underline 0
 .mTopMenu.mView add command -label "Unclaimed" -command {
@@ -2985,6 +2987,7 @@ proc enableMenus {} {
 		SELECT val FROM notes WHERE key="unclaimed"
 	}]]
 } -underline 0
+.mTopMenu.mView add separator
 .mTopMenu.mView add command -label "Items" -command itemView -underline 0
 .mTopMenu.mView add command -label "Objects" -command showObjectDefs -underline 2
 .mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
