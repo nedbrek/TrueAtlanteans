@@ -1226,6 +1226,46 @@ proc clearNotDoneCur {w} {
 	clearNotDone $w $x $y
 }
 
+proc showNotDone {} {
+	# build the window
+	set t .tNotDone
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Not Done"
+
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+		bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	} else {
+		raise $t
+	}
+
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 3} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv heading 1 -text "x"
+	$t.fTop.tv heading 2 -text "y"
+	$t.fTop.tv heading 3 -text "z"
+
+	db eval {
+		SELECT x,y,z
+		FROM active_markers
+		WHERE done = 0
+	} {
+		$t.fTop.tv insert {} end -values [list $x $y $z]
+	}
+}
+
 # calculate the number of men needed to fully tax a hex
 proc calcTaxers {} {
 	set xy [getSelectionXY]
@@ -1309,8 +1349,10 @@ proc selectUnitFromView {w} {
 		selectRegion .t.fR.screen $x $y [expr {$z == 0}]
 	}
 
-	.t.cbMyUnits set $name
-	showUnit $name
+	if {$name ne ""} {
+		.t.cbMyUnits set $name
+		showUnit $name
+	}
 }
 
 proc makeUnitListbox {t title res} {
@@ -2935,6 +2977,7 @@ proc enableMenus {} {
 .mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
 .mTopMenu.mView add command -label "My Units" -command showAllUnits -underline 3
+.mTopMenu.mView add command -label "Not Done" -command showNotDone -underline 0
 .mTopMenu.mView add command -label "Taxers" -command reportTax -underline 0
 .mTopMenu.mView add command -label "Resources" -command reportResources -underline 0
 .mTopMenu.mView add command -label "Unclaimed" -command {
