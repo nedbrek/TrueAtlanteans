@@ -923,7 +923,7 @@ if {![info exists debug]} {
 	}
 
 	#else open game db
-	set errMsg [openDb "game.db"]
+	set errMsg [openDb [glob "*.db"]]
 	if {$errMsg ne ""} {
 		puts $errMsg
 		exit 1
