@@ -1985,10 +1985,16 @@ proc findSharingUnits {units} {
 	return $ret
 }
 
+# process one order
 proc checkOrder {u o x y z ctxt} {
 	if {$o eq ""} {
 		return 0
 	}
+	# check for comments
+	if {[string index $o 0] eq ";"} {
+		return 0
+	}
+
 	set units [dGet $ctxt Units]
 	set sharing_units [findSharingUnits [dict get $ctxt UnitObj]]
 
@@ -2296,6 +2302,7 @@ proc checkOrder {u o x y z ctxt} {
 	return [list -1 "Command '$c' not recognized"]
 }
 
+# check one order, only do orders of "tgt_ord" if not null
 proc checkOrderType {tgt_ord x y z ctxt} {
 	set ret [list]
 	set unit_map [dict get $ctxt Units]
