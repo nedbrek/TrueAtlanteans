@@ -779,19 +779,22 @@ proc parseBattle {f} {
 		dict set ret "AttId" $att_id
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
-		dict set ret "XY" [list $x $y]
+		if {$z eq ""} {set z 1}
+		dict set ret "XY" [list $x $y $z]
 	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) attempts to assassinate ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in .+!} $v -> attacker att_id defender def_id x y z]} {
 		dict set ret "Attacker" $attacker
 		dict set ret "AttId" $att_id
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
-		dict set ret "XY" [list $x $y]
+		if {$z eq ""} {set z 1}
+		dict set ret "XY" [list $x $y $z]
 	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) is assassinated in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in} $v -> defender def_id x y z]} {
 		dict set ret "Attacker" "assassin"
 		dict set ret "AttId" 0
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
-		dict set ret "XY" [list $x $y]
+		if {$z eq ""} {set z 1}
+		dict set ret "XY" [list $x $y $z]
 		return $ret
 	} else {
 		puts "Parse error in battle on '$v'"
@@ -809,12 +812,14 @@ proc parseBattle {f} {
 	while {$v ne "Defenders:"} {
 		# Name (Id), Faction (Id), flags, items, skills; description
 		# (repeat per unit)
+		dict lappend ret Attackers $v
 		set v [getSection $f]
 	}
 
 	set v [getSection $f]
 	while {$v ne "Round 1:" && ![regexp {gets a free round of attacks} $v]} {
 		# Name (Id), Faction (Id), flags, items, skills; description
+		dict lappend ret Defenders $v
 		set v [getSection $f]
 	}
 
