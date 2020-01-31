@@ -780,26 +780,31 @@ proc parseBattle {f} {
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
 		if {$z eq ""} {set z 1}
-		dict set ret "XY" [list $x $y $z]
 	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) attempts to assassinate ([^()]+) \(([[:digit:]]+)\) in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in .+!} $v -> attacker att_id defender def_id x y z]} {
 		dict set ret "Attacker" $attacker
 		dict set ret "AttId" $att_id
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
 		if {$z eq ""} {set z 1}
-		dict set ret "XY" [list $x $y $z]
 	} elseif {[regexp {([^()]+) \(([[:digit:]]+)\) is assassinated in [^()]+ \(([[:digit:]]+),([[:digit:]]+)(,.*)?\) +in} $v -> defender def_id x y z]} {
 		dict set ret "Attacker" "assassin"
 		dict set ret "AttId" 0
 		dict set ret "Defender" $defender
 		dict set ret "DefId" $def_id
-		if {$z eq ""} {set z 1}
+		if {$z eq ""} {
+			set z 1
+		} else {
+			set z [string trim [lindex $z 0] ","]
+		}
 		dict set ret "XY" [list $x $y $z]
 		return $ret
 	} else {
 		puts "Parse error in battle on '$v'"
 		exit 1
 	}
+
+	set z [string trim [lindex $z 0] ","]
+	dict set ret "XY" [list $x $y $z]
 
 	set v [getSection $f]
 	# Attackers:
