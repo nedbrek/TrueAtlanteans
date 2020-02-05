@@ -873,6 +873,9 @@ proc parseFile {f} {
 	# initial headers
 	set v [getSection $f]
 	# Atlantis Report For:
+	while {$v ne "Atlantis Report For:"} {
+		set v [getSection $f]
+	}
 
 	set v [getSection $f]
 	# Faction Name (number) (War n,Trade n, Magic n)
