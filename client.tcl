@@ -1693,7 +1693,7 @@ proc showBattles {} {
 	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
 	$t.tv configure -columns $cols
 
-	$t.tv column 1 -width 34
+	$t.tv column 1 -width 88 -stretch 0
 	$t.tv heading 1 -text "Loc"
 
 	# populate it
@@ -1714,6 +1714,18 @@ proc showBattles {} {
 		set att_name [format {%s (%d)} $att $id]
 		set loc [format {(%d,%d,%d)} $x $y $z]
 		set row [$t.tv insert {} end -text $att_name -values [list $loc]]
+
+		set def_name [format {%s (%d)} [dGet $val Defender] [dGet $val DefId]]
+		$t.tv insert $row end -text "Attacks: $def_name"
+
+		set att_row [$t.tv insert $row end -text "Attackers"]
+		foreach v [dGet $val Attackers] {
+			$t.tv insert $att_row end -text $v
+		}
+		set def_row [$t.tv insert $row end -text "Defenders"]
+		foreach v [dGet $val Defenders] {
+			$t.tv insert $def_row end -text $v
+		}
 
 		set tact_unit [dGet $val Tactics]
 		if {$tact_unit ne ""} {
