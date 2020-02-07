@@ -873,8 +873,12 @@ proc parseFile {f} {
 	# initial headers
 	set v [getSection $f]
 	# Atlantis Report For:
-	while {$v ne "Atlantis Report For:"} {
+	while {![eof $f] && $v ne "Atlantis Report For:"} {
 		set v [getSection $f]
+	}
+	if {[eof $f]} {
+		puts "Start of report not found"
+		exit 1
 	}
 
 	set v [getSection $f]
