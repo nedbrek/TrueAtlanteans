@@ -815,6 +815,11 @@ proc displayRegion {x y nexus} {
 	if {[llength $unitList] != 0} {
 		.t.cbMyUnits current 0
 		showUnit [.t.cbMyUnits get]
+		if {[llength $unitList] == 1} {
+			.t.cbMyUnits configure -state disabled
+		} else {
+			.t.cbMyUnits configure -state readonly
+		}
 	}
 }
 
@@ -3058,7 +3063,10 @@ pack [scrollbar .t.fMarket.vs -command ".t.fMarket.tv yview" \
 
 # next, unit combobox and orders
 .t.pwLeft add [frame .t.fLunitOrders]
-pack [ttk::combobox .t.cbMyUnits -state readonly -width 45 -exportselection 0] \
+# make disabled text readable
+ttk::style configure AtlUnitCb.TCombobox
+ttk::style map AtlUnitCb.TCombobox -foreground [list disabled #4c4c4c]
+pack [ttk::combobox .t.cbMyUnits -state readonly -width 45 -exportselection 0 -style AtlUnitCb.TCombobox] \
 -side top -in .t.fLunitOrders -expand 1 -fill both
 if {$tcl_platform(os) eq "Linux"} {
 	# for some reason, the combox is much wider on Linux
