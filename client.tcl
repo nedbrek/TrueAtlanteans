@@ -1850,28 +1850,40 @@ proc itemView {} {
 	foreach {name abbr type desc} $res {
 		set wt [dGet $desc Weight]
 		set d1 [dGet $desc Desc]
+
 		if {$type eq "race"} {
 			set d [parseMan $d1]
-			$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [join [dGet $d DESC] "."]]
+			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [join [dGet $d DESC] "."]]]
 			if {[dict exists $d ALL]} {
 				set lvl [dict get $d ALL]
-				$t.fTop.tv insert {} end -text "" -values [list "" "" "" "This race may study all skills to level $lvl"]
+				$t.fTop.tv insert $id end -text "" -values [list "" "" "" "This race may study all skills to level $lvl"]
 			} else {
 				set lvl1 [dGet $d SPEC_LVL]
 				set lvl2 [dGet $d OTH_LVL]
 				set skills [dGet $d SPEC]
-				$t.fTop.tv insert {} end -text "" -values [list "" "" "" "This race may study $skills to level $lvl1"]
-				$t.fTop.tv insert {} end -text "" -values [list "" "" "" "This race may study other skills to level $lvl2"]
+				$t.fTop.tv insert $id end -text "" -values [list "" "" "" "This race may study $skills to level $lvl1"]
+				$t.fTop.tv insert $id end -text "" -values [list "" "" "" "This race may study other skills to level $lvl2"]
 			}
 
 		} elseif {$type eq "item"} {
-			$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt $d1]
+			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt $d1]]
 		} else {
 			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [lindex $d1 1]]]
 			for {set i 0} {$i < [llength $d1]} {incr i} {
 				if {$i == 1} { continue }
 				$t.fTop.tv insert $id end -text "" -values [list "" "" "" [lindex $d1 $i]]
 			}
+		}
+
+		set capacity [dGet $desc Capacity]
+		if {$capacity ne ""} {
+			set txt ""
+			foreach type {walking riding swimming flying} {
+				set val [dGet $capacity $type]
+				if {$val eq ""} { continue }
+				append txt "$type capacity $val "
+			}
+			$t.fTop.tv insert $id 0 -text "" -values [list "" "" "" $txt]
 		}
 	}
 
