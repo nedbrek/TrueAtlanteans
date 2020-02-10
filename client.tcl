@@ -2745,7 +2745,7 @@ proc formUnit {} {
 		$t.fTop.cbRaces current 0
 	}
 	$t.fTop.sCt configure -to $maxRace
-	$t.fTop.sCt set [formTaxers $regionId]
+	$t.fTop.sCt set [expr {min($maxRace, [formTaxers $regionId])}]
 }
 
 proc finishForm {t} {
