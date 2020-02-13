@@ -1752,22 +1752,35 @@ proc updateSearch {new_txt} {
 
 	# configure all the columns
 	set cols ""
-	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
+	for {set i 1} {$i <= 5} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
 
-	$t.fTop.tv column 1 -width 40
-	$t.fTop.tv column 2 -width 34
-	$t.fTop.tv column 3 -width 34
-	$t.fTop.tv column 4 -width 34
-	$t.fTop.tv heading 1 -text "Id"
-	$t.fTop.tv heading 2 -text "x"
-	$t.fTop.tv heading 3 -text "y"
-	$t.fTop.tv heading 4 -text "z"
+	set headers {
+		40 "Id" 0
+		34 "x"  0
+		34 "y"  0
+		34 "z"  0
+		800 "Orders" 1
+	}
+	$t.fTop.tv column #0 -stretch 0
+
+	set i 1
+	foreach {w h s} $headers {
+		$t.fTop.tv column $i -width $w
+		$t.fTop.tv heading $i -text $h
+		$t.fTop.tv column $i -stretch $s
+		incr i
+	}
 
 	# populate it
-	set res [getUnits [format {%%%s%%} $new_txt]]
-	foreach {x y z name uid} $res {
-		$t.fTop.tv insert {} end -text $name -values [list $uid $x $y $z]
+	set name [format {%%%s%%} $new_txt]
+	::db eval {
+		SELECT x, y, z, name, uid, orders
+		FROM detail JOIN units
+		ON detail.id=units.regionId
+		WHERE detail.turn=$::currentTurn and units.detail='own' and units.name LIKE $name
+	} {
+		$t.fTop.tv insert {} end -text $name -values [list $uid $x $y $z [join $orders ";"]]
 	}
 
 	# allow sorting
