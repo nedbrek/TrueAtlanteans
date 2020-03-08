@@ -2325,7 +2325,21 @@ proc checkOrder {u o x y z ctxt} {
 
 		sell {
 			# give up item for cash
-			# TODO check args
+			# check args
+			set ct [lindex $op 1]
+			set item_id [string toupper [lindex $op 2]]
+			if {$item_id eq ""} {
+				return [list -1 "SELL: need quantity"]
+			}
+			# check inventory
+			set cur_ct [{*}$u countItem $item_id]
+			if {$ct eq "all"} {
+				set ct $cur_ct
+			} elseif {$cur_ct < $ct} {
+				return [list -1 "SELL: more than they own ($cur_ct < $ct $item_id)"]
+			}
+			# execute
+			{*}$u setItem $item_id [expr {$cur_ct - $ct}]
 			return 0
 		}
 
