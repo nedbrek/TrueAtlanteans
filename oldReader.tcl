@@ -349,7 +349,8 @@ proc parseUnit {v} {
 
 	# what sort of report is this
 	set quality own
-	if {[lindex $v 0] == "-"} {
+	set first_char [lindex $v 0]
+	if {$first_char eq "-" || $first_char eq "%"} {
 		set quality foreign
 	}
 
@@ -585,9 +586,11 @@ proc getRegion {f} {
 		set v [getSection $f]
 	}
 
-	while {[lindex $v 0] eq "-" ||
+	while {![eof $f] &&
+		    ([lindex $v 0] eq "-" ||
 	       [lindex $v 0] eq "*" ||
-	       [lindex $v 0] eq "+"} {
+	       [lindex $v 0] eq "%" ||
+	       [lindex $v 0] eq "+")} {
 
 		# check that building reports are last
 		if {[lindex $v 0] eq "+"} {
@@ -1070,6 +1073,7 @@ proc parseFile {f} {
 				} elseif {[regexp {Password is now: } $v]} {
 				} elseif {[regexp {The address of } $v]} {
 					lappend eventList [dict create TYPE EVENT DESC $v]
+				} elseif {[regexp {Units will now have a leading sign to show your attitude to them} $v]} {
 				} else {
 					puts "Error parsing event '$v'"
 					exit 1
