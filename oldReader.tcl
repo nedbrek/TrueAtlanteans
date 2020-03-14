@@ -702,6 +702,8 @@ proc parseItem {v} {
 			dict set carries "walking" 0
 		} elseif {[string trim $c] eq "can swim"} {
 			dict set carries "swimming" 0
+		} elseif {[lindex $c 0] eq "moves"} {
+			dict set carries "move" [lindex $c 1]
 		} elseif {[lindex $c end] ne "withdraw"} {
 			puts "Parse error in capacity of item $v"
 			exit 1
@@ -938,6 +940,14 @@ proc parseFile {f} {
 				set trade_max 1000
 			}
 
+			# quartermasters (optional)
+			if {[regexp {Quartermasters: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> qm_use qm_max]} {
+				set v [getSection $f]
+			} else {
+				set qm_use 0
+				set qm_max 1000
+			}
+
 			# mages
 			regexp {Mages: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> mage_use mage_max
 
@@ -952,6 +962,7 @@ proc parseFile {f} {
 
 			dict set turn Tax [list $tax_use $tax_max]
 			dict set turn Trade [list $trade_use $trade_max]
+			dict set turn Quartermaster [list $qm_use $qm_max]
 			dict set turn Mage [list $mage_use $mage_max]
 			dict set turn Appr [list $appr_use $appr_max]
 
@@ -1092,8 +1103,8 @@ proc parseFile {f} {
 	# faction number and pass
 	set v [getSection $f]
 	if {[lindex $v 0] ne "#atlantis"} {
-		puts "Parse error: expected start of order template"
-		exit 1
+		dict set turn Regions $regions
+		return $turn
 	}
 	dict set turn PlayerNum [lindex $v 1]
 	dict set turn PlayerPass [lindex $v 2]
