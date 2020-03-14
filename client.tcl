@@ -1118,7 +1118,7 @@ proc doOpen {} {
 	foreach {geom zoom view forSale} $res {
 		if {[llength $geom] == 1} {
 			wm geometry .t $geom
-		} else {
+		} elseif {[llength $geom] == 3} {
 			wm geometry .t [lindex $geom 0]
 			.t.fR.screen xview moveto [lindex $geom 1 0]
 			.t.fR.screen yview moveto [lindex $geom 2 0]
