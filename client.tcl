@@ -541,6 +541,8 @@ proc showUnit {name} {
 	}
 
 	set skip 0
+	set total_wt 0
+	set missing [list]
 	foreach i $items {
 		set ct [lindex $i 0]
 		set full_abbr [lindex $i 2]
@@ -554,9 +556,12 @@ proc showUnit {name} {
 				set lcap [dGet $data Capacity]
 				if {$wt eq ""} {
 					set skip 1
+					lappend missing $abbr
 					break
 				}
 			}
+
+			incr total_wt [expr {$ct * $wt}]
 
 			foreach tp $cap_types {
 				set v [dGet $lcap $tp]
@@ -571,18 +576,21 @@ proc showUnit {name} {
 		}
 	}
 
-	if {!$skip} {
-		if {$cap(walking) < 0} {
-			$t insert end "Cannot move $cap(walking)\n"
-		} else {
-			$t insert end "walking capacity: $cap(walking)\n"
-			$t insert end "riding capacity: $cap(riding)\n"
-			foreach tp {flying swimming} {
-				if {$cap($tp) >= 0} {
-					$t insert end "$tp capacity: $cap($tp)\n"
-				}
+	$t insert end "Total weight: $total_wt\n"
+	if {$cap(walking) < 0} {
+		$t insert end "Cannot move $cap(walking)\n"
+	} else {
+		$t insert end "walking capacity: $cap(walking)\n"
+		$t insert end "riding capacity: $cap(riding)\n"
+		foreach tp {flying swimming} {
+			if {$cap($tp) >= 0} {
+				$t insert end "$tp capacity: $cap($tp)\n"
 			}
 		}
+	}
+
+	if {$skip} {
+		$t insert end "Cannot retrieve weights for: [join $missing ","]\n"
 	}
 
 	$t insert end "Flags: "
@@ -707,7 +715,11 @@ proc displayRegion {x y nexus} {
 	if {[llength $rdata] == 0} { return }
 
 	set turn [lindex $rdata 0]
-	$t insert end "Data from turn: $turn\n"
+	if {$turn == $::currentTurn} {
+		$t insert end "Data is current\n"
+	} else {
+		$t insert end "Data from turn: $turn\n"
+	}
 	set weather [lindex $rdata 1]
 	set wages   [lindex $rdata 2]
 
