@@ -557,7 +557,7 @@ proc showUnit {name} {
 				if {$wt eq ""} {
 					set skip 1
 					lappend missing $abbr
-					break
+					continue
 				}
 			}
 
