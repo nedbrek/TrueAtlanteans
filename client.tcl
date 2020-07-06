@@ -1231,6 +1231,7 @@ proc markActive {} {
 			GROUP BY detail.x, detail.y, detail.z
 	}
 
+	.t.fR.screen dtag notdone
 	drawMarkers .t.fR.screen db
 }
 
