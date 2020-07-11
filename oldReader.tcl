@@ -690,11 +690,9 @@ proc parseItem {v} {
 	}
 
 	set sl01 [lindex $sl0 1]
-	if {[string trim [lindex $sl01 0]] ne "weight"} {
-		puts "Parse error in weight of item $v"
-		exit 1
+	if {[string trim [lindex $sl01 0]] eq "weight"} {
+		dict set d Weight [lindex $sl01 end]
 	}
-	dict set d Weight [lindex $sl01 end]
 
 	# parse indexes 2 to end
 	set carries [dict create]
@@ -727,6 +725,13 @@ proc parseItem {v} {
 
 	if {[lindex $l1 1] eq "race"} {
 		dict set d Type race
+		dict set d Desc [lrange $l 1 end]
+		return $d
+	}
+
+	# handle ships as items
+	if {[lrange $l1 0 3] eq "This is a ship"} {
+		dict set d Type ship
 		dict set d Desc [lrange $l 1 end]
 		return $d
 	}
