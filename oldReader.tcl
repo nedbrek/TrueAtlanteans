@@ -445,11 +445,14 @@ proc parseUnit {v} {
 	# group 5 - can study
 	set group5 [lindex $groups $i]
 	if {$group5 ne ""} {
-		if {![regexp { *Can Study: *(.*)} $group5 -> cstudy]} {
+		if {[regexp { *Can Study: *(.*)} $group5 -> cstudy]} {
+			dict set u CanStudy [split $cstudy ","]
+		} elseif {[regexp { *Ready weapons: *(.*)} $group5 -> readyw]} {
+			dict set u ReadyWeapons [split $readyw ","]
+		} else {
 			puts "Error CanStudy: '$group5'"
 			exit
 		}
-		dict set u CanStudy [split $cstudy ","]
 	}
 
 	return $u
