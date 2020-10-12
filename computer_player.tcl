@@ -58,7 +58,17 @@ itcl::class SitRep {
 
 		if {$units eq ""} {
 			dict set ret "State" "lost"
-		} elseif {[llength $units] == 8} {
+			return $ret
+		}
+
+		set in_nexus 1
+		foreach {x y z id name uid items orders} $units {
+			if {$z != 0} {
+				set in_nexus 0
+			}
+		}
+
+		if {$in_nexus} {
 			dict set ret "State" "start"
 		} else {
 			dict set ret "State" "main"
@@ -281,11 +291,8 @@ proc checkStay {rid x y z} {
 proc rampFirstHex {sitRep units} {
 	foreach {x y z unit_id name unum il ol} $units {}
 	set rid [::db onecolumn {SELECT id FROM detail WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn}]
-	set u [getUnitObjects $rid]
-	if {[llength $u] != 1} {
-		puts "Ramping first hex with more than one unit?"
-		exit 1
-	}
+	set all_u [getUnitObjects $rid]
+	set u [lindex $all_u 0]; # TODO fix me
 
 	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
 	# or that we landed in a good spot
@@ -337,7 +344,7 @@ proc rampFirstHex {sitRep units} {
 		}
 
 		if {!$stay} {
-			advanceLeader $u
+			advanceLeader $u $all_u
 			set ol [$u cget -orders]
 
 			# TODO drop scout
@@ -364,7 +371,7 @@ proc rampFirstHex {sitRep units} {
 		return
 	}
 
-	advanceLeader $u
+	advanceLeader $u $all_u
 	set ol [$u cget -orders]
 
 	# TODO calculate a good budget to use
@@ -404,11 +411,37 @@ proc pickStartDirection {rid units} {
 		lappend exits $ex_n
 	}
 
-	foreach {x y z unit_id name uid il ol} $units {
+	# create unit objects
+	set all_u [getUnitObjects $rid]
+	set multi_lead 0
+
+	# find faction leader
+	foreach ui $all_u {
+		set items [$ui cget -items]
+		if {[lsearch -index 2 $items *FLEAD*] ne -1} {
+			set u $ui
+			continue
+		}
+		set i [lsearch -index 2 $items *LEAD*]
+		if {$i != -1} {
+			set ct [lindex $items $i 0]
+			if {$ct > 1} {
+				set multi_lead [expr {$ct - 1}]
+				# split leaders into 1 man units
+				set ol [$ui cget -orders]
+				for {set i 0} {$i < $multi_lead} {incr i} {
+					set ni [expr {$i + 1}]
+					lappend ol "FORM $ni"
+					lappend ol "END"
+					lappend ol "GIVE NEW $ni 1 LEAD"
+				}
+				$ui configure -orders $ol
+			}
+		}
 	}
-	set u [getUnitObjects $rid]
-	lappend ol "faction war 3 trade 2"
-	lappend ol "behind 1" "avoid 1"
+
+	set ol [$u cget -orders]
+	#lappend ol "faction war 3 trade 2"
 
 	if {$exits eq ""} {
 		# must jump
@@ -416,15 +449,43 @@ proc pickStartDirection {rid units} {
 			INSERT OR REPLACE INTO notes
 			VALUES("no_exits", "1")
 		}
-		lappend ol "CAST GATE RANDOM"
+
+		# create gate order
+		set gate_order "CAST GATE RANDOM"
+		if {[llength $all_u] > 1} {
+			append gate_order " UNITS"
+			foreach ui $all_u {
+				if {$ui ne $u} {
+					append gate_order " [$ui cget -num]"
+				}
+			}
+			for {set i 0} {$i < $multi_lead} {incr i} {
+				append gate_order " NEW [expr {$i + 1}]"
+			}
+		}
+		lappend ol $gate_order
+
 		$u configure -orders $ol
-		advanceLeader $u
-		set ol [$u cget -orders]
-		db eval {
-			UPDATE units SET orders=$ol
-			WHERE id=$unit_id
+
+		# you can study and jump
+		advanceLeader $u $all_u
+
+		# save orders
+		foreach ui $all_u {
+			set ol [$ui cget -orders]
+
+			lappend ol "behind 1" "avoid 1"
+
+			set unit_id [$ui cget -db_id]
+			db eval {
+				UPDATE units SET orders=$ol
+				WHERE id=$unit_id
+			}
 		}
 		return
+	}
+
+	foreach {x y z unit_id name uid il ol} $units {
 	}
 
 	# find the best
@@ -455,7 +516,7 @@ proc pickStartDirection {rid units} {
 }
 
 # have leader do something
-proc advanceLeader {u} {
+proc advanceLeader {u all_u} {
 	if {$u eq ""} return
 
 	set ol [$u cget -orders]
@@ -571,7 +632,7 @@ proc processRegion {sitRep rid} {
 			}
 		}
 
-		advanceLeader $leader
+		advanceLeader $leader $units
 	}
 
 	if {[llength $units] == [llength $couriers]} {
@@ -783,7 +844,7 @@ itcl::body SitRep::createOrders {} {
 
 	set units $unit_state
 	if {$overall_state == "start"} {
-		# only one unit
+		# in nexus
 		set zlevel [lindex $units 2]
 		if {$zlevel == 0} {
 			# we're in the nexus
