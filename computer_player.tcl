@@ -62,13 +62,17 @@ itcl::class SitRep {
 		}
 
 		set in_nexus 1
+		set all_leaders 1
 		foreach {x y z id name uid items orders} $units {
 			if {$z != 0} {
 				set in_nexus 0
 			}
+			if {[lsearch $items *LEAD*] == -1} {
+				set all_leaders 0
+			}
 		}
 
-		if {$in_nexus} {
+		if {$in_nexus || $all_leaders} {
 			dict set ret "State" "start"
 		} else {
 			dict set ret "State" "main"
@@ -292,7 +296,15 @@ proc rampFirstHex {sitRep units} {
 	foreach {x y z unit_id name unum il ol} $units {}
 	set rid [::db onecolumn {SELECT id FROM detail WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn}]
 	set all_u [getUnitObjects $rid]
-	set u [lindex $all_u 0]; # TODO fix me
+
+	# find faction leader
+	set u ""
+	foreach ui $all_u {
+		if {[lsearch [$ui cget -items] *FLEAD*] != -1} {
+			set u $ui
+		}
+	}
+	set unit_id [$u cget -db_id]
 
 	# TODO check to make sure we got out of the starting city (exit wasn't blocked)
 	# or that we landed in a good spot
@@ -349,7 +361,7 @@ proc rampFirstHex {sitRep units} {
 
 			# TODO drop scout
 
-			lappend ol "CAST GATE RANDOM"
+			lappend ol [formGateCmd $u $all_u]
 			db eval {
 				UPDATE units SET orders=$ol
 				WHERE id=$unit_id
@@ -386,6 +398,22 @@ proc rampFirstHex {sitRep units} {
 		UPDATE units SET orders=$ol
 		WHERE id=$unit_id
 	}
+}
+
+proc formGateCmd {u all_u {multi_lead 0}} {
+	set gate_order "CAST GATE RANDOM"
+	if {[llength $all_u] > 1} {
+		append gate_order " UNITS"
+		foreach ui $all_u {
+			if {$ui ne $u} {
+				append gate_order " [$ui cget -num]"
+			}
+		}
+		for {set i 0} {$i < $multi_lead} {incr i} {
+			append gate_order " NEW [expr {$i + 1}]"
+		}
+	}
+	return $gate_order
 }
 
 proc pickStartDirection {rid units} {
@@ -451,19 +479,7 @@ proc pickStartDirection {rid units} {
 		}
 
 		# create gate order
-		set gate_order "CAST GATE RANDOM"
-		if {[llength $all_u] > 1} {
-			append gate_order " UNITS"
-			foreach ui $all_u {
-				if {$ui ne $u} {
-					append gate_order " [$ui cget -num]"
-				}
-			}
-			for {set i 0} {$i < $multi_lead} {incr i} {
-				append gate_order " NEW [expr {$i + 1}]"
-			}
-		}
-		lappend ol $gate_order
+		lappend ol [formGateCmd $u $all_u $multi_lead]
 
 		$u configure -orders $ol
 
