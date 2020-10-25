@@ -374,10 +374,14 @@ proc rampFirstHex {sitRep units} {
 	if {[checkStay $rid $x $y $z]} {
 		set new_dir [selectNewHex $sitRep $x $y $z]
 		if {$new_dir ne ""} {
-			lappend ol "MOVE $new_dir"
-			db eval {
-				UPDATE units SET orders=$ol
-				WHERE id=$unit_id
+			foreach ui $all_u {
+				set ol [$ui cget -orders]
+				lappend ol "MOVE $new_dir"
+				set unit_id [$ui cget -db_id]
+				db eval {
+					UPDATE units SET orders=$ol
+					WHERE id=$unit_id
+				}
 			}
 		}
 		return
