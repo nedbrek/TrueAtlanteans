@@ -1,6 +1,7 @@
 lappend ::auto_path [pwd]
 package require client_utils
 
+### variables
 namespace eval atl_cp {
 	set terrain_priority {
 		plain 0
@@ -21,6 +22,7 @@ namespace eval gui {
 	set currentTurn 0
 }
 
+### situation analysis
 itcl::class SitRep {
 	public variable overall_state
 	public variable unit_state
@@ -85,7 +87,7 @@ itcl::class SitRep {
 	method buyGuards {budget claim x y z taxers}
 }
 
-###
+### helper functions
 proc isCoast {x y z} {
 	foreach d {n nw ne sw se s} {
 		set loc [moveCoord $x $y $d]
@@ -107,10 +109,10 @@ proc isCoast {x y z} {
 proc selectNewHex {sitRep x y z} {
 	# TODO more move strategy
 	# move away from poles
-	if {$x < $::max_x / 2 - 2} {
+	if {$y < $::max_y / 2 - 2} {
 		# north pole
 		set dirs {s sw se nw ne n}
-	} elseif {$x > $::max_x / 2 +2} {
+	} elseif {$y > $::max_y / 2 +2} {
 		# south pole
 		set dirs {n nw ne sw se s}
 	} else {
@@ -292,6 +294,18 @@ proc checkStay {rid x y z} {
 	return 0
 }
 
+proc addOrder {ulist o} {
+	foreach ui $ulist {
+		set ol [$ui cget -orders]
+		lappend ol {*}$o
+		set unit_id [$ui cget -db_id]
+		db eval {
+			UPDATE units SET orders=$ol
+			WHERE id=$unit_id
+		}
+	}
+}
+
 proc rampFirstHex {sitRep units} {
 	foreach {x y z unit_id name unum il ol} $units {}
 	set rid [::db onecolumn {SELECT id FROM detail WHERE x=$x AND y=$y AND z=$z AND turn=$::currentTurn}]
@@ -374,15 +388,7 @@ proc rampFirstHex {sitRep units} {
 	if {[checkStay $rid $x $y $z]} {
 		set new_dir [selectNewHex $sitRep $x $y $z]
 		if {$new_dir ne ""} {
-			foreach ui $all_u {
-				set ol [$ui cget -orders]
-				lappend ol "MOVE $new_dir"
-				set unit_id [$ui cget -db_id]
-				db eval {
-					UPDATE units SET orders=$ol
-					WHERE id=$unit_id
-				}
-			}
+			addOrder $all_u [list "MOVE $new_dir"]
 		}
 		return
 	}
@@ -490,18 +496,8 @@ proc pickStartDirection {rid units} {
 		# you can study and jump
 		advanceLeader $u $all_u
 
-		# save orders
-		foreach ui $all_u {
-			set ol [$ui cget -orders]
-
-			lappend ol "behind 1" "avoid 1"
-
-			set unit_id [$ui cget -db_id]
-			db eval {
-				UPDATE units SET orders=$ol
-				WHERE id=$unit_id
-			}
-		}
+		# starting orders
+		addOrder $all_u [list "behind 1" "avoid 1"]
 		return
 	}
 
