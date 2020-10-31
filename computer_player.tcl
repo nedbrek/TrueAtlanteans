@@ -947,6 +947,27 @@ itcl::body SitRep::createOrders {} {
 	}
 }
 
+proc processData {} {
+	db eval {SELECT type, val FROM events} {
+		if {$type eq "REWARD"} {
+			continue
+		}
+		if {$type ne "EVENT"} {
+			puts "New event type $type"
+			continue
+		}
+		set sub [dict get $val SUB]
+		if {$sub eq "FORBID"} {
+			set loc [dict get $val LOC]
+			set keep_out [::db onecolumn {SELECT val FROM notes WHERE key="keep_out"}]
+			if {[lsearch $keep_out $loc] == -1} {
+				lappend keep_out $loc
+				::db eval {INSERT OR REPLACE INTO notes VALUES("keep_out", $keep_out)}
+			}
+		}
+	}
+}
+
 # main
 if {![info exists debug]} {
 	if {$argc < 2} {
@@ -1008,6 +1029,7 @@ if {![info exists debug]} {
 
 	if {$cmd eq "add"} {
 		loadData [lindex $argv 2]
+		processData
 		exit 0
 	}
 

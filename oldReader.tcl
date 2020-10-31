@@ -1070,7 +1070,20 @@ proc parseFile {f} {
 				} elseif {[regexp {Reward of ([[:digit:]]+) silver.} $v -> reward]} {
 					lappend eventList [dict create TYPE REWARD AMT $reward]
 				} elseif {[regexp {[^(]+\(([[:digit:]]+)\):? (.*)} $v -> unit_num event_desc]} {
-					lappend eventList [dict create TYPE EVENT UNIT $unit_num DESC $event_desc]
+					set event [dict create TYPE EVENT UNIT $unit_num DESC $event_desc]
+
+					if {[lindex $event_desc 1] eq "forbidden"} {
+						set xy_text [lindex $event_desc 5]
+						set xy [parseLocation $xy_text]
+						if {$xy eq ""} {
+							puts "Error parsing event '$v'"
+						} else {
+							dict set event LOC $xy
+							dict set event SUB FORBID
+						}
+					}
+
+					lappend eventList $event
 				} elseif {[regexp {.* sails from .* to } $v]} {
 					lappend eventList [dict create TYPE SAIL DESC $v]
 				} elseif {[regexp {.* is caught attempting to assassinate [^(]* \(([[:digit:]]+)\)} $v -> unit_num]} {
