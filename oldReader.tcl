@@ -14,6 +14,7 @@ variable unitFlags {
 	{consuming faction's food} {CONSUME FACTION}
 	{consuming unit's food} {CONSUME UNIT}
 	{revealing faction} {REVEAL FACTION}
+	{revealing unit} {REVEAL UNIT}
 	{taxing} {AUTOTAX 1}
 	{sharing} {SHARE 1}
 	{walking battle spoils} {SPOILS WALK}
@@ -111,9 +112,15 @@ proc doRegionOrders {f regionVar xy} {
 		return $xy
 	}
 
-	# save name
-	set nameLine $nextLine
-	set nextLine ""
+	# extract name from description
+	if {[string index $nextLine 0] eq ";"} {
+		set nameLine $nextLine
+		set nextLine ""
+	} else {
+		# TODO find unit by id (v[1])
+		#set nameLine [lindex $v 1]
+		set nameLine ""
+	}
 
 	# pull the orders
 	set orders ""
@@ -127,7 +134,7 @@ proc doRegionOrders {f regionVar xy} {
 		set v [gets $f]
 	}
 
-	if {$orders eq ""} {
+	if {$orders eq "" || $nameLine eq ""} {
 		# no orders for this unit
 		return $xy
 	}
@@ -142,17 +149,26 @@ proc doRegionOrders {f regionVar xy} {
 		incr i
 	}
 	set r [lindex $regions $i]
-
-	# try and get name
-	regexp {^;(.* \([[:digit:]]+\)), } $nameLine -> unitName
-
 	set units [dGet $r Units]
 	set j 0
+
+	# try and get name
+	if {![regexp {^;(.* \([[:digit:]]+\)), } $nameLine -> unitName]} {
+		if {![regexp {^unit ([[:digit:]]+)} [lindex $orders 0] -> unitName]} {
+			if {$orders eq [list "#end"]} {
+				return $xy
+			}
+			puts "Can't find name in $nameLine '$orders'"
+			set j [llength $units]
+		} else {
+			set orders [lrange $orders 1 end]
+		}
+	}
+
 	while {$j < [llength $units] &&
 	       ![searchListOfDict $units $j "Name" $unitName]} {
 		incr j
 	}
-
 	if {$j < [llength $units]} {
 		# put the orders into the unit list
 		set u [lindex $units $j]
@@ -431,9 +447,9 @@ proc parseUnit {v} {
 
 		dict set u Skills [fixSkills $skills]
 	}
+	incr i
 
 	# group 4 - combat spell
-	incr i
 	set group4 [lindex $groups $i]
 	if {$group4 ne ""} {
 		if {[regexp { *Combat spell: *(.*)} $group4 -> cspell]} {
@@ -442,15 +458,27 @@ proc parseUnit {v} {
 		}
 	}
 
-	# group 5 - can study
+	# group 5 - ready
 	set group5 [lindex $groups $i]
 	if {$group5 ne ""} {
-		if {[regexp { *Can Study: *(.*)} $group5 -> cstudy]} {
+		if {[regexp { *Ready weapon: *(.*)} $group5 -> rweapon]} {
+			incr i
+			set group5 [lindex $groups $i]
+		}
+		if {[regexp { *Ready armor: *(.*)} $group5 -> rarmor]} {
+			incr i
+		}
+	}
+
+	# group 6 - can study
+	set group6 [lindex $groups $i]
+	if {$group6 ne ""} {
+		if {[regexp { *Can Study: *(.*)} $group6 -> cstudy]} {
 			dict set u CanStudy [split $cstudy ","]
-		} elseif {[regexp { *Ready weapons: *(.*)} $group5 -> readyw]} {
+		} elseif {[regexp { *Ready weapons: *(.*)} $group6 -> readyw]} {
 			dict set u ReadyWeapons [split $readyw ","]
 		} else {
-			puts "Error CanStudy: '$group5'"
+			puts "Error CanStudy: '$group6'"
 			exit
 		}
 	}
@@ -702,10 +730,14 @@ proc parseItem {v} {
 	foreach c [lrange $sl0 2 end] {
 		if {[lindex $c 1] eq "capacity"} {
 			dict set carries [string trim [lindex $c 0]] [lindex $c 2]
+		} elseif {[string trim $c] eq "can ride"} {
+			dict set carries "riding" 0
 		} elseif {[string trim $c] eq "can walk"} {
 			dict set carries "walking" 0
 		} elseif {[string trim $c] eq "can swim"} {
 			dict set carries "swimming" 0
+		} elseif {[string trim $c] eq "can fly"} {
+			dict set carries "flying" 0
 		} elseif {[lindex $c 0] eq "moves"} {
 			dict set carries "move" [lindex $c 1]
 		} elseif {[lindex $c end] ne "withdraw"} {
@@ -780,8 +812,9 @@ proc parseItem {v} {
 
 proc parseBattle {f} {
 	set v [getSection $f]
-	if {$v eq "Events during turn:"} {
-		return ""
+	if {$v eq "Events during turn:" ||
+	    [regexp {Declared Attitudes} $v]} {
+		return [list "" $v]
 	}
 
 	set ret [dict create]
@@ -810,7 +843,7 @@ proc parseBattle {f} {
 			set z [string trim [lindex $z 0] ","]
 		}
 		dict set ret "XY" [list $x $y $z]
-		return $ret
+		return [list $ret ""]
 	} else {
 		puts "Parse error in battle on '$v'"
 		exit 1
@@ -862,7 +895,7 @@ proc parseBattle {f} {
 	# Spoils:
 	dict set ret "Spoils" $spoils
 
-	return $ret
+	return [list $ret ""]
 }
 
 proc isHeader {v} {
@@ -1021,15 +1054,17 @@ proc parseFile {f} {
 			}
 		} elseif {$v eq "Battles during turn:"} {
 			set battleList [list]
-			set battle [parseBattle $f]
+			set battle_ret [parseBattle $f]
+			set battle [lindex $battle_ret 0]
 			while {$battle ne ""} {
 				lappend battleList $battle
-				set battle [parseBattle $f]
+				set battle_ret [parseBattle $f]
+				set battle [lindex $battle_ret 0]
 			}
 			dict set turn "Battles" $battleList
 
-			# battles always followed by events
-			set v {Events during turn:}
+			# we've read ahead into the next session
+			set v [lindex $battle_ret 1]
 
 		} elseif {$v eq "Errors during turn:"} {
 			set v [getSection $f]
@@ -1054,6 +1089,8 @@ proc parseFile {f} {
 				} elseif {[regexp {END: without FORM.} $v]} {
 					lappend eventList [dict create TYPE ERROR DESC $v]
 				} elseif {[regexp {ENDTURN: without TURN.} $v]} {
+					lappend eventList [dict create TYPE ERROR DESC $v]
+				} elseif {[regexp {DECLARE ALIGNMENT:} $v]} {
 					lappend eventList [dict create TYPE ERROR DESC $v]
 				} else {
 					puts "Error parsing error '$v'"
