@@ -949,14 +949,18 @@ itcl::body SitRep::createOrders {} {
 
 proc processData {} {
 	db eval {SELECT type, val FROM events} {
-		if {$type eq "REWARD"} {
+		if {$type eq "REWARD" || $type eq "BATTLE"} {
+			continue
+		}
+		if {$type eq "ERROR"} {
+			# what to do?
 			continue
 		}
 		if {$type ne "EVENT"} {
 			puts "New event type $type"
 			continue
 		}
-		set sub [dict get $val SUB]
+		set sub [dGet $val SUB]
 		if {$sub eq "FORBID"} {
 			set loc [dict get $val LOC]
 			set keep_out [::db onecolumn {SELECT val FROM notes WHERE key="keep_out"}]
@@ -976,6 +980,7 @@ if {![info exists debug]} {
 		foreach c {new add gen} {
 			puts "\t$c"
 		}
+		exit
 	}
 
 	set cmd [lindex $argv 0]
