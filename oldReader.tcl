@@ -379,12 +379,14 @@ proc parseUnit {v} {
 	}
 
 	# strip description
-	set d [regexp {;(.*)$} $v -> desc]
+	set after_name [string range $v $paren end]
+	set d [regexp {;(.*)$} $after_name -> desc]
 	if {$d == 0} {
 		set desc ""
 	} else {
 		set desc [string trim $desc]
-		set v [regsub {;.*$} $v ""]
+		set after_name [regsub {;.*$} $after_name ""]
+		set v [string replace $v $paren end $after_name]
 	}
 
 	# filter . from faction
