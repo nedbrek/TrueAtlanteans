@@ -298,6 +298,8 @@ proc addOrder {ulist o} {
 	foreach ui $ulist {
 		set ol [$ui cget -orders]
 		lappend ol {*}$o
+		$ui configure -orders $ol
+
 		set unit_id [$ui cget -db_id]
 		db eval {
 			UPDATE units SET orders=$ol
@@ -370,7 +372,7 @@ proc rampFirstHex {sitRep units} {
 		}
 
 		if {!$stay} {
-			advanceLeader $u $all_u
+			advanceLeaders $u $all_u
 			set ol [$u cget -orders]
 
 			# TODO drop scout
@@ -393,7 +395,7 @@ proc rampFirstHex {sitRep units} {
 		return
 	}
 
-	advanceLeader $u $all_u
+	advanceLeaders $u $all_u
 	set ol [$u cget -orders]
 
 	# TODO calculate a good budget to use
@@ -498,7 +500,7 @@ proc pickStartDirection {rid units} {
 		$u configure -orders $ol
 
 		# you can study and jump
-		advanceLeader $u $all_u
+		advanceLeaders $u $all_u
 
 		# starting orders
 		addOrder $all_u [list "behind 1" "avoid 1"]
@@ -536,7 +538,7 @@ proc pickStartDirection {rid units} {
 }
 
 # have leader do something
-proc advanceLeader {u all_u} {
+proc advanceLeader {u} {
 	if {$u eq ""} return
 
 	set ol [$u cget -orders]
@@ -571,6 +573,47 @@ proc advanceLeader {u all_u} {
 	}
 
 	$u configure -orders $ol
+}
+
+proc advanceLeaders {u all_u} {
+	set ldrs [list]
+	foreach ui $all_u {
+		if {$ui eq $u} { continue }
+
+		set il [$ui cget -items]
+		set idx [lsearch -index 2 $il *LEAD*]
+		set ct [lindex $il $idx 0]
+		if {$ct == 1} {
+			lappend ldrs $ui
+		}
+	}
+
+	if {[llength $ldrs] == 0} {
+		advanceLeader $u
+	} else {
+		set first [lindex $ldrs 0]
+		set sl [$first cget -skills]
+		set i [lsearch $sl *FIRE*]
+		if {$i == -1} {
+			# requires force
+			set i [lsearch $sl *FORC*]
+			if {$i == -1} {
+				# do it
+				set ldr_ids [list]
+				foreach l $ldrs {
+					lappend ldr_ids [$l cget -num]
+					set silver [$l countItem SILV]
+					set ol [list]
+					if {$silver < 100} {
+						lappend ol "claim [expr {100 - $silver}]"
+					}
+					lappend ol "STUDY FORC"
+					addOrder $l $ol
+				}
+				addOrder $u [list "TEACH [join $ldr_ids " "]"]
+			}
+		}
+	}
 }
 
 proc processRegion {sitRep rid} {
@@ -652,7 +695,7 @@ proc processRegion {sitRep rid} {
 			}
 		}
 
-		advanceLeader $leader $units
+		advanceLeaders $leader $units
 	}
 
 	if {[llength $units] == [llength $couriers]} {
