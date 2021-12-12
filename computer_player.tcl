@@ -470,9 +470,13 @@ proc pickStartDirection {rid units} {
 				for {set i 0} {$i < $multi_lead} {incr i} {
 					set ni [expr {$i + 1}]
 					lappend ol "FORM $ni"
+					lappend ol "CLAIM 50"
+					lappend ol "STUDY STEA"
 					lappend ol "END"
 					lappend ol "GIVE NEW $ni 1 LEAD"
 				}
+				lappend ol "CLAIM 200"
+				lappend ol "STUDY TACT"
 				$ui configure -orders $ol
 			}
 		}
