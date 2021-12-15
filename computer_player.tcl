@@ -575,6 +575,21 @@ proc advanceLeader {u} {
 	$u configure -orders $ol
 }
 
+proc doAdvance {skill u ldrs} {
+	set ldr_ids [list]
+	foreach l $ldrs {
+		lappend ldr_ids [$l cget -num]
+		set silver [$l countItem SILV]
+		set ol [list]
+		if {$silver < 100} {
+			lappend ol "claim [expr {100 - $silver}]"
+		}
+		lappend ol "STUDY $skill"
+		addOrder $l $ol
+	}
+	addOrder $u [list "TEACH [join $ldr_ids " "]"]
+}
+
 proc advanceLeaders {u all_u} {
 	set ldrs [list]
 	foreach ui $all_u {
@@ -598,19 +613,9 @@ proc advanceLeaders {u all_u} {
 			# requires force
 			set i [lsearch $sl *FORC*]
 			if {$i == -1} {
-				# do it
-				set ldr_ids [list]
-				foreach l $ldrs {
-					lappend ldr_ids [$l cget -num]
-					set silver [$l countItem SILV]
-					set ol [list]
-					if {$silver < 100} {
-						lappend ol "claim [expr {100 - $silver}]"
-					}
-					lappend ol "STUDY FORC"
-					addOrder $l $ol
-				}
-				addOrder $u [list "TEACH [join $ldr_ids " "]"]
+				doAdvance "FORC" $u $ldrs
+			} else {
+				doAdvance "FIRE" $u $ldrs
 			}
 		}
 	}
