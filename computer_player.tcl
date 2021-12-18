@@ -575,22 +575,60 @@ proc advanceLeader {u} {
 	$u configure -orders $ol
 }
 
-proc doAdvance {skill u ldrs} {
+proc doAdvance {skill u ldrs teacher} {
 	set ldr_ids [list]
+	set cost 100
+	if {$skill == "TACT"} {
+		set cost 200
+	}
+
 	foreach l $ldrs {
+		if {$l == $teacher} {
+			continue
+		}
+
 		lappend ldr_ids [$l cget -num]
 		set silver [$l countItem SILV]
 		set ol [list]
-		if {$silver < 100} {
-			lappend ol "claim [expr {100 - $silver}]"
+		if {$silver < $cost} {
+			lappend ol "claim [expr {$cost - $silver}]"
 		}
 		lappend ol "STUDY $skill"
 		addOrder $l $ol
 	}
-	addOrder $u [list "TEACH [join $ldr_ids " "]"]
+
+	if {$teacher == $u} {
+		set teach_order [list "TEACH [join $ldr_ids " "]"]
+		addOrder $u $teach_order
+	} else {
+		lappend ldr_ids [$u cget -num]
+		set teach_order [list "TEACH [join $ldr_ids " "]"]
+
+		set silver [$u countItem SILV]
+		set ol [list]
+		if {$silver < $cost} {
+			lappend ol "claim [expr {$cost - $silver}]"
+		}
+		lappend ol "STUDY $skill"
+		addOrder $u $ol
+
+		addOrder $teacher $teach_order
+	}
+}
+
+proc findTeacher {ldrs skill} {
+	foreach l $ldrs {
+		set sl [$l cget -skills]
+		set i [lsearch $sl [format {*%s*} $skill]]
+		if {$i != -1} {
+			return $l
+		}
+	}
+	return ""
 }
 
 proc advanceLeaders {u all_u} {
+	# build leader list
 	set ldrs [list]
 	foreach ui $all_u {
 		if {$ui eq $u} { continue }
@@ -604,18 +642,31 @@ proc advanceLeaders {u all_u} {
 	}
 
 	if {[llength $ldrs] == 0} {
+		# old game format - one leader
 		advanceLeader $u
 	} else {
+		# pull first leader skills
 		set first [lindex $ldrs 0]
 		set sl [$first cget -skills]
+
+		# check for FIRE
 		set i [lsearch $sl *FIRE*]
 		if {$i == -1} {
 			# requires force
 			set i [lsearch $sl *FORC*]
 			if {$i == -1} {
-				doAdvance "FORC" $u $ldrs
+				doAdvance "FORC" $u $ldrs $u
 			} else {
-				doAdvance "FIRE" $u $ldrs
+				doAdvance "FIRE" $u $ldrs $u
+			}
+		} else {
+			# check for TACT
+			# TODO: don't use faction leader as metric
+			set fl_sl [$u cget -skills]
+			set i [lsearch $fl_sl *TACT*]
+			if {$i == -1} {
+				set teacher [findTeacher $ldrs TACT]
+				doAdvance "TACT" $u $ldrs $teacher
 			}
 		}
 	}
