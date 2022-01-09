@@ -699,7 +699,7 @@ proc processRegion {sitRep rid} {
 		set items [$u cget -items]
 		set ol [$u cget -orders]
 		set sl [$u cget -skills]
-		if {[regexp {PATT} $sl] != 0} {
+		if {[regexp {FLEAD} $items] != 0} {
 			# leader
 			set leader $u
 		} elseif {[ordersMatch $ol "tax"] != -1} {
