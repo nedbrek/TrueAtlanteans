@@ -189,6 +189,39 @@ proc selectNewHex {sitRep x y z} {
 	return [lindex $dirs $best_d]
 }
 
+proc getAddRaceAlign {db abbr} {
+	# pull global table
+	set race_align [$db onecolumn {SELECT val FROM notes WHERE key="race_align"}]
+
+	# look up abbr
+	set ra [dGet $race_align $abbr]
+	if {$ra ne ""} {
+		return $ra
+	}
+
+	# pull race description
+	set race [$db onecolumn {SELECT desc FROM items WHERE abbr=$abbr}]
+	set desc [dGet $race "Desc"]
+
+	# look for alignment
+	set i [lsearch $desc "*This race has alignment *"]
+	if {$i != -1} {
+		# extract alignment
+		set rl [lindex $desc $i]
+		regexp {This race has alignment (.*)} $rl -> ra
+		if {$ra eq ""} {
+			puts "No alignment for '$abbr'"
+			set ra "neutral"
+		} else {
+			# update db
+			set race_align [dict set $race_align $abbr $ra]
+			$db eval {INSERT OR REPLACE INTO notes VALUES("race_align", $race_align)}
+		}
+	}
+
+	return $ra
+}
+
 itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
@@ -217,19 +250,13 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 
 	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
 
-	set alignment [db onecolumn {SELECT val FROM notes WHERE key="alignment"}]
-	set race_align [db onecolumn {SELECT val FROM notes WHERE key="race_align"}]
-	if {$race_align eq ""} {
-		set ra "neutral"
-	} else {
-		set ra [dGet $race_align $abbr]
-		if {$ra eq ""} {
-			puts "No alignment for '$abbr'"
-		}
-	}
+	# get alignment of local race
+	set ra [getAddRaceAlign ::db $abbr]
 
+	# pull faction alignment
+	set alignment [db onecolumn {SELECT val FROM notes WHERE key="alignment"}]
 	if {$alignment ne "" && $alignment ne "neutral"} {
-		if {$alignment ne $ra} {
+		if {$ra ne "neutral" && $alignment ne $ra} {
 			# note region for import of guards matching alignment
 			lappend import_regions [list $x $y $z]
 			return [list "" "" 0]
