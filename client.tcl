@@ -2144,7 +2144,7 @@ proc checkOrder {u o x y z ctxt} {
 			if {$recv == 0} {
 				set recv_obj ""
 			} else {
-				if {$recv eq "new"} {
+				if {[string compare -nocase $recv "new"] == 0} {
 					set recv "new [lindex $op 2]"
 					incr i
 				}
