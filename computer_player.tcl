@@ -362,6 +362,7 @@ proc rampFirstHex {sitRep units} {
 		set ct_plain 0
 		set ct_forest 0
 		set ct_mountain 0
+		set ct_ocean 0
 		foreach d {n nw ne sw se s} {
 			set loc [moveCoord $x $y $d]
 			set nx [lindex $loc 0]
@@ -378,19 +379,24 @@ proc rampFirstHex {sitRep units} {
 				"mystforest" -
 				"forest" { incr ct_forest }
 				"mountain" { incr ct_mountain }
+				"ocean" { incr ct_ocean }
 			}
 		}
 
 		set stay 0; # probably bad
 		set near_jumps [expr {$num_jumps > $max_jumps - 2}]
 
-		# amazing!
-		if {$ct_plain > 4 || ($ct_plain > 0 && $ct_forest + $ct_mountain > 2)} {
+		if {$ct_ocean > 0} {
+			# leave stay 0
+		} elseif {$ct_plain > 4 || ($ct_plain > 0 && $ct_forest + $ct_mountain > 2)} {
+			# amazing!
 			set stay 1
 		} elseif {$ct_plain + $ct_forest + $ct_mountain > 1} {
 			# take anything ok
 			set stay 1
-		} elseif {$near_jumps && $ct_plain + $ct_forest + $ct_mountain > 0} {
+		}
+
+		if {$near_jumps && $ct_plain + $ct_forest + $ct_mountain > 0} {
 			# take anything not terrible
 			set stay 1
 		} elseif {$num_jumps >= $max_jumps} {
