@@ -258,7 +258,7 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	if {$alignment ne "" && $alignment ne "neutral"} {
 		if {$ra ne "neutral" && $alignment ne $ra} {
 			# note region for import of guards matching alignment
-			lappend import_regions [list $x $y $z]
+			lappendU import_regions [list $x $y $z]
 			return [list "" "" 0]
 		}
 	}
@@ -314,7 +314,7 @@ proc checkStay {rid x y z} {
 			continue
 		}
 		set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
-		lappend keep_out [list $x $y $z]
+		lappendU keep_out [list $x $y $z]
 		::db eval { INSERT OR REPLACE INTO notes VALUES("keep_out", $keep_out)}
 		return 1
 	}
