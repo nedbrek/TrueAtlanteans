@@ -3003,6 +3003,7 @@ proc loadGlob {patt} {
 
 rename exit origExit
 proc exit {} {
+	saveSettings
 	origExit
 }
 
