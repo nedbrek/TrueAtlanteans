@@ -90,6 +90,41 @@ proc lunion {a b} {
 	return [array names ary]
 }
 
+proc saveWindow {db t children} {
+	set settings [$db onecolumn {
+		SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+
+	set geom [winfo geometry $t]
+
+	set child_vals [dict create]
+	foreach {w type} $children {
+		if {$type eq "TREEVIEW"} {
+			set cols [$w configure -columns]
+			set cols [lindex $cols end]
+
+			set widths [list]
+			lappend widths [$w column #0 -width]
+			foreach c $cols {
+				lappend widths [$w column $c -width]
+			}
+			dict set child_vals $w [dict create TYPE "TREEVIEW" VALS $widths]
+		} else {
+			puts "Unknown type '$type'"
+		}
+	}
+
+	set values [dict create GEOM $geom CHILDREN $child_vals]
+	dict set settings $t $values
+
+	$db eval {
+		UPDATE gui SET
+		name = "WINDOWS",
+		val = $settings
+	}
+	destroy $t
+}
+
 ##############################################################################
 ### Atlantis specific utilities
 proc getZlevel {} {
@@ -1117,6 +1152,23 @@ proc doOpen {} {
 		tk_messageBox -message $errMsg
 	}
 
+	if {[db onecolumn {
+		SELECT name FROM sqlite_master
+		WHERE type = "table" AND name = "gui"
+		}] eq ""} {
+			db eval {
+				CREATE TABLE gui(
+				   id INTEGER PRIMARY KEY AUTOINCREMENT,
+				   name TEXT not null unique on conflict replace,
+				   val TEXT not null
+				);
+				INSERT INTO gui(name, val) VALUES(
+				   "WINDOWS",
+				   ""
+				)
+			}
+	}
+
 	set gui::viewLevel 1
 
 	wm title .t "True Atlanteans - [file tail $ofile] Turn $::currentTurn"
@@ -1848,17 +1900,39 @@ proc itemView {} {
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
 	}
 	$t.fTop.tv delete [$t.fTop.tv children {}]
 
 	# configure all the columns
+	# check for existing settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+   }]
+   set settings [dGet $settings $t]
+   if {$settings ne ""} {
+   	wm geometry $t [dGet $settings GEOM]
+   	set children [dGet $settings CHILDREN]
+   	foreach {tv child_settings} $children {}
+   	set widths [dGet $child_settings VAL]
+   	if {[llength $widths] != 4} {
+   		set widths {200 65 79 34}
+   	}
+   } else {
+   	set widths {200 65 79 34}
+   	set tv $t.fTop.tv
+   }
+
 	set cols ""
 	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
 
-	$t.fTop.tv column 1 -width 65
-	$t.fTop.tv column 2 -width 79
-	$t.fTop.tv column 3 -width 34
+	$tv column #0 -width [lindex $widths 0]
+	for {set i 1} {$i <= 3} {incr i} {
+		$tv column $i -width [lindex $widths $i]
+	}
+
 	$t.fTop.tv column #0 -stretch 0
 	$t.fTop.tv column 1 -stretch 0
 	$t.fTop.tv column 2 -stretch 0
