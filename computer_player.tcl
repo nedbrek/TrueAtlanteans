@@ -235,10 +235,11 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	}
 	foreach {regionId sells peasants maxTax} $rdata {}
 
+	if {$maxTax eq ""} { set maxTax 0 }
 	set taxersNeeded [expr {$maxTax / 50}]
 	if {$taxersNeeded == 0} {
 		puts "No tax in region!"
-		exit -1
+		return [list "" "" 0]
 	}
 	if {$taxersNeeded <= $taxers} {
 		return [list "" "" 0]
@@ -861,7 +862,9 @@ proc processRegion {sitRep rid} {
 		foreach {regionId sells peasants maxTax} $rdata {}
 		set ret [getBuyRace $sells $peasants]
 		foreach {maxRace raceList price} $ret {}
-		regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
+		if {![regexp {\[(.+)\]} [lindex $raceList 0] -> abbr]} {
+			set abbr ""
+		}
 
 		set form_unit [lindex $units 0]
 		set ol [$form_unit cget -orders]
@@ -919,18 +922,20 @@ proc processRegion {sitRep rid} {
 
 		if {$new_dir ne ""} {
 			if {[llength $couriers] == 0} {
-				set courier_id "NEW 20"
-				lappend ol \
-					 {FORM 20} \
-					 {NAME UNIT "Courier"} \
-					 "BUY 1 $abbr" \
-					 {AVOID 1} \
-					 {BEHIND 1} \
-					 {NOAID 1} \
-					 "MOVE $new_dir" \
-					 {END}
+				if {$abbr ne ""} {
+					set courier_id "NEW 20"
+					lappend ol \
+						 {FORM 20} \
+						 {NAME UNIT "Courier"} \
+						 "BUY 1 $abbr" \
+						 {AVOID 1} \
+						 {BEHIND 1} \
+						 {NOAID 1} \
+						 "MOVE $new_dir" \
+						 {END}
 
-				$form_unit configure -orders $ol
+					$form_unit configure -orders $ol
+				}
 			} else {
 				set u [lindex $couriers 0]
 				set ol [$u cget -orders]
