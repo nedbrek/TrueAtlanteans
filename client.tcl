@@ -2073,16 +2073,39 @@ proc showSkills {} {
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
 	}
 	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	# check for existing settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+   }]
+   set settings [dGet $settings $t]
+   if {$settings ne ""} {
+   	wm geometry $t [dGet $settings GEOM]
+   	set children [dGet $settings CHILDREN]
+   	foreach {tv child_settings} $children {}
+   	set widths [dGet $child_settings VAL]
+   	if {[llength $widths] != 4} {
+   		set widths {100 65 79 34}
+   	}
+   } else {
+   	set widths [list 100 65 79 34]
+   	set tv $t.fTop.tv
+   }
 
 	set cols ""
 	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
 
-	$t.fTop.tv column 1 -width 65
-	$t.fTop.tv column 2 -width 79
-	$t.fTop.tv column 3 -width 34
+	$tv column #0 -width [lindex $widths 0]
+	for {set i 1} {$i < [llength $widths]} {incr i} {
+		$tv column $i -width [lindex $widths $i]
+	}
+
 	$t.fTop.tv column #0 -stretch 0
 	$t.fTop.tv column 1 -stretch 0
 	$t.fTop.tv column 2 -stretch 0
