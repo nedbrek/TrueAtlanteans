@@ -1909,20 +1909,20 @@ proc itemView {} {
 	# check for existing settings
 	set settings [db onecolumn {
 	    SELECT val FROM gui WHERE name="WINDOWS"
-   }]
-   set settings [dGet $settings $t]
-   if {$settings ne ""} {
-   	wm geometry $t [dGet $settings GEOM]
-   	set children [dGet $settings CHILDREN]
-   	foreach {tv child_settings} $children {}
-   	set widths [dGet $child_settings VAL]
-   	if {[llength $widths] != 4} {
-   		set widths {200 65 79 34}
-   	}
-   } else {
-   	set widths {200 65 79 34}
-   	set tv $t.fTop.tv
-   }
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VAL]
+		if {[llength $widths] != 4} {
+			set widths {200 65 79 34}
+		}
+	} else {
+		set widths {200 65 79 34}
+		set tv $t.fTop.tv
+	}
 
 	set cols ""
 	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
@@ -2017,20 +2017,20 @@ proc showObjectDefs {} {
 	# check for existing settings
 	set settings [db onecolumn {
 	    SELECT val FROM gui WHERE name="WINDOWS"
-   }]
-   set settings [dGet $settings $t]
-   if {$settings ne ""} {
-   	wm geometry $t [dGet $settings GEOM]
-   	set children [dGet $settings CHILDREN]
-   	foreach {tv child_settings} $children {}
-   	set widths [dGet $child_settings VAL]
-   	if {[llength $widths] != 2} {
-   		set widths {100 65}
-   	}
-   } else {
-   	set widths [list 100 65]
-   	set tv $t.fTop.tv
-   }
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VAL]
+		if {[llength $widths] != 2} {
+			set widths {100 65}
+		}
+	} else {
+		set widths [list 100 65]
+		set tv $t.fTop.tv
+	}
 	set cols ""
 	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
@@ -2082,20 +2082,20 @@ proc showSkills {} {
 	# check for existing settings
 	set settings [db onecolumn {
 	    SELECT val FROM gui WHERE name="WINDOWS"
-   }]
-   set settings [dGet $settings $t]
-   if {$settings ne ""} {
-   	wm geometry $t [dGet $settings GEOM]
-   	set children [dGet $settings CHILDREN]
-   	foreach {tv child_settings} $children {}
-   	set widths [dGet $child_settings VAL]
-   	if {[llength $widths] != 4} {
-   		set widths {100 65 79 34}
-   	}
-   } else {
-   	set widths [list 100 65 79 34]
-   	set tv $t.fTop.tv
-   }
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VAL]
+		if {[llength $widths] != 4} {
+			set widths {100 65 79 34}
+		}
+	} else {
+		set widths [list 100 65 79 34]
+		set tv $t.fTop.tv
+	}
 
 	set cols ""
 	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
@@ -2701,6 +2701,8 @@ proc showAllUnits {} {
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
 	}
 
 	# clear old contents
@@ -2715,18 +2717,38 @@ proc showAllUnits {} {
 	set widths {
 		126 54 93 87 90 81 95 78 87 94 329
 	}
+
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set new_widths [dGet $child_settings VALS]
+		if {[llength $new_widths] == [llength $widths]} {
+			set widths $new_widths
+		}
+	} else {
+		set tv $t.fTop.tv
+	}
+
 	set cols ""
 	for {set i 1} {$i <= [llength $hdrs]} {incr i} { lappend cols $i }
 	$t.fTop.tv configure -columns $cols
 
-	set tv $t.fTop.tv
 	$tv heading #0 -command [list sortAllUnits $tv 0 0]
+
 	$tv column #0 -width [lindex $widths 0]
+	$tv column #0 -stretch 0
 	for {set i 1} {$i < [llength $hdrs]} {incr i} {
 		$tv heading $i -text [lindex $hdrs $i-1]
 		$tv column $i -width [lindex $widths $i]
+		$tv column $i -stretch 0
 		$tv heading $i -command [list sortAllUnits $tv $i [expr {$i != 9}]]
 	}
+
 	$tv heading $i -text [lindex $hdrs $i-1]
 	$tv heading $i -command [list sortAllUnits $tv $i 0]
 
