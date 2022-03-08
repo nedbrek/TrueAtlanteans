@@ -222,6 +222,31 @@ proc getAddRaceAlign {db abbr} {
 	return $ra
 }
 
+proc isAlignCompat {db abbr} {
+	set ra [getAddRaceAlign $db $abbr]
+	# anyone can buy neutral
+	if {$ra eq "neutral"} {
+		return 1
+	}
+
+	# pull faction alignment
+	set alignment [$db onecolumn {SELECT val FROM notes WHERE key="alignment"}]
+	if {$alignment eq ""} {
+		puts "Faction alignment not set!"
+		return 1
+	}
+
+	if {$alignment eq "neutral"} {
+		# set alignment?
+		return 0
+	}
+
+	if {$alignment ne $ra} {
+		return 0
+	}
+	return 1
+}
+
 itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	set rdata [db eval {
 		SELECT id, sells, race, tax
@@ -860,58 +885,61 @@ proc processRegion {sitRep rid} {
 			ORDER BY turn DESC LIMIT 1
 		}]
 		foreach {regionId sells peasants maxTax} $rdata {}
+
 		set ret [getBuyRace $sells $peasants]
 		foreach {maxRace raceList price} $ret {}
 		if {![regexp {\[(.+)\]} [lindex $raceList 0] -> abbr]} {
 			set abbr ""
 		}
 
-		set form_unit [lindex $units 0]
-		set ol [$form_unit cget -orders]
-
 		set will_export 0
-		set import_regions [$sitRep cget -import_regions]
-		for {set i 0} {$i < [llength $import_regions]} {incr i} {
-			set ir [lindex $import_regions $i]
-			set d [getDistance $x $y $z {*}$ir]
-			if {$d == 1} {
-				foreach {tx ty tz} $ir break
-				set tax [db onecolumn {
-					SELECT tax
-					FROM detail
-					WHERE x=$tx AND y=$ty AND z=$tz
-					ORDER BY turn DESC LIMIT 1
-				}]
-				set taxers_needed [expr {$tax / 50}]
-				set budget $totalSilver
-				set maxBuy [expr {$budget / ($price + 10 + 10 + 10)}]
-				set numBuy [expr {min($taxers_needed, $maxBuy, $maxRace)}]
-				if {$numBuy == 0} {
+		if {$abbr ne "" && [isAlignCompat ::db $abbr]} {
+			set form_unit [lindex $units 0]
+			set ol [$form_unit cget -orders]
+
+			set import_regions [$sitRep cget -import_regions]
+			for {set i 0} {$i < [llength $import_regions]} {incr i} {
+				set ir [lindex $import_regions $i]
+				set d [getDistance $x $y $z {*}$ir]
+				if {$d == 1} {
+					foreach {tx ty tz} $ir break
+					set tax [db onecolumn {
+						SELECT tax
+						FROM detail
+						WHERE x=$tx AND y=$ty AND z=$tz
+						ORDER BY turn DESC LIMIT 1
+					}]
+					set taxers_needed [expr {$tax / 50}]
+					set budget $totalSilver
+					set maxBuy [expr {$budget / ($price + 10 + 10 + 10)}]
+					set numBuy [expr {min($taxers_needed, $maxBuy, $maxRace)}]
+					if {$numBuy == 0} {
+						break
+					}
+					set will_export 1
+
+					set dir [moveToward $x $y $z {*}$ir]
+					set courier_id "NEW 30"
+					lappend ol \
+					 	 {FORM 30} \
+					 	 {NAME UNIT "Guard"} \
+					 	 "BUY $numBuy $abbr" \
+					 	 {NOAID 1} \
+					 	 {STUDY COMB} \
+					 	 {TURN} \
+					 	 "MOVE $dir" \
+					 	 {ENDTURN} \
+					 	 {TURN} \
+					 	 "@tax" \
+					 	 {ENDTURN} \
+					 	 {END}
+
+					$form_unit configure -orders $ol
+
+					set import_regions [lreplace $import_regions $i $i]
+					$sitRep configure -import_regions $import_regions
 					break
 				}
-				set will_export 1
-
-				set dir [moveToward $x $y $z {*}$ir]
-				set courier_id "NEW 30"
-				lappend ol \
-					 {FORM 30} \
-					 {NAME UNIT "Guard"} \
-					 "BUY $numBuy $abbr" \
-					 {NOAID 1} \
-					 {STUDY COMB} \
-					 {TURN} \
-					 "MOVE $dir" \
-					 {ENDTURN} \
-					 {TURN} \
-					 "@tax" \
-					 {ENDTURN} \
-					 {END}
-
-				$form_unit configure -orders $ol
-
-				set import_regions [lreplace $import_regions $i $i]
-				$sitRep configure -import_regions $import_regions
-				break
 			}
 		}
 
@@ -922,7 +950,7 @@ proc processRegion {sitRep rid} {
 
 		if {$new_dir ne ""} {
 			if {[llength $couriers] == 0} {
-				if {$abbr ne ""} {
+				if {$abbr ne "" && [isAlignCompat ::db $abbr]} {
 					set courier_id "NEW 20"
 					lappend ol \
 						 {FORM 20} \
