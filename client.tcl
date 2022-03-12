@@ -423,7 +423,7 @@ proc drawDB {w db} {
 				set hasOtherBuild 1
 			}
 		}
-		if {$hasOtherBuild} {
+		if {$ct == $::currentTurn && $hasOtherBuild} {
 			$w create text [expr $x+2*$::n] [expr $y] -text "B" \
 			  -anchor ne -tags icon
 		}
