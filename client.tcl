@@ -532,9 +532,13 @@ proc showUnit {name} {
 
 	set gui::prevUnit $name
 
-	set r [extractUnitNameNum $name]
+	set r [extractUnitNameNum $name 1]
 	set just_name [lindex $r 0]
 	set uid [lindex $r 1]
+	if {$uid eq ""} {
+		.t.tOrd configure -state disabled
+		return
+	}
 
 	set data [db eval {
 		SELECT orders, id, items, skills, detail, flags, faction, desc
