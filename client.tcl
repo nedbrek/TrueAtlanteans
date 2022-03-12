@@ -225,6 +225,26 @@ proc plot_hex_num {obj x y} {
 	return $hexId
 }
 
+# column and row are the original values
+proc plot_left_neg_hex {obj col row} {
+	# shift everything over half a screen
+	set half_x [expr {$::max_x / 2}]
+	set off [expr {$half_x * 3 - 1}]
+	# come back where column == half_x would be 0,0
+	set x [expr {(($col - $half_x) * 3 - $off) * $::n}]
+	# y is normal
+	set y [row2y $row]
+
+	# plot the hext
+	set hex_id [plot_hex_full $obj $x $y]
+
+	# tag it with original x,y
+	set tags [$obj itemcget $hex_id -tags]
+	lappend tags [format "hex_%d_%d" $col $row]
+	$obj itemconfigure $hex_id -tags $tags
+	return $hex_id
+}
+
 proc drawExitWall {w d x y} {
 	switch $d {
 		South {
@@ -294,6 +314,117 @@ proc drawNexus {w data} {
 	$w configure -scrollregion [$w bbox all]
 }
 
+proc decorateHex {w db hexId data_row} {
+	foreach {col row type city ct rid exitDirs} $data_row {}
+
+	$w itemconfigure $hexId -fill [dict get $::terrainColors $type]
+
+	set c [$w coords $hexId]
+	set x [lindex $c 0]
+	set y [lindex $c 1]
+
+	# draw missing exit walls
+	if {$exitDirs ne ""} {
+		foreach d $::directions {
+			if {[lsearch $exitDirs $d] == -1} {
+				drawExitWall $w $d $x $y
+			}
+		}
+	}
+
+	# draw city icon
+	if {$city ne ""} {
+		switch [lGet $city end] {
+			village {set cityIcon "-"}
+			town    {set cityIcon "+"}
+			city    {set cityIcon "*"}
+			default {
+				puts "Unknown city type: '[lindex $city end]'"
+				set cityIcon "?"
+			}
+		}
+		$w create text [expr $x+$::n] [expr $y+$::nrad3] -text $cityIcon -tags icon
+	}
+
+	# show unit flags
+	if {$ct == $::currentTurn} {
+		set res [$db eval {
+			SELECT detail
+			FROM units
+			WHERE regionId=$rid
+			GROUP BY detail
+		}]
+
+		if {[lsearch $res "own"] != -1} {
+			$w create text [expr $x] [expr $y+2*$::nrad3] -text "@" \
+			  -anchor sw -tags icon
+		}
+		if {[lsearch $res "foreign"] != -1} {
+			$w create text [expr $x+2*$::n] [expr $y+2*$::nrad3] -text "!" \
+			  -anchor se -fill red -tags icon
+		}
+
+		set res [$db eval {
+			SELECT orders
+			FROM units
+			WHERE regionId=$rid
+		}]
+
+		set hasTax  0
+		set hasProd 0
+		foreach ol $res {
+			if {!$hasTax && [ordersMatch $ol "tax"] != -1} {
+				set hasTax 1
+			}
+
+			if {!$hasProd && [ordersMatch $ol "produce"] != -1} {
+				set hasProd 1
+			}
+			if {!$hasProd && [ordersMatch $ol "build"] != -1} {
+				set hasProd 1
+			}
+		}
+
+		if {$hasTax} {
+			$w create text [expr $x-$::n] [expr $y+$::nrad3] -text "\$" \
+			  -anchor w -fill darkgreen -tags icon
+		}
+		if {$hasProd} {
+			$w create text [expr $x] [expr $y] -text "P" \
+			  -anchor nw -tags icon
+		}
+	}
+
+	# draw a stipple over unexplored hexes
+	if {$ct eq ""} {
+		set hexOverId [plot_hex_num $w $col $row]
+		$w itemconfigure $hexOverId -fill gray -stipple gray12
+	}
+
+	# pull buildings
+	set objects [$db eval {
+		SELECT desc FROM objects
+		WHERE regionId=$rid
+	}]
+	set hasOtherBuild 0
+	foreach desc $objects {
+		if {[regexp -nocase {^Road (.+)} $desc -> dir]} {
+			drawRoad $dir $row $col
+		} elseif {$desc eq "Shaft"} {
+			$w create text [expr $x+2.5*$::n] [expr $y+$::nrad3] -text "H" \
+			  -anchor e -tags icon
+		} elseif {[lsearch $::boats $desc] != -1} {
+			# TODO draw ship icon
+		} elseif {!$hasOtherBuild} {
+			set hasOtherBuild 1
+		}
+	}
+	if {$ct == $::currentTurn && $hasOtherBuild} {
+		$w create text [expr $x+2*$::n] [expr $y] -text "B" \
+		  -anchor ne -tags icon
+	}
+}
+
 # draw all the regions in the db data
 proc drawDB {w db} {
 	$w delete all
@@ -314,118 +445,18 @@ proc drawDB {w db} {
 		return
 	}
 
+	set half_x [expr {$::max_x / 2}]
 	foreach {col row type city ct rid exitDirs} $data {
-
 		if {[info exists drawn($col,$row)]} {continue} 
 		set drawn($col,$row) ""
+		set data_row [list $col $row $type $city $ct $rid $exitDirs]
 
-		set hexId [plot_hex_num $w $col $row]
+		set hex_id [plot_hex_num $w $col $row]
+		decorateHex $w $db $hex_id $data_row
 
-		$w itemconfigure $hexId -fill [dict get $::terrainColors $type]
-
-		set c [$w coords $hexId]
-		set x [lindex $c 0]
-		set y [lindex $c 1]
-
-		# draw missing exit walls
-		if {$exitDirs ne ""} {
-			foreach d $::directions {
-				if {[lsearch $exitDirs $d] == -1} {
-					drawExitWall $w $d $x $y
-				}
-			}
-		}
-
-		# draw city icon
-		if {$city ne ""} {
-			switch [lGet $city end] {
-				village {set cityIcon "-"}
-				town    {set cityIcon "+"}
-				city    {set cityIcon "*"}
-				default {
-					puts "Unknown city type: '[lindex $city end]'"
-					set cityIcon "?"
-				}
-			}
-			$w create text [expr $x+$::n] [expr $y+$::nrad3] -text $cityIcon -tags icon
-		}
-
-		# show unit flags
-		if {$ct == $::currentTurn} {
-			set res [$db eval {
-				SELECT detail
-				FROM units
-				WHERE regionId=$rid
-				GROUP BY detail
-			}]
-
-			if {[lsearch $res "own"] != -1} {
-				$w create text [expr $x] [expr $y+2*$::nrad3] -text "@" \
-				  -anchor sw -tags icon
-			}
-			if {[lsearch $res "foreign"] != -1} {
-				$w create text [expr $x+2*$::n] [expr $y+2*$::nrad3] -text "!" \
-				  -anchor se -fill red -tags icon
-			}
-
-			set res [$db eval {
-				SELECT orders
-				FROM units
-				WHERE regionId=$rid
-			}]
-
-			set hasTax  0
-			set hasProd 0
-			foreach ol $res {
-				if {!$hasTax && [ordersMatch $ol "tax"] != -1} {
-					set hasTax 1
-				}
-
-				if {!$hasProd && [ordersMatch $ol "produce"] != -1} {
-					set hasProd 1
-				}
-				if {!$hasProd && [ordersMatch $ol "build"] != -1} {
-					set hasProd 1
-				}
-			}
-
-			if {$hasTax} {
-				$w create text [expr $x-$::n] [expr $y+$::nrad3] -text "\$" \
-				  -anchor w -fill darkgreen -tags icon
-			}
-			if {$hasProd} {
-				$w create text [expr $x] [expr $y] -text "P" \
-				  -anchor nw -tags icon
-			}
-		}
-
-		# tag unexplored hexes
-		if {$ct eq ""} {
-			set hexOverId [plot_hex_num $w $col $row]
-			$w itemconfigure $hexOverId -fill gray -stipple gray12
-		}
-
-		# pull buildings
-		set objects [$db eval {
-			SELECT desc FROM objects
-			WHERE regionId=$rid
-		}]
-		set hasOtherBuild 0
-		foreach desc $objects {
-			if {[regexp -nocase {^Road (.+)} $desc -> dir]} {
-				drawRoad $dir $row $col
-			} elseif {$desc eq "Shaft"} {
-				$w create text [expr $x+2.5*$::n] [expr $y+$::nrad3] -text "H" \
-				  -anchor e -tags icon
-			} elseif {[lsearch $::boats $desc] != -1} {
-				# TODO draw ship icon
-			} elseif {!$hasOtherBuild} {
-				set hasOtherBuild 1
-			}
-		}
-		if {$ct == $::currentTurn && $hasOtherBuild} {
-			$w create text [expr $x+2*$::n] [expr $y] -text "B" \
-			  -anchor ne -tags icon
+		if {$col >= $half_x} {
+			set hex_id [plot_left_neg_hex $w $col $row]
+			decorateHex $w $db $hex_id $data_row
 		}
 	}
 
