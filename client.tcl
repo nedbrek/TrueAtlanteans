@@ -2408,6 +2408,25 @@ proc checkOrder {u o x y z ctxt} {
 		teach {
 			# help another unit study
 			# TODO check args
+			for {set i 1} {$i < [llength $o]} {incr i} {
+				set student [lindex $o $i]
+				if {[string compare -nocase $student "new"] == 0} {
+					incr i
+					set student "new [lindex $o $i]"
+				} elseif {[string compare -nocase $student "!new"] == 0} {
+					incr i
+					set student "new [lindex $o $i]"
+				}
+				if {![dict exists $units $student]} {
+					return [list -1 "Teach with invalid student ('$o')"]
+				}
+				set student_obj [dict get $units $student]
+				set student_orders [{*}$student_obj cget -orders]
+				set soi [lsearch -regexp -nocase $student_orders {^study}]
+				if {$soi == -1} {
+					return [list -1 "Teach: Student $student is not studying ('$o')"]
+				}
+			}
 			return 0
 		}
 
@@ -2535,8 +2554,6 @@ proc checkOrderType {tgt_ord x y z ctxt} {
 		set ol [{*}$v cget -orders]
 		if {$ol eq ""} continue
 
-		set il [{*}$v cget -items]
-
 		set new_orders [list]
 
 		# foreach order
@@ -2546,7 +2563,9 @@ proc checkOrderType {tgt_ord x y z ctxt} {
 
 			set op [split $o " "]
 			set c [string tolower [lindex $op 0]]
-			if {$tgt_ord ne "" && $tgt_ord ne $c} {
+			if {$tgt_ord eq ""} {
+				lappend new_orders $o
+			} elseif {$tgt_ord ne $c} {
 				lappend new_orders $o
 				continue
 			}
