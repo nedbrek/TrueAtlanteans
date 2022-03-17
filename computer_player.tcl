@@ -924,6 +924,8 @@ proc processRegion {sitRep rid} {
 					 	 {FORM 30} \
 					 	 {NAME UNIT "Guard"} \
 					 	 "BUY $numBuy $abbr" \
+					 	 {AVOID 0} \
+					 	 {BEHIND 0} \
 					 	 {NOAID 1} \
 					 	 {STUDY COMB} \
 					 	 {TURN} \
