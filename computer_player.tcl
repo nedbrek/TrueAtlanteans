@@ -263,7 +263,6 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	if {$maxTax eq ""} { set maxTax 0 }
 	set taxersNeeded [expr {$maxTax / 50}]
 	if {$taxersNeeded == 0} {
-		puts "No tax in region!"
 		return [list "" "" 0]
 	}
 	if {$taxersNeeded <= $taxers} {
