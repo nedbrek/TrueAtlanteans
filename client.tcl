@@ -2308,6 +2308,9 @@ proc checkOrder {u o x y z ctxt} {
 					return [list -1 "Give with invalid receiver ('$o')"]
 				}
 				set recv_obj [dict get $units $recv]
+				if {$recv eq [{*}$u cget -num]} {
+					return [list -1 "Give: Cannot give to self ('$o')"]
+				}
 			}
 
 			set item_id [string toupper [lindex $op $i+1]]
