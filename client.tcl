@@ -3241,17 +3241,10 @@ wm title .t "True Atlanteans - <no game open>"
 
 ### top menu
 menu .mTopMenu -tearoff 0
-menu .mTopMenu.mFile -tearoff 0
-menu .mTopMenu.mAction -tearoff 0
-menu .mTopMenu.mView -tearoff 0
-menu .mTopMenu.mHelp -tearoff 0
-
-.mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
-.mTopMenu add cascade -label "Action" -menu .mTopMenu.mAction -underline 0
-.mTopMenu add cascade -label "View" -menu .mTopMenu.mView -underline 0
-.mTopMenu add cascade -label "Help" -menu .mTopMenu.mHelp -underline 0
 
 # file menu
+menu .mTopMenu.mFile -tearoff 0
+.mTopMenu add cascade -label "File" -menu .mTopMenu.mFile -underline 0
 .mTopMenu.mFile add command -label "New"         -command newGame -underline 0 -accelerator "Ctrl+N"
 .mTopMenu.mFile add command -label "Open"        -command doOpen  -underline 0 -accelerator "Ctrl+O"
 .mTopMenu.mFile add command -label "Add Report"  -command doAdd   -underline 0 -state disabled
@@ -3269,10 +3262,14 @@ proc enableMenus {} {
 }
 
 # action menu
+menu .mTopMenu.mAction -tearoff 0
+.mTopMenu add cascade -label "Action" -menu .mTopMenu.mAction -underline 0
 .mTopMenu.mAction add command -label "Mark active hexes" -command markActive -underline 0
 .mTopMenu.mAction add command -label "Check Orders" -command checkAllOrders -underline 0
 
 # view menu
+menu .mTopMenu.mView -tearoff 0
+.mTopMenu add cascade -label "View" -menu .mTopMenu.mView -underline 0
 .mTopMenu.mView add checkbutton -label "All Hexes" -command toggleDrawAll -underline 0 -variable gui::draw_all
 .mTopMenu.mView add separator
 .mTopMenu.mView add command -label "Battles" -command showBattles -underline 0
@@ -3290,12 +3287,17 @@ proc enableMenus {} {
 		SELECT val FROM notes WHERE key="unclaimed"
 	}]]
 } -underline 0
-.mTopMenu.mView add separator
-.mTopMenu.mView add command -label "Items" -command itemView -underline 0
-.mTopMenu.mView add command -label "Objects" -command showObjectDefs -underline 2
-.mTopMenu.mView add command -label "Skills" -command showSkills -underline 0
+
+# game data
+menu .mTopMenu.mData -tearoff 0
+.mTopMenu add cascade -label "Data" -menu .mTopMenu.mData -underline 0
+.mTopMenu.mData add command -label "Items" -command itemView -underline 0
+.mTopMenu.mData add command -label "Objects" -command showObjectDefs -underline 2
+.mTopMenu.mData add command -label "Skills" -command showSkills -underline 0
 
 # help menu
+menu .mTopMenu.mHelp -tearoff 0
+.mTopMenu add cascade -label "Help" -menu .mTopMenu.mHelp -underline 0
 .mTopMenu.mHelp add command -label "Version" -command {tk_messageBox -message "0.2"} -underline 0
 
 .t configure -menu .mTopMenu
