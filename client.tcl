@@ -1790,16 +1790,42 @@ proc showBattles {} {
 
 		pack $t.vs -side right -fill y
 		pack $t.tv -side left -expand 1 -fill both
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.tv TREEVIEW]]
 	}
 	$t.tv delete [$t.tv children {}]
 
 	# configure all the columns
+	# check for existing settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VAL]
+		if {[llength $widths] != 2} {
+			set widths {200 88}
+		}
+	} else {
+		set widths {200 88}
+		set tv $t.tv
+	}
+
 	set cols ""
 	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
-	$t.tv configure -columns $cols
+	$tv configure -columns $cols
 
-	$t.tv column 1 -width 88 -stretch 0
-	$t.tv heading 1 -text "Loc"
+	$tv column #0 -width [lindex $widths 0]
+	for {set i 1} {$i < [llength $widths]} {incr i} {
+		$tv column $i -width [lindex $widths $i]
+	}
+
+	$tv column 1 -stretch 0
+
+	$tv heading 1 -text "Loc"
 
 	# populate it
 	db eval {
@@ -1961,7 +1987,7 @@ proc itemView {} {
 
 	set cols ""
 	for {set i 1} {$i <= 4} {incr i} { lappend cols $i }
-	$t.fTop.tv configure -columns $cols
+	$tv configure -columns $cols
 
 	$tv column #0 -width [lindex $widths 0]
 	for {set i 1} {$i < [llength $widths]} {incr i} {
