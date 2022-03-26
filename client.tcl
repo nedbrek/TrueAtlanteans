@@ -1872,6 +1872,46 @@ proc showBattles {} {
 	}
 }
 
+proc showKeepOuts {} {
+	# build the window
+	set t .tKeepOut
+
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Keep Out"
+
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+		bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+	} else {
+		raise $t
+	}
+
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# configure all the columns
+	set cols ""
+	for {set i 1} {$i <= 3} {incr i} { lappend cols $i }
+	$t.fTop.tv configure -columns $cols
+
+	$t.fTop.tv heading 1 -text "x"
+	$t.fTop.tv heading 2 -text "y"
+	$t.fTop.tv heading 3 -text "z"
+
+	set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
+	foreach coords $keep_out {
+		set x [lindex $coords 0]
+		set y [lindex $coords 1]
+		set z [lindex $coords 2]
+		$t.fTop.tv insert {} end -values [list $x $y $z]
+	}
+}
+
 proc updateSearch {new_txt} {
 	set t .tSearchUnits
 	$t.fTop.tv delete [$t.fTop.tv children {}]
@@ -3277,6 +3317,7 @@ menu .mTopMenu.mView -tearoff 0
 .mTopMenu.mView add command -label "Find units" -command searchUnits -underline 0
 .mTopMenu.mView add command -label "Foreign Units" -command findForeignUnits -underline 1
 .mTopMenu.mView add command -label "Idle Units" -command findIdleUnits -underline 0
+.mTopMenu.mView add command -label "Keep Outs" -command showKeepOuts -underline 0
 .mTopMenu.mView add command -label "My Units" -command showAllUnits -underline 3
 .mTopMenu.mView add command -label "Not Done" -command showNotDone -underline 0
 .mTopMenu.mView add command -label "Production Count" -command {tk_messageBox -message [ctProd]} -underline 0
