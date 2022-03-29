@@ -1872,6 +1872,24 @@ proc showBattles {} {
 	}
 }
 
+proc deleteKeepOuts {w} {
+	$w delete [$w selection]
+}
+
+proc saveKeepOuts {t} {
+	set w $t.fTop.tv
+	set keep_outs [list]
+
+	set lines [$w children {}]
+	foreach l $lines {
+		set v [$w item $l -values]
+		lappendU keep_outs $v
+	}
+	::db eval { INSERT OR REPLACE INTO notes VALUES("keep_out", $keep_outs)}
+
+	destroy $t
+}
+
 proc showKeepOuts {} {
 	# build the window
 	set t .tKeepOut
@@ -1884,10 +1902,15 @@ proc showKeepOuts {} {
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
 		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+		bind $t.fTop.tv <Delete> [list deleteKeepOuts %W]
 		bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
 
 		pack $t.fTop.vs -side right -fill y
 		pack $t.fTop.tv -side left -expand 1 -fill both
+
+		pack [frame $t.fBot] -side top
+		pack [button $t.fBot.bOk -text "Ok" -command [list saveKeepOuts $t]] -side left
+		pack [button $t.fBot.bCancel -text "Cancel" -command [list destroy $t]] -side left
 	} else {
 		raise $t
 	}
