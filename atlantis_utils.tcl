@@ -7,6 +7,16 @@ proc dGet {d k} {
 	return [string trim [dict get $d $k]]
 }
 
+# list append unique
+proc lappendU {var_name args} {
+	upvar $var_name var
+	foreach a $args {
+		if {[lsearch -exact $var $a] == -1} {
+			lappend var $a
+		}
+	}
+}
+
 set ::monthNames {
 	January
 	February

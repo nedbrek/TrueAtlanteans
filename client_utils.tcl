@@ -8,15 +8,6 @@ set max_x 32
 set max_y 32
 
 ### utilities
-proc lappendU {var_name args} {
-	upvar $var_name var
-	foreach a $args {
-		if {[lsearch -exact $var $a] == -1} {
-			lappend var $a
-		}
-	}
-}
-
 proc checkBool {s} {
 	return [expr {$s != 0 && $s != 1}]
 }

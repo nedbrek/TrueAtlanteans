@@ -47,12 +47,6 @@ set ::directions {
 	Northwest
 }
 
-set ::boats {
-	Longboat
-	Clipper
-	Galleon
-}
-
 namespace eval gui {
 
 	set unitFlags {

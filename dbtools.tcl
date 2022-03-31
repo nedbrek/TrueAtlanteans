@@ -6,6 +6,21 @@ package provide atlantis_dbtools 1.0
 set ::men {
 }
 
+set ::boats {
+}
+
+proc parseShips {} {
+	db eval {
+		SELECT desc
+		FROM object_defs
+	} {
+		set col0 [lindex $desc 0]
+		if {[regexp {([^:]*): This is a ship} $col0 -> name]} {
+			lappendU ::boats $name
+		}
+	}
+}
+
 set ::currentTurn 0
 
 # (database available function)
@@ -318,6 +333,7 @@ proc openDb {ofile} {
 
 	set ::men [db eval {select abbr from items where type="race"}]
 	set ::currentTurn [db eval {select max(turn) from detail}]
+	parseShips
 
 	setMaxXY
 
@@ -555,6 +571,7 @@ proc updateDb {db tdata} {
 
 	set ::men [db eval {select abbr from items where type="race"}]
 	set ::currentTurn [db eval {select max(turn) from detail}]
+	parseShips
 
 	# only store events for latest turn
 	if {$turnNo == $::currentTurn} {
