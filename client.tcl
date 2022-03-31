@@ -2070,6 +2070,7 @@ proc itemView {} {
 	set res [db eval {
 		SELECT name, abbr, type, desc
 		FROM items
+		ORDER BY name
 	}]
 	foreach {name abbr type desc} $res {
 		set wt [dGet $desc Weight]
