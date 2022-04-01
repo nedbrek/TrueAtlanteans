@@ -2014,9 +2014,11 @@ proc itemView {} {
 		pack [frame $t.fTop] -side top -expand 1 -fill both
 
 		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
-		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+		scrollbar $t.fTop.hs -command "$t.fTop.tv xview" -orient horizontal
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set" -xscrollcommand "$t.fTop.hs set"
 
 		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.hs -side bottom -fill x
 		pack $t.fTop.tv -side left -expand 1 -fill both
 
 		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
