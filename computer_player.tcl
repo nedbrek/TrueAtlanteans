@@ -305,7 +305,7 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 		return [list "" "" 1]
 	}
 
-	lappend ol "form 1" "name unit Guard"
+	lappend ol "FORM 19" "name unit Guard"
 
 	set give_amt [expr {$numBuy * ($price + 10)}]
 
@@ -320,7 +320,7 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	lappend ol "buy $numBuy $abbr"
 	lappend ol "study COMB"
 	lappend ol "turn" "@tax" "endturn"
-	lappend ol "end"
+	lappend ol "END"
 
 	return [list \
 		$give_amt \
@@ -854,7 +854,7 @@ proc processRegion {sitRep rid} {
 
 			# create the give order
 			if {$s_give > 0} {
-				set order_text "GIVE NEW 1 $s_give SILV"
+				set order_text "GIVE NEW 19 $s_give SILV"
 
 				set give_o [$u cget -orders]
 				lappend give_o $order_text
