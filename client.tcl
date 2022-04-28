@@ -641,16 +641,16 @@ proc showUnit {name} {
 	}
 
 	$t insert end "Total weight: $total_wt\n"
-	if {$cap(walking) < 0} {
-		$t insert end "Cannot move $cap(walking)\n"
-	} else {
-		$t insert end "walking capacity: $cap(walking)\n"
-		$t insert end "riding capacity: $cap(riding)\n"
-		foreach tp {flying swimming} {
-			if {$cap($tp) >= 0} {
-				$t insert end "$tp capacity: $cap($tp)\n"
-			}
+
+	set any_cap 0
+	foreach tp {walking riding flying swimming} {
+		if {$cap($tp) >= 0} {
+			$t insert end "$tp capacity: $cap($tp)\n"
+			set any_cap 1
 		}
+	}
+	if {!$any_cap} {
+		$t insert end "Cannot move $cap(walking)\n"
 	}
 
 	if {$skip} {
@@ -677,6 +677,17 @@ proc showUnit {name} {
 		$t insert end "C"
 	}
 	$t insert end "\n"
+
+	set v [dGet $flags SPOILS]
+	if {$v eq "NONE"} {
+		$t insert end "No spoils\n"
+	} elseif {$v eq "WALK"} {
+		$t insert end "Walking spoils\n"
+	} elseif {$v eq "RIDE"} {
+		$t insert end "Riding spoils\n"
+	} elseif {$v eq "FLY"} {
+		$t insert end "Flying spoils\n"
+	}
 
 	$t insert end "Skills: "
 	if {$skills eq ""} {
