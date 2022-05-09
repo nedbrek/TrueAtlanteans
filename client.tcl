@@ -161,10 +161,8 @@ proc plot_hex_full {obj x y} {
 	return $hexId
 }
 
-proc drawRoad {dir row col} {
+proc drawRoad {dir x y} {
 	set w .t.fR.screen
-	set x [col2x $col]
-	set y [row2y $row]
 
 	switch -nocase $dir {
 		n {
@@ -403,7 +401,7 @@ proc decorateHex {w db hexId data_row} {
 	set hasOtherBuild 0
 	foreach desc $objects {
 		if {[regexp -nocase {^Road (.+)} $desc -> dir]} {
-			drawRoad $dir $row $col
+			drawRoad $dir $x $y
 		} elseif {$desc eq "Shaft"} {
 			$w create text [expr $x+2.5*$::n] [expr $y+$::nrad3] -text "H" \
 			  -anchor e -tags icon
