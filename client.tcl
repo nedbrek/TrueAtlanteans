@@ -2557,6 +2557,11 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
+		join {
+			# TODO check target
+			return 0
+		}
+
 		advance {
 			# move with aggression
 			# TODO check args
