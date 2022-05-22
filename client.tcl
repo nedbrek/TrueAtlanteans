@@ -502,6 +502,8 @@ proc orderBoxReset {w} {
 	.t.fItems.t delete 1.0 end
 	.t.fItems.t configure -state disabled
 
+	.t.tvItems delete [.t.tvItems children {}]
+
 	$w configure -state normal
 	$w delete 1.0 end
 	$w edit reset
@@ -580,6 +582,7 @@ proc showUnit {name} {
 
 	# fill the items box (stick skills in too)
 	set t .t.fItems.t
+	set tv .t.tvItems
 	$t configure -state normal
 
 	if {$is_current} {
@@ -687,12 +690,12 @@ proc showUnit {name} {
 		$t insert end "Flying spoils\n"
 	}
 
-	$t insert end "Skills: "
+	set par [$tv insert {} end -text "Skills" -open 1]
 	if {$skills eq ""} {
-		$t insert end "<none>\n"
+		$tv insert $par end -text "<none>"
 	} else {
 		foreach s $skills {
-			$t insert end "[join $s]\n"
+			$tv insert $par end -text "[join $s]"
 		}
 	}
 
@@ -705,12 +708,17 @@ proc showUnit {name} {
 
 	set other [db onecolumn {SELECT other FROM units WHERE id=$gui::prevId}]
 	set combat_spell [dGet $other CombatSpell]
+	set can_study    [dGet $other CanStudy]
+
 	if {$combat_spell ne ""} {
-		$t insert end "Combat spell: $combat_spell\n"
+		$tv insert {} end -text "Combat spell: $combat_spell"
 	}
-	set can_study [dGet $other CanStudy]
+
 	if {$can_study ne ""} {
-		$t insert end "Can study: [join $can_study ","]\n"
+		set par [$tv insert {} end -text "Can Study"]
+		foreach sk $can_study {
+			$tv insert $par end -text $sk
+		}
 	}
 
 	$t insert end "-------- [countMen $items] men\n"
@@ -3428,6 +3436,8 @@ if {$tcl_platform(os) eq "Linux"} {
 	# for some reason, the combox is much wider on Linux
 	.t.cbMyUnits configure -width 36
 }
+
+.t.pwLeft add [ttk::treeview .t.tvItems -show tree]
 
 # next, unit items (text + scrollbar)
 pack [frame .t.fItems] -side top -in .t.fLunitOrders -expand 1 -fill both
