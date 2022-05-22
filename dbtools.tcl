@@ -21,6 +21,19 @@ proc parseShips {} {
 	}
 }
 
+proc getMaint {item_list} {
+	set maint 0
+	foreach i $item_list {
+		set abbr [string trim [lindex $i 2] {[]}]
+		set item_desc [dGet [db onecolumn {SELECT desc FROM items WHERE abbr=$abbr}] Desc]
+		if {[regexp {This race takes (.*) hits to kill} $item_desc -> hits]} {
+			set ct [lindex $i 0]
+			incr maint [expr {$ct * $hits * 5}]
+		}
+	}
+	return $maint
+}
+
 set ::currentTurn 0
 
 # (database available function)

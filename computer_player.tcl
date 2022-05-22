@@ -892,6 +892,7 @@ proc processRegion {sitRep rid} {
 		}
 
 		set will_export 0
+		set export_needs 0
 		if {$abbr ne "" && [isAlignCompat ::db $abbr]} {
 			set form_unit [lindex $units 0]
 			set ol [$form_unit cget -orders]
@@ -916,6 +917,15 @@ proc processRegion {sitRep rid} {
 						break
 					}
 					set will_export 1
+					incr export_needs [expr {$numBuy * $price}]
+
+					# calculate maintenance
+					set item_desc [dGet [db onecolumn {SELECT desc FROM items WHERE abbr=$abbr}] Desc]
+					if {[regexp {This race takes (.*) hits to kill} $item_desc -> hits]} {
+						set maint [expr {$numBuy * $hits * 5}]
+						# need 10 for study comb, and maintenance for this turn and next
+						incr export_needs [expr {(10 + $maint * 2) * $numBuy}]
+					}
 
 					set dir [moveToward $x $y $z {*}$ir]
 					set courier_id "NEW 30"
@@ -978,13 +988,19 @@ proc processRegion {sitRep rid} {
 			for {set i 0} {$totalSilver > 0 && $i < [llength $funds]} {incr i 2} {
 				set u [lindex $funds $i]
 				set s [lindex $funds $i+1]
+
 				if {[$u cget -num] eq $courier_id} {
 					incr totalSilver -$s
 					continue
 				}
 
-				set s_give $s
-				set s_left 0
+				if {$export_needs && $s >= $export_needs} {
+					set s_give $export_needs
+					set s_left [expr {$s - $export_needs}]
+				} else {
+					set s_give $s
+					set s_left 0
+				}
 
 				# create the give order
 				if {$s_give > 0} {
@@ -997,6 +1013,13 @@ proc processRegion {sitRep rid} {
 					# update giving unit
 					$u setItem SILV $s_left
 					incr totalSilver -$s_give
+				}
+
+				if {$export_needs} {
+					if {$s >= $export_needs} {
+						break
+					}
+					incr export_needs -$s_give
 				}
 			}
 		}
