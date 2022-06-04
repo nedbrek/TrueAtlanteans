@@ -833,6 +833,12 @@ proc processRegion {sitRep rid} {
 	}
 
 	# buy tax men
+	## don't buy men in a keep out zone
+	set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
+	if {[lsearch $keep_out [list $x $y $z]] != -1} {
+		return
+	}
+
 	set ret [$sitRep buyGuards $totalSilver 0 $x $y $z $taxers]
 	foreach {s_need form_orders rem} $ret {}
 
