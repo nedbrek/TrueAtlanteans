@@ -33,14 +33,10 @@ itcl::class SitRep {
 		set ret [evaluateSituation]
 		set overall_state [dGet $ret State]
 		set unit_state [dGet $ret Units]
-		set import_regions [db onecolumn {SELECT val FROM notes WHERE key="import_regions"}]
+		set import_regions [list]
 	}
 
 	method saveState {} {
-		::db eval {
-			INSERT OR REPLACE INTO notes
-			VALUES("import_regions", $import_regions)
-		}
 	}
 
 	method inRegion {x y z} {
@@ -283,7 +279,7 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	if {$alignment ne "" && $alignment ne "neutral"} {
 		if {$ra ne "neutral" && $alignment ne $ra} {
 			# note region for import of guards matching alignment
-			lappendU import_regions [list $x $y $z]
+			lappendU import_regions [list $x $y $z $taxersNeeded]
 			return [list "" "" 0]
 		}
 	}
@@ -906,16 +902,9 @@ proc processRegion {sitRep rid} {
 			set import_regions [$sitRep cget -import_regions]
 			for {set i 0} {$i < [llength $import_regions]} {incr i} {
 				set ir [lindex $import_regions $i]
-				set d [getDistance $x $y $z {*}$ir]
+				set d [getDistance $x $y $z {*}[lrange $ir 0 2]]
 				if {$d == 1} {
-					foreach {tx ty tz} $ir break
-					set tax [db onecolumn {
-						SELECT tax
-						FROM detail
-						WHERE x=$tx AND y=$ty AND z=$tz
-						ORDER BY turn DESC LIMIT 1
-					}]
-					set taxers_needed [expr {$tax / 50}]
+					foreach {tx ty tz taxers_needed} $ir break
 					set budget $totalSilver
 					set maxBuy [expr {$budget / ($price + 10 + 10 + 10)}]
 					set numBuy [expr {min($taxers_needed, $maxBuy, $maxRace)}]
@@ -933,7 +922,7 @@ proc processRegion {sitRep rid} {
 						incr export_needs [expr {(10 + $maint * 2) * $numBuy}]
 					}
 
-					set dir [moveToward $x $y $z {*}$ir]
+					set dir [moveToward $x $y $z {*}[lrange $ir 0 2]]
 					set courier_id "NEW 30"
 					lappend ol \
 					 	 {FORM 30} \
