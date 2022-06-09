@@ -389,7 +389,8 @@ proc decorateHex {w db hexId data_row} {
 
 	# draw a stipple over unexplored hexes
 	if {$ct eq ""} {
-		set hexOverId [plot_hex_num $w $col $row]
+		set coords [$w coords $hexId]
+		set hexOverId [$w create polygon $coords -tags [list hex [format "hex_%d_%d" $col $row]]]
 		$w itemconfigure $hexOverId -fill gray -stipple gray12
 	}
 
