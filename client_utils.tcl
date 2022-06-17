@@ -33,6 +33,24 @@ proc cleanOrder {o} {
 	return $o
 }
 
+proc weighItems {items} {
+	set total_wt 0
+	foreach i $items {
+		set count [lindex $i 0]
+		set full_abbr [lindex $i 2]
+		if {![regexp {\[(.*)\]} $i -> abbr]} {
+			continue
+		}
+		if {$abbr eq "SILV"} {
+			continue
+		}
+		set data [db onecolumn {SELECT desc FROM items WHERE abbr=$abbr}]
+		set wt   [dGet $data Weight]
+		incr total_wt [expr {$count * $wt}]
+	}
+	return $total_wt
+}
+
 ### classes
 itcl::class Unit {
 	public variable db_id

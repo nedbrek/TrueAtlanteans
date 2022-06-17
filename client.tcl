@@ -531,6 +531,46 @@ proc getSelectionXY {} {
 	return [list $x $y]
 }
 
+proc showBuilding {t regionId name} {
+	set name [string range $name 2 end]
+
+	set obj [db eval {
+		SELECT id FROM objects
+		WHERE regionId=$regionId and name=$name
+	}]
+	if {$obj eq ""} {
+		return
+	}
+
+	set total_wt 0
+	set units [list]
+	db eval {
+		SELECT id, uid
+		FROM units
+		WHERE regionId=$regionId
+	} {
+		set obj_id [db onecolumn {
+			SELECT objectId
+			FROM object_unit_map
+			WHERE unitId=$id
+		}]
+		if {$obj_id eq $obj} {
+			lappend units $uid
+		}
+	}
+
+	set total_wt 0
+	foreach u $units {
+		set items [db onecolumn {
+			SELECT items
+			FROM units
+			WHERE regionId=$regionId AND uid=$u
+		}]
+		incr total_wt [weighItems $items]
+	}
+	$t insert end "Total weight: $total_wt\n"
+}
+
 # make the unit with 'name' active from the combox
 proc showUnit {name} {
 	orderBoxReset .t.tOrd
@@ -561,8 +601,15 @@ proc showUnit {name} {
 	set r [extractUnitNameNum $name 1]
 	set just_name [lindex $r 0]
 	set uid [lindex $r 1]
+
+	set t .t.fItems.t
+	$t configure -state normal
+
 	if {$uid eq ""} {
+		# it's a building
+		showBuilding $t $regionId $name
 		.t.tOrd configure -state disabled
+		$t configure -state disabled
 		return
 	}
 
@@ -582,9 +629,7 @@ proc showUnit {name} {
 	set desc        [lindex $data 7]
 
 	# fill the items box (stick skills in too)
-	set t .t.fItems.t
 	set tv .t.tvItems
-	$t configure -state normal
 
 	if {$is_current} {
 		set data [db eval {
