@@ -45,8 +45,10 @@ proc weighItems {items} {
 			continue
 		}
 		set data [db onecolumn {SELECT desc FROM items WHERE abbr=$abbr}]
-		set wt   [dGet $data Weight]
-		incr total_wt [expr {$count * $wt}]
+		if {$data ne ""} {
+			set wt [dGet $data Weight]
+			incr total_wt [expr {$count * $wt}]
+		}
 	}
 	return $total_wt
 }
