@@ -3003,7 +3003,7 @@ proc showAllUnits {} {
 		lappend vals [countItem $items SILV]
 		lappend vals [countItemsByType $items weapon]
 		lappend vals [countItemsByType $items armor]
-		lappend vals [countItem $items HORS]
+		lappend vals [countItemsByType $items mount]
 		lappend vals [join $orders ";"]
 		$t.fTop.tv insert $id($x,$y,$z) end -text $name -values $vals
 	}
