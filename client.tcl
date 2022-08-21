@@ -560,6 +560,7 @@ proc showBuilding {t regionId name} {
 	}
 
 	set total_wt 0
+	set total_men 0
 	foreach u $units {
 		set items [db onecolumn {
 			SELECT items
@@ -567,7 +568,9 @@ proc showBuilding {t regionId name} {
 			WHERE regionId=$regionId AND uid=$u
 		}]
 		incr total_wt [weighItems $items]
+		incr total_men [countMen $items]
 	}
+	$t insert end "Total men: $total_men\n"
 	$t insert end "Total weight: $total_wt\n"
 }
 
