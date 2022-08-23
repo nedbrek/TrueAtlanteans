@@ -1987,7 +1987,7 @@ proc showKeepOuts {} {
 	$t.fTop.tv heading 3 -text "z"
 
 	set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
-	foreach coords $keep_out {
+	foreach coords [lsort -integer -index 2 [lsort -integer -index 0 [lsort -integer -index 1 $keep_out]]] {
 		set x [lindex $coords 0]
 		set y [lindex $coords 1]
 		set z [lindex $coords 2]
