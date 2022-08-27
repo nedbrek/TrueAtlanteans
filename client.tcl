@@ -1609,6 +1609,7 @@ proc reportTax {} {
 		bind $t.fTop.tl <Double-1> {selectRegionFromList %W}
 	} else {
 		$t.fTop.tl delete 0 end
+		raise $t
 	}
 
 	set totalTax 0
