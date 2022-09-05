@@ -2236,6 +2236,7 @@ proc showObjectDefs {} {
 	db eval {
 		SELECT desc
 		FROM object_defs
+		ORDER BY desc
 	} {
 		set col0 [lindex $desc 0]
 		regexp {([^:]*): This is a (.*)} $col0 -> name type
