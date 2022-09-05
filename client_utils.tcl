@@ -486,6 +486,29 @@ proc getUnitObjects {id} {
 	return $ret
 }
 
+proc findPipeline {units skill} {
+	set ret [dict create]
+
+	set men_level [dict create 1 0 2 0 3 0 4 0 5 0]
+	set men_total 0
+
+	foreach u $units {
+		set sl [$u cget -skills]
+		set level [skillLevel $sl $skill]
+		if {$level == 0} {
+			continue
+		}
+		set il [$u cget -items]
+		set men [countMen $il]
+		puts "Found $men at $level"
+
+		dict incr men_level $level $men
+		incr mem_total $men
+	}
+
+	return $ret
+}
+
 # output a list like in the original report
 proc outputList {f lvals} {
 	if {$lvals eq ""} {
