@@ -497,6 +497,7 @@ proc saveUnitOrders {unit_id w} {
 proc orderBoxReset {w} {
 	if {$gui::prevUnit ne ""} {
 		saveUnitOrders $gui::prevId $w
+		set gui::prevUnit ""
 	}
 
 	.t.fItems.t configure -state normal
@@ -2919,6 +2920,7 @@ proc showAllUnits {} {
 		pack $t.fTop.tv -side left -expand 1 -fill both
 
 		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
+		bind $t.fTop.tv <g> [list giveToSel $t.fTop.tv]
 	}
 
 	# clear old contents
@@ -3246,15 +3248,15 @@ proc splitUnit {} {
 		grid columnconfigure $t.fMid 0 -weight 1
 		grid columnconfigure $t.fMid 2 -weight 1
 
-		pack [button $t.fMid.fMovers.bAdd -text "<" -command [list splitAdd 1]] -side top
-		pack [button $t.fMid.fMovers.bSub -text ">" -command [list splitSub 1]] -side top
-		bind $t.fMid.fMovers.bAdd <Shift-1> {splitAdd 10; break}
-		bind $t.fMid.fMovers.bAdd <Control-1> {splitAdd 100; break}
-		bind $t.fMid.fMovers.bAdd <Control-Shift-1> {splitAdd 1000; break}
+		pack [button $t.fMid.fMovers.bAdd -text "<" -command [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
+		pack [button $t.fMid.fMovers.bSub -text ">" -command [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
+		bind $t.fMid.fMovers.bAdd <Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
+		bind $t.fMid.fMovers.bAdd <Control-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
+		bind $t.fMid.fMovers.bAdd <Control-Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
 
-		bind $t.fMid.fMovers.bSub <Shift-1> {splitSub 10; break}
-		bind $t.fMid.fMovers.bSub <Control-1> {splitSub 100; break}
-		bind $t.fMid.fMovers.bSub <Control-Shift-1> {splitSub 1000; break}
+		bind $t.fMid.fMovers.bSub <Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
+		bind $t.fMid.fMovers.bSub <Control-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
+		bind $t.fMid.fMovers.bSub <Control-Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
 
 		pack [label $t.lOrders -text "Orders"] -side top
 		pack [text $t.orders -height 24 -width 42] -side top -expand 1 -fill both
@@ -3304,15 +3306,15 @@ proc splitMv {w w2 v} {
 	$w2 insert {} end -text $name -values [list $abbr $v]
 }
 
-proc splitAdd {v} {
-	set w2 .tSplitUnit.fMid.lbKeep
-	set w .tSplitUnit.fMid.lbGive
+proc splitAdd {t1 t2 v} {
+	set w2 $t1
+	set w $t2
 	splitMv $w $w2 $v
 }
 
-proc splitSub {v} {
-	set w .tSplitUnit.fMid.lbKeep
-	set w2 .tSplitUnit.fMid.lbGive
+proc splitSub {t1 t2 v} {
+	set w $t1
+	set w2 $t2
 	splitMv $w $w2 $v
 }
 
@@ -3345,6 +3347,106 @@ proc finishSplit {t} {
 	}
 
 	destroy $t
+}
+
+proc finishGive {t recv_id} {
+	.t.tOrd insert end "\n"
+	foreach i [$t.fMid.lbGive children {}] {
+		set vals [$t.fMid.lbGive item $i -values]
+		set ct [lindex $vals 1]
+		set abbr [string map {[ "" ] ""} [lindex $vals 0]]
+		.t.tOrd insert end "give $recv_id $ct $abbr\n"
+	}
+	destroy $t
+}
+
+proc giveToSel {w} {
+	# we'll give from prevUnit
+	if {$gui::prevUnit eq ""} {
+		return
+	}
+	set r [extractUnitNameNum $gui::prevUnit 1]
+	set give_id [lindex $r 1]
+
+	set sel [$w selection]
+	# TODO handle give to many...
+	if {[llength $sel] != 1} {
+		return
+	}
+	set vals [$w item $sel -values]
+
+	set id ""
+	set x ""
+	set y ""
+	set z ""
+	set cols [$w cget -columns]
+	foreach c $cols {
+		set col_name [$w heading $c -text]
+		set val [lindex $vals $c-1]
+
+		if {$col_name eq "Loc"} {
+			if {![regexp {\(([[:digit:]]+),([[:digit:]]+),([[:digit:]])\)} $val -> x y z]} {
+				tk_messageBox -message "Unable to parse Loc column $val"
+				return
+			}
+		} elseif {$col_name eq "Id"} {
+			set id $val
+		} elseif {$col_name eq "x"} {
+			set x $val
+		} elseif {$col_name eq "y"} {
+			set y $val
+		} elseif {$col_name eq "z"} {
+			set z $val
+		}
+	}
+	if {$id eq "" || $x eq "" || $y eq "" || $z eq ""} {
+		return
+	}
+	set rid [db onecolumn {
+		SELECT id
+		FROM detail
+		WHERE turn=$::currentTurn and x=$x and y=$y and z=$z
+	}]
+	set items [db onecolumn {
+		SELECT items
+		FROM units
+		WHERE regionId=$rid and uid=$give_id
+	}]
+
+	# build the window
+	set t .tGiveItems
+	toplevel $t
+	wm title $t "Give Items"
+
+	pack [frame $t.fMid] -side top -expand 1 -fill both
+	grid [ttk::treeview $t.fMid.lbKeep -selectmode browse -columns {0 1}] -row 0 -column 0
+	grid [frame $t.fMid.fMovers] -row 0 -column 1
+	grid [ttk::treeview $t.fMid.lbGive -selectmode browse -columns {0 1}] -row 0 -column 2
+	grid columnconfigure $t.fMid 0 -weight 1
+	grid columnconfigure $t.fMid 2 -weight 1
+
+	pack [button $t.fMid.fMovers.bAdd -text "<" -command [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
+	pack [button $t.fMid.fMovers.bSub -text ">" -command [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
+	bind $t.fMid.fMovers.bAdd <Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
+	bind $t.fMid.fMovers.bAdd <Control-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
+	bind $t.fMid.fMovers.bAdd <Control-Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
+
+	bind $t.fMid.fMovers.bSub <Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
+	bind $t.fMid.fMovers.bSub <Control-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
+	bind $t.fMid.fMovers.bSub <Control-Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
+
+	pack [frame $t.fButtons] -side top
+	pack [button $t.fButtons.bOk -text "Ok" -command [list finishGive $t $id]] -side left
+	pack [button $t.fButtons.bCancel -text "Cancel" -command [list destroy $t]] -side left
+
+	foreach i $items {
+		set ct   [lindex $i 0]
+		set abbr [lindex $i end]
+		set name [join [lrange $i 1 end-1] " "]
+		$t.fMid.lbKeep insert {} end -text $name -values [list $abbr $ct]
+	}
+
+	tkwait window $t
 }
 
 proc toggleDrawAll {} {
