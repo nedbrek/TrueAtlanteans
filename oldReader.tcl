@@ -986,6 +986,14 @@ proc parseFile {f} {
 				set trade_max 1000
 			}
 
+			# combined tax and trade
+			if {[regexp {Regions: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> trade_use trade_max]} {
+				set v [getSection $f]
+			} else {
+				set trade_use 0
+				set trade_max 1000
+			}
+
 			# quartermasters (optional)
 			if {[regexp {Quartermasters: ([[:digit:]]+) \(([[:digit:]]+)\)} $v -> qm_use qm_max]} {
 				set v [getSection $f]
