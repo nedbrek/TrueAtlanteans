@@ -3250,13 +3250,13 @@ proc splitUnit {} {
 
 		pack [button $t.fMid.fMovers.bAdd -text "<" -command [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
 		pack [button $t.fMid.fMovers.bSub -text ">" -command [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
-		bind $t.fMid.fMovers.bAdd <Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
-		bind $t.fMid.fMovers.bAdd <Control-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
-		bind $t.fMid.fMovers.bAdd <Control-Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
+		bind $t.fMid.fMovers.bAdd <Shift-1> "splitAdd $t.fMid.lbKeep $t.fMid.lbGive 10; break"
+		bind $t.fMid.fMovers.bAdd <Control-1> "splitAdd $t.fMid.lbKeep $t.fMid.lbGive 100; break"
+		bind $t.fMid.fMovers.bAdd <Control-Shift-1> "splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1000; break"
 
-		bind $t.fMid.fMovers.bSub <Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
-		bind $t.fMid.fMovers.bSub <Control-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
-		bind $t.fMid.fMovers.bSub <Control-Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
+		bind $t.fMid.fMovers.bSub <Shift-1> "splitSub $t.fMid.lbKeep $t.fMid.lbGive 10; break"
+		bind $t.fMid.fMovers.bSub <Control-1> "splitSub $t.fMid.lbKeep $t.fMid.lbGive 100; break"
+		bind $t.fMid.fMovers.bSub <Control-Shift-1> "splitSub $t.fMid.lbKeep $t.fMid.lbGive 1000; break"
 
 		pack [label $t.lOrders -text "Orders"] -side top
 		pack [text $t.orders -height 24 -width 42] -side top -expand 1 -fill both
@@ -3427,13 +3427,13 @@ proc giveToSel {w} {
 
 	pack [button $t.fMid.fMovers.bAdd -text "<" -command [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
 	pack [button $t.fMid.fMovers.bSub -text ">" -command [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1]] -side top
-	bind $t.fMid.fMovers.bAdd <Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
-	bind $t.fMid.fMovers.bAdd <Control-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
-	bind $t.fMid.fMovers.bAdd <Control-Shift-1> [list splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
+	bind $t.fMid.fMovers.bAdd <Shift-1> "splitAdd $t.fMid.lbKeep $t.fMid.lbGive 10; break"
+	bind $t.fMid.fMovers.bAdd <Control-1> "splitAdd $t.fMid.lbKeep $t.fMid.lbGive 100; break"
+	bind $t.fMid.fMovers.bAdd <Control-Shift-1> "splitAdd $t.fMid.lbKeep $t.fMid.lbGive 1000; break"
 
-	bind $t.fMid.fMovers.bSub <Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 10\; break]
-	bind $t.fMid.fMovers.bSub <Control-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 100\; break]
-	bind $t.fMid.fMovers.bSub <Control-Shift-1> [list splitSub $t.fMid.lbKeep $t.fMid.lbGive 1000\; break]
+	bind $t.fMid.fMovers.bSub <Shift-1> "splitSub $t.fMid.lbKeep $t.fMid.lbGive 10; break"
+	bind $t.fMid.fMovers.bSub <Control-1> "splitSub $t.fMid.lbKeep $t.fMid.lbGive 100; break"
+	bind $t.fMid.fMovers.bSub <Control-Shift-1> "splitSub $t.fMid.lbKeep $t.fMid.lbGive 1000; break"
 
 	pack [frame $t.fButtons] -side top
 	pack [button $t.fButtons.bOk -text "Ok" -command [list finishGive $t $id]] -side left
