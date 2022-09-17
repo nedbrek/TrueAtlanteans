@@ -35,6 +35,7 @@ set ::terrainColors {
 	wasteland   #d88040
 	grotto      #d88040
 	nexus       #ffffc0
+	volcano     #c40c0c
 }
 
 ### game constants
