@@ -2365,7 +2365,7 @@ proc checkOrder {u o x y z ctxt} {
 	set units [dGet $ctxt Units]
 	set sharing_units [findSharingUnits [dict get $ctxt UnitObj]]
 
-	set op [split $o " "]
+	set op $o
 	set c [lindex $op 0]
 	switch -nocase $c {
 		declare { 
