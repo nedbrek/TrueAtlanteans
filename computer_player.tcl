@@ -514,6 +514,9 @@ proc pickStartDirection {rid units} {
 	# create unit objects
 	set all_u [getUnitObjects $rid]
 	set multi_lead 0
+	set leaders [list]
+	# main unit
+	set u ""
 
 	# find faction leader
 	foreach ui $all_u {
@@ -524,6 +527,7 @@ proc pickStartDirection {rid units} {
 		}
 		set i [lsearch -index 2 $items *LEAD*]
 		if {$i != -1} {
+			lappend leaders $ui
 			set ct [lindex $items $i 0]
 			if {$ct > 1} {
 				set multi_lead [expr {$ct - 1}]
@@ -542,6 +546,12 @@ proc pickStartDirection {rid units} {
 				$ui configure -orders $ol
 			}
 		}
+	}
+
+	# if no faction leader
+	if {$u eq ""} {
+		# use first leader
+		set u [lindex $leaders 0]
 	}
 
 	set ol [$u cget -orders]
