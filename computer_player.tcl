@@ -28,12 +28,14 @@ itcl::class SitRep {
 	public variable unit_state
 	public variable regions
 	public variable import_regions
+	public variable is_end_game
 
 	constructor {} {
 		set ret [evaluateSituation]
 		set overall_state [dGet $ret State]
 		set unit_state [dGet $ret Units]
 		set import_regions [list]
+		set is_end_game 0
 	}
 
 	method saveState {} {
@@ -244,6 +246,10 @@ proc isAlignCompat {db abbr} {
 }
 
 itcl::body SitRep::buyGuards {budget claim x y z taxers} {
+	# TODO check max tax regions
+	if {$is_end_game && $taxers == 0} {
+		return [list "" "" 0]
+	}
 	set rdata [db eval {
 		SELECT id, sells, race, tax
 		FROM detail
@@ -443,7 +449,7 @@ proc rampFirstHex {sitRep units} {
 
 	if {[checkStay $rid $x $y $z]} {
 		set new_dir [selectNewHex $sitRep $x $y $z]
-		if {$new_dir ne ""} {
+		if {![$sitRep cget -is_end_game] && $new_dir ne ""} {
 			addOrder $all_u [list "MOVE $new_dir"]
 		}
 		return
@@ -808,7 +814,7 @@ proc processRegion {sitRep rid} {
 		advanceLeaders $leader $units
 	}
 
-	if {[llength $units] == [llength $couriers]} {
+	if {![$sitRep cget -is_end_game] && [llength $units] == [llength $couriers]} {
 		if {[checkStay $rid $x $y $z]} {
 			set new_dir [selectNewHex $sitRep $x $y $z]
 			if {$new_dir eq ""} {
@@ -956,7 +962,7 @@ proc processRegion {sitRep rid} {
 
 		if {$new_dir ne ""} {
 			if {[llength $couriers] == 0} {
-				if {$abbr ne "" && [isAlignCompat ::db $abbr]} {
+				if {![$sitRep cget -is_end_game] && $abbr ne "" && [isAlignCompat ::db $abbr]} {
 					set courier_id "NEW 20"
 					lappend ol \
 						 {FORM 20} \
@@ -970,7 +976,7 @@ proc processRegion {sitRep rid} {
 
 					$form_unit configure -orders $ol
 				}
-			} else {
+			} elseif {![$sitRep cget -is_end_game]} {
 				set u [lindex $couriers 0]
 				set ol [$u cget -orders]
 				lappend ol "MOVE $new_dir"
@@ -979,7 +985,7 @@ proc processRegion {sitRep rid} {
 			}
 		}
 
-		if {$courier_id ne ""} {
+		if {![$sitRep cget -is_end_game] && $courier_id ne ""} {
 			for {set i 0} {$totalSilver > 0 && $i < [llength $funds]} {incr i 2} {
 				set u [lindex $funds $i]
 				set s [lindex $funds $i+1]
@@ -1110,7 +1116,7 @@ itcl::body SitRep::createOrders {} {
 		lappend courier_dists $cdist
 	}
 
-	while {[llength $couriers]} {
+	while {!$is_end_game && [llength $couriers]} {
 		# move the furthest courier towards his closest region
 		set furthest_idx [lindex [lsort -integer -decreasing -indices $cmin_dists] 0]
 		set dist [lindex $cmin_dists $furthest_idx]
