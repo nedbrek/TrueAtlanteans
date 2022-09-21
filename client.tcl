@@ -2598,6 +2598,18 @@ proc checkOrder {u o x y z ctxt} {
 		move {
 			# change hex
 			# TODO check args
+			set valid_dir {n s ne se nw sw}
+			foreach d [lrange $op 1 end] {
+				if {[string compare -nocase $d "in"] == 0} {
+					# TODO check that object has inner location
+				} elseif {[string is integer $d]} {
+					# TODO check that object exists
+				} else {
+					if {[lsearch -nocase $valid_dir $d] == -1} {
+						return [list -1 "MOVE: Invalid direction: $d"]
+					}
+				}
+			}
 			return 0
 		}
 
