@@ -3586,7 +3586,7 @@ pack .t.fR.screen  -side right  -fill both -expand 1
 .t.pwLeft add [text .t.tDesc -width 42 -height 9]
 
 .t.pwLeft add [frame .t.fMarket]
-pack [ttk::treeview .t.fMarket.tv -show tree \
+pack [ttk::treeview .t.fMarket.tv -show tree -height 7 \
 -yscrollcommand ".t.fMarket.vs set"] -side left -expand 1 -fill both
 pack [scrollbar .t.fMarket.vs -command ".t.fMarket.tv yview" \
 -orient vertical] -side left -fill y
@@ -3603,7 +3603,7 @@ if {$tcl_platform(os) eq "Linux"} {
 	.t.cbMyUnits configure -width 36
 }
 
-.t.pwLeft add [ttk::treeview .t.tvItems -show tree]
+.t.pwLeft add [ttk::treeview .t.tvItems -show tree -height 3]
 
 # next, unit items (text + scrollbar)
 pack [frame .t.fItems] -side top -in .t.fLunitOrders -expand 1 -fill both
@@ -3614,7 +3614,7 @@ pack [scrollbar .t.fItems.vs -command ".t.fItems.t yview" \
 -orient vertical] -side left -fill y
 
 # next, orders box
-.t.pwLeft add [text .t.tOrd -width 42 -height 9 -undo 1]
+.t.pwLeft add [text .t.tOrd -width 42 -height 9 -undo 1] -weight 1
 
 ### bindings
 ## canvas
