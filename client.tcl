@@ -1216,6 +1216,20 @@ proc saveSettings {} {
 	}
 }
 
+proc createGuiTables {} {
+	db eval {
+		CREATE TABLE gui(
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			name TEXT not null unique on conflict replace,
+			val TEXT not null
+		);
+		INSERT INTO gui(name, val) VALUES(
+			"WINDOWS",
+			""
+		)
+	}
+}
+
 proc newGame {} {
 	set types {
 		{{Game Database} {.db}}
@@ -1228,6 +1242,8 @@ proc newGame {} {
 
 	saveSettings
 	createDb $ofile
+	createGuiTables
+
 	.t.fR.screen delete all
 	enableMenus
 }
@@ -1253,17 +1269,7 @@ proc doOpen {} {
 		SELECT name FROM sqlite_master
 		WHERE type = "table" AND name = "gui"
 		}] eq ""} {
-			db eval {
-				CREATE TABLE gui(
-				   id INTEGER PRIMARY KEY AUTOINCREMENT,
-				   name TEXT not null unique on conflict replace,
-				   val TEXT not null
-				);
-				INSERT INTO gui(name, val) VALUES(
-				   "WINDOWS",
-				   ""
-				)
-			}
+			createGuiTables
 	}
 
 	set gui::viewLevel 1
