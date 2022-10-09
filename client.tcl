@@ -1238,6 +1238,11 @@ proc newGame {} {
 	set ofile [tk_getSaveFile -filetypes $types]
 	if {$ofile eq ""} { return }
 
+	# make sure file ends in .db (Windows, I'm looking at you)
+	if {[file extension $ofile] eq ""} {
+		append ofile ".db"
+	}
+
 	wm title .t "True Atlanteans - [file tail $ofile]"
 
 	saveSettings
