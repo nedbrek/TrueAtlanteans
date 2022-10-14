@@ -122,14 +122,23 @@ proc saveWindow {db t children} {
 
 ##############################################################################
 ### Atlantis specific utilities
+# z levels can be discontiguous (e.g. 1,2,10,20,30)
 proc getZlevel {} {
-	set zlevel [expr {$gui::viewLevel - 1}]
 	set zList [::db eval {select distinct z from terrain order by cast(z as integer)}]
-	if {$zlevel > [llength $zList]} {
-		return 1
+	if {$gui::viewLevel > [llength $zList]} {
+		set gui::viewLevel 0
 	}
 
-	return [lindex $zList $zlevel]
+	return [lindex $zList $gui::viewLevel]
+}
+
+proc setZlevel {new_z} {
+	set zList [::db eval {select distinct z from terrain order by cast(z as integer)}]
+	set max [tcl::mathfunc::max {*}$zlist]
+	if {$new_z > $max} {
+		set new_z $max
+	}
+	set gui::viewLevel [lsearch $zlist $new_z]
 }
 
 ##############################################################################
@@ -213,7 +222,7 @@ proc plot_hex_num {obj x y} {
 	set hexId [plot_hex_full $obj [col2x $x] [row2y $y]]
 
 	set tags [$obj itemcget $hexId -tags]
-	lappend tags [format "hex_%d_%d" $x $y]
+	lappend tags [format "hex_%d_%d" $x $y] "pos_hex"
 	$obj itemconfigure $hexId -tags $tags
 	return $hexId
 }
@@ -233,7 +242,7 @@ proc plot_left_neg_hex {obj col row} {
 
 	# tag it with original x,y
 	set tags [$obj itemcget $hex_id -tags]
-	lappend tags [format "hex_%d_%d" $col $row]
+	lappend tags [format "hex_%d_%d" $col $row] "neg_hex"
 	$obj itemconfigure $hex_id -tags $tags
 	return $hex_id
 }
@@ -1144,7 +1153,7 @@ proc dnLevel {} {
 }
 
 proc upLevel {} {
-	if {$gui::viewLevel > 1} {
+	if {$gui::viewLevel > 0} {
 		incr gui::viewLevel -1
 		drawDB .t.fR.screen db
 	}
@@ -1303,6 +1312,7 @@ proc doOpen {} {
 
 	drawDB .t.fR.screen db
 	enableMenus
+	selectFirstHex
 
 	set has_battles [db onecolumn {SELECT count(val) FROM events WHERE type = "BATTLE"}]
 	if {$has_battles} {
@@ -1461,20 +1471,61 @@ proc calcTaxers {} {
 	tk_messageBox -message "[expr ($maxTax+49)/50] taxmen"
 }
 
+proc selectUnit {x y z name} {
+	set zlevel [getZlevel]
+	if {$zlevel ne $z} {
+		if {$z eq ""} {set z 1}
+		setZlevel $z
+		drawDB .t.fR.screen db
+		update idletasks
+	}
+	selectRegion .t.fR.screen $x $y [expr {$z == 0}]
+	.t.cbMyUnits set $name
+	showUnit $name
+}
+
+proc selectFirstHex {} {
+	set res [db eval {
+		SELECT detail.x, detail.y, detail.z,
+		       units.uid, units.name, skillLevel(units.skills, "FORC") as skill
+		FROM detail JOIN units ON detail.id=units.regionId
+		WHERE detail.turn=$::currentTurn and units.detail='own' AND
+		   (countItem(units.items, "FLEAD") > 0 OR countItem(units.items, "LEAD") > 0)
+		ORDER BY skill DESC LIMIT 1
+	}]
+
+	if {$res ne ""} {
+		foreach {x y z uid name sl} $res {}
+		selectUnit $x $y $z [format {%s (%d)} $name $uid]
+		centerHex .t.fR.screen $x $y
+		return
+	}
+
+	# just grab the first unit
+	set res [db eval {
+		SELECT detail.x, detail.y as y, detail.z as z,
+		       units.uid as uid, units.name
+		FROM detail JOIN units ON detail.id=units.regionId
+		WHERE detail.turn=$::currentTurn and units.detail='own' AND
+		   ()
+		ORDER BY uid DESC LIMIT 1
+	}]
+	if {$res eq ""} {
+		# no units
+		return
+	}
+	foreach {x y z uid name} $res {}
+	selectUnit $x $y $z [format {%s (%d)} $name $uid]
+	centerHex .t.fR.screen $x $y
+}
+
 proc selectUnitFromList {w} {
 	set i [lindex [$w curselection] 0]
 	set str [$w get $i]
 	regexp {^(.+) \(([[:digit:]]+),([[:digit:]]+),?([[:digit:]]*)\)$} \
 	  $str -> name x y z
-	set zlevel [getZlevel]
-	if {$zlevel ne $z} {
-		if {$z eq ""} {set z 1}
-		set gui::viewLevel $z
-		drawDB .t.fR.screen db
-	}
-	selectRegion .t.fR.screen $x $y
-	.t.cbMyUnits set $name
-	showUnit $name
+
+	selectUnit $x $y $z $name
 }
 
 proc selectUnitFromView {w} {
@@ -1518,7 +1569,7 @@ proc selectUnitFromView {w} {
 
 	if {$zlevel ne $z} {
 		# change level
-		set gui::viewLevel $z
+		setZlevel $z
 		drawDB .t.fR.screen db
 		# must select region
 		selectRegion .t.fR.screen $x $y [expr {$z == 0}]
@@ -1591,7 +1642,7 @@ proc selectRegionFromList {w} {
 	set zlevel [getZlevel]
 	if {$zlevel ne $z} {
 		if {$z eq ""} {set z 1}
-		set gui::viewLevel $z
+		setZlevel $z
 		drawDB .t.fR.screen db
 	}
 
@@ -2861,7 +2912,7 @@ proc keyCenter {w} {
 }
 
 proc centerHex {w x y} {
-	lassign [$w bbox [format "hex_%d_%d" $x $y]] x1 y1 x2 y2
+	lassign [$w bbox [format "hex_%d_%d && !neg_hex" $x $y]] x1 y1 x2 y2
 
 	centerCanvas $w [expr {($x1+$x2)/2.}] [expr {($y1+$y2)/2.}]
 }
@@ -2879,8 +2930,8 @@ proc centerCanvas {w cx cy} {
 	lassign [$w yview] top btm
 	lassign [$w xview] left right
 
-	set xpos [expr {$cx / $xmax - ($right - $left) / 2.0}]
-	set ypos [expr {$cy / $ymax - ($btm - $top)    / 2.0}]
+	set xpos [expr {($cx - $xmin) / ($xmax - $xmin) - ($right - $left) / 2.0}]
+	set ypos [expr {($cy - $ymin) / ($ymax - $ymin) - ($btm - $top)    / 2.0}]
 
 	$w xview moveto $xpos
 	$w yview moveto $ypos
