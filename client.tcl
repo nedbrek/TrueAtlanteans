@@ -134,11 +134,11 @@ proc getZlevel {} {
 
 proc setZlevel {new_z} {
 	set zList [::db eval {select distinct z from terrain order by cast(z as integer)}]
-	set max [tcl::mathfunc::max {*}$zlist]
+	set max [tcl::mathfunc::max {*}$zList]
 	if {$new_z > $max} {
 		set new_z $max
 	}
-	set gui::viewLevel [lsearch $zlist $new_z]
+	set gui::viewLevel [lsearch $zList $new_z]
 }
 
 ##############################################################################
