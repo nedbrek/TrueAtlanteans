@@ -3154,8 +3154,9 @@ proc formUnit {} {
 	if {$turn != $::currentTurn} { return }
 
 	set ret [getBuyRace $sells $peasants]
-	set maxRace [lindex $ret 0]
+	set max_list [lindex $ret 0]
 	set raceList [lindex $ret 1]
+	set maxRace [lindex $max_list 0]
 
 	# get units in hex
 	set rdata [db eval {

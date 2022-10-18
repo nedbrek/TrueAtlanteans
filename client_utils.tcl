@@ -438,9 +438,9 @@ proc writeOrders {fname} {
 }
 
 proc getBuyRace {sells peasants} {
-	set maxRace 0
-	set raceList [list]
-	set price 0
+	set maxList   [list]
+	set raceList  [list]
+	set priceList [list]
 
 	foreach {saleItem cost} $sells {
 		set race [string trim [lindex $saleItem end] {[]}]
@@ -455,11 +455,11 @@ proc getBuyRace {sells peasants} {
 		set ct [lindex $saleItem 0]
 
 		lappend raceList [join [lrange $saleItem 1 end]]
-		set maxRace [expr {max($maxRace, $ct)}]
-		set price $cost
+		lappend maxList $ct
+		lappend priceList $cost
 	}
 
-	return [list $maxRace $raceList $price]
+	return [list $maxList $raceList $priceList]
 }
 
 proc getUnitObjects {id} {

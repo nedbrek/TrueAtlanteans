@@ -273,7 +273,9 @@ itcl::body SitRep::buyGuards {budget claim x y z taxers} {
 	incr taxersNeeded -$taxers
 
 	set ret [getBuyRace $sells $peasants]
-	foreach {maxRace raceList price} $ret {}
+	foreach {max_list raceList price_list} $ret {}
+	set maxRace [lindex $max_list 0]
+	set price [lindex $price_list 0]
 
 	regexp {\[(.+)\]} [lindex $raceList 0] -> abbr
 
@@ -904,7 +906,9 @@ proc processRegion {sitRep rid} {
 		foreach {regionId sells peasants maxTax} $rdata {}
 
 		set ret [getBuyRace $sells $peasants]
-		foreach {maxRace raceList price} $ret {}
+		foreach {max_list raceList price_list} $ret {}
+		set maxRace [lindex $max_list 0]
+		set price [lindex $price_list 0]
 		if {![regexp {\[(.+)\]} [lindex $raceList 0] -> abbr]} {
 			set abbr ""
 		}
