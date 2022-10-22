@@ -152,7 +152,7 @@ proc createDb {filename} {
 	::db eval {
 		INSERT INTO settings
 		(id, version, player_id, player_pass, geom_top, zoom_level, view_level, forSale_open)
-		VALUES(1, 2, 0, "", "", 0, 0, 0)
+		VALUES(1, 3, 0, "", "", 0, 0, 0)
 	}
 
 	::db eval {
@@ -171,6 +171,15 @@ proc createDb {filename} {
 		type not null,
 		city not null,
 		region not null,
+		  unique(x,y,z));
+	}
+
+	::db eval {
+		CREATE TABLE gates(
+		x TEXT not null,
+		y TEXT not null,
+		z TEXT not null,
+		desc TEXT not null,
 		  unique(x,y,z));
 	}
 
@@ -342,6 +351,18 @@ proc openDb {ofile} {
 		}
 	}
 
+	if {$version == 2} {
+		::db eval {
+			CREATE TABLE gates(
+			x TEXT not null,
+			y TEXT not null,
+			z TEXT not null,
+			desc TEXT not null,
+		  	  unique(x,y,z));
+			UPDATE settings SET version = 3
+		}
+	}
+
 	registerFunctions
 
 	set ::men [db eval {select abbr from items where type="race"}]
@@ -502,6 +523,12 @@ proc updateDb {db tdata} {
 		$db eval {
 			INSERT OR REPLACE INTO terrain VALUES
 			($x, $y, $z, $ttype, $city, $region);
+		}
+
+		set gate    [dGet $r Gate]
+		$db eval {
+			INSERT OR REPLACE INTO gates VALUES
+			($x, $y, $z, $gate);
 		}
 
 		set weather [list [dGet $r WeatherOld] [dGet $r WeatherNew]]

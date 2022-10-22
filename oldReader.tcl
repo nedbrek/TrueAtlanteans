@@ -613,7 +613,9 @@ proc getRegion {f} {
 	set oldNextLine $nextLine
 	set filePtr [tell $f]
 	set v [getSection $f]
-	if {[regexp {There is a Gate here} $v]} {
+	if {[regexp {There is a Gate here \((.*)\)} $v -> gate_details]} {
+		dict set region Gate $gate_details
+
 		set oldNextLine $nextLine
 		set filePtr [tell $f]
 		set v [getSection $f]

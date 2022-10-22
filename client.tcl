@@ -917,6 +917,15 @@ proc displayRegion {x y nexus} {
 		}
 	}
 
+	set gate [db onecolumn {
+		SELECT desc
+		FROM gates
+		WHERE x=$x AND y=$y AND z=$zlevel
+	}]
+	if {$gate ne ""} {
+		$t insert end "There is a Gate here ($gate)\n"
+	}
+
 	# unit processing
 	set units [db eval {
 		SELECT id, name, uid, detail, faction
