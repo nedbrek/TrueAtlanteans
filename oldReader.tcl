@@ -818,6 +818,9 @@ proc parseBattle {f} {
 	    [regexp {Declared Attitudes} $v]} {
 		return [list "" $v]
 	}
+	if {[regexp {rises from the grave to join} $v]} {
+		return [list "" $v PREV]
+	}
 
 	set ret [dict create]
 
@@ -1067,9 +1070,13 @@ proc parseFile {f} {
 			set battle_ret [parseBattle $f]
 			set battle [lindex $battle_ret 0]
 			while {$battle ne ""} {
-				lappend battleList $battle
+				set tmp_battle $battle
 				set battle_ret [parseBattle $f]
 				set battle [lindex $battle_ret 0]
+				if {[lindex $battle_ret 2] eq "PREV"} {
+					dict lappend tmp_battle RAW [lindex $battle_ret 1]
+				}
+				lappend battleList $tmp_battle
 			}
 			dict set turn "Battles" $battleList
 
