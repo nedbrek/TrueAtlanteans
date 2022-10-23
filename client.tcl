@@ -1346,6 +1346,7 @@ proc doAdd {} {
 	if {$has_battles} {
 		tk_messageBox -message "You have battles this turn"
 	}
+	selectFirstHex
 }
 
 proc drawMarkers {w db} {
@@ -1515,8 +1516,7 @@ proc selectFirstHex {} {
 		SELECT detail.x, detail.y as y, detail.z as z,
 		       units.uid as uid, units.name
 		FROM detail JOIN units ON detail.id=units.regionId
-		WHERE detail.turn=$::currentTurn and units.detail='own' AND
-		   ()
+		WHERE detail.turn=$::currentTurn and units.detail='own'
 		ORDER BY uid DESC LIMIT 1
 	}]
 	if {$res eq ""} {
