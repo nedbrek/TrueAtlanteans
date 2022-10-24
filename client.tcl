@@ -491,6 +491,7 @@ proc copyTree {w} {
 	}
 }
 bind Treeview <Control-c> {copyTree %W}
+bind Treeview <Home> {%W see {}}
 
 proc saveUnitOrders {unit_id w} {
 	if {![$w edit modified]} {
