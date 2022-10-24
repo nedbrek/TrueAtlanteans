@@ -642,9 +642,6 @@ proc showUnit {name} {
 	set fact        [lindex $data 6]
 	set desc        [lindex $data 7]
 
-	# fill the items box (stick skills in too)
-	set tv .t.tvItems
-
 	if {$is_current} {
 		set data [db eval {
 			SELECT type, val
@@ -749,6 +746,9 @@ proc showUnit {name} {
 	} elseif {$v eq "FLY"} {
 		$t insert end "Flying spoils\n"
 	}
+
+	# fill the items box (stick skills in too)
+	set tv .t.tvItems
 
 	set par [$tv insert {} end -text "Skills" -open 1]
 	if {$skills eq ""} {
@@ -3675,7 +3675,11 @@ if {$tcl_platform(os) eq "Linux"} {
 	.t.cbMyUnits configure -width 36
 }
 
-.t.pwLeft add [ttk::treeview .t.tvItems -show tree -height 3]
+.t.pwLeft add [frame .t.fSkills]
+pack [ttk::treeview .t.tvItems -show tree -height 3 \
+-yscrollcommand ".t.fSkills.vs set"] -in .t.fSkills -expand 1 -fill both -side left
+pack [scrollbar .t.fSkills.vs -command ".t.tvItems yview" \
+-orient vertical] -side left -fill y -side left
 
 # next, unit items (text + scrollbar)
 pack [frame .t.fItems] -side top -in .t.fLunitOrders -expand 1 -fill both
