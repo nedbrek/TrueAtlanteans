@@ -820,7 +820,7 @@ proc parseBattle {f} {
 	    [regexp {Declared Attitudes} $v]} {
 		return [list "" $v]
 	}
-	if {[regexp {rises from the grave to join} $v]} {
+	if {[regexp {rises? from the grave to } $v]} {
 		return [list "" $v PREV]
 	}
 
