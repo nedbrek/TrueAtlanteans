@@ -2046,6 +2046,8 @@ proc showKeepOuts {} {
 		pack [frame $t.fBot] -side top
 		pack [button $t.fBot.bOk -text "Ok" -command [list saveKeepOuts $t]] -side left
 		pack [button $t.fBot.bCancel -text "Cancel" -command [list destroy $t]] -side left
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
 	} else {
 		raise $t
 	}
@@ -2053,13 +2055,36 @@ proc showKeepOuts {} {
 	$t.fTop.tv delete [$t.fTop.tv children {}]
 
 	# configure all the columns
+	# check for existing settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VAL]
+		if {[llength $widths] != 2} {
+			set widths {20 88 88 88}
+		}
+	} else {
+		set widths {20 88 88 88}
+		set tv $t.fTop.tv
+	}
+
 	set cols ""
 	for {set i 1} {$i <= 3} {incr i} { lappend cols $i }
-	$t.fTop.tv configure -columns $cols
+	$tv configure -columns $cols
 
-	$t.fTop.tv heading 1 -text "x"
-	$t.fTop.tv heading 2 -text "y"
-	$t.fTop.tv heading 3 -text "z"
+	$tv column #0 -width [lindex $widths 0]
+	for {set i 1} {$i < [llength $widths]} {incr i} {
+		$tv column $i -width [lindex $widths $i]
+	}
+
+	$tv heading 1 -text "x"
+	$tv heading 2 -text "y"
+	$tv heading 3 -text "z"
 
 	set keep_out [::db onecolumn { SELECT val FROM notes WHERE key="keep_out"}]
 	foreach coords [lsort -integer -index 2 [lsort -integer -index 0 [lsort -integer -index 1 $keep_out]]] {
