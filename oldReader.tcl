@@ -775,7 +775,13 @@ proc parseItem {v} {
 		return $d
 	}
 
-	set type [lindex $l1 end]
+	set type_index "end"
+	set tmp [lsearch $l1 "and"]
+	if {$tmp != -1} {
+		set type_index [expr {$tmp - 1}]
+	}
+
+	set type [lindex $l1 $type_index]
 	dict set d Type $type
 	switch $type {
 		monster {

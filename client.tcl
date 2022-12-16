@@ -3645,7 +3645,7 @@ menu .mTopMenu.mData -tearoff 0
 # help menu
 menu .mTopMenu.mHelp -tearoff 0
 .mTopMenu add cascade -label "Help" -menu .mTopMenu.mHelp -underline 0
-.mTopMenu.mHelp add command -label "Version" -command {tk_messageBox -message "0.2"} -underline 0
+.mTopMenu.mHelp add command -label "Version" -command {tk_messageBox -message "0.3"} -underline 0
 
 .t configure -menu .mTopMenu
 
