@@ -2947,7 +2947,11 @@ proc keyCenter {w} {
 }
 
 proc centerHex {w x y} {
-	lassign [$w bbox [format "hex_%d_%d && !neg_hex" $x $y]] x1 y1 x2 y2
+	set bbox [$w bbox [format "hex_%d_%d && !neg_hex" $x $y]]
+	if {$bbox eq ""} {
+		set bbox [$w bbox [format "nexus_%d_%d && !neg_hex" $x $y]]
+	}
+	lassign $bbox x1 y1 x2 y2
 
 	centerCanvas $w [expr {($x1+$x2)/2.}] [expr {($y1+$y2)/2.}]
 }
