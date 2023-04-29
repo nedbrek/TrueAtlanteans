@@ -385,7 +385,10 @@ proc rampFirstHex {sitRep units} {
 		set max_jumps [::db onecolumn { SELECT val FROM notes WHERE key="jump"}]
 		if {$max_jumps eq ""} { set max_jumps 0 }
 		set num_jumps [::db onecolumn { SELECT val FROM notes WHERE key="num_jumps"}]
-		if {$num_jumps eq ""} { set num_jumps 0 }
+		if {$num_jumps eq ""} {
+			set num_jumps 0
+			::db eval { INSERT INTO notes VALUES("num_jumps", 0) }
+		}
 
 		# examine surrounding terrain
 		set ct_plain 0
