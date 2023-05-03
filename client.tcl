@@ -2923,6 +2923,8 @@ proc saveOrders {} {
 
 proc importMap {} {
 	set fname [tk_getOpenFile]
+	if {$fname eq ""} { return }
+
 	set regions [readMap $fname]
 	importRegionData db $regions
 	drawDB .t.fR.screen db
