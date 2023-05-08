@@ -2351,19 +2351,23 @@ proc showSkills {} {
 	# build the window
 	set t .tShowSkills
 
-	if {![winfo exists $t]} {
-		toplevel $t
-		wm title $t "Skill Viewer"
-		pack [frame $t.fTop] -side top -expand 1 -fill both
-
-		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
-		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
-
-		pack $t.fTop.vs -side right -fill y
-		pack $t.fTop.tv -side left -expand 1 -fill both
-
-		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
+	if {[winfo exists $t]} {
+		raise $t
+		return
 	}
+
+	toplevel $t
+	wm title $t "Skill Viewer"
+	pack [frame $t.fTop] -side top -expand 1 -fill both
+
+	scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+	ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+	pack $t.fTop.vs -side right -fill y
+	pack $t.fTop.tv -side left -expand 1 -fill both
+
+	wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
+
 	$t.fTop.tv delete [$t.fTop.tv children {}]
 
 	# configure all the columns
