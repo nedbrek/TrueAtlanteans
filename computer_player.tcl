@@ -829,17 +829,23 @@ proc processRegion {sitRep rid} {
 		advanceLeaders $leader $units
 	}
 
+	# if all couriers
 	if {![$sitRep cget -is_end_game] && [llength $units] == [llength $couriers]} {
+		# if not staying
 		if {[checkStay $rid $x $y $z]} {
 			set new_dir [selectNewHex $sitRep $x $y $z]
 			if {$new_dir eq ""} {
 				return
 			}
 
+			# TODO move each courier in a new direction
 			foreach u $units {
-				set unit_id [$u cget -db_id]
 				set ol [$u cget -orders]
+				# TODO if the only order is FORM NEW, it's ok to move
+				if {$ol ne ""} { continue }
+
 				lappend ol "MOVE $new_dir"
+				set unit_id [$u cget -db_id]
 				db eval {
 					UPDATE units SET orders=$ol
 					WHERE id=$unit_id
@@ -898,6 +904,7 @@ proc processRegion {sitRep rid} {
 	}
 
 	# consider expansion
+	# if no remaining guards to buy
 	if {$rem == 0} {
 		set courier_id ""
 		set rdata [db eval {
@@ -910,6 +917,7 @@ proc processRegion {sitRep rid} {
 
 		set ret [getBuyRace $sells $peasants]
 		foreach {max_list raceList price_list} $ret {}
+
 		set maxRace [lindex $max_list 0]
 		set price [lindex $price_list 0]
 		if {![regexp {\[(.+)\]} [lindex $raceList 0] -> abbr]} {
@@ -994,11 +1002,15 @@ proc processRegion {sitRep rid} {
 					$form_unit configure -orders $ol
 				}
 			} elseif {![$sitRep cget -is_end_game]} {
-				set u [lindex $couriers 0]
-				set ol [$u cget -orders]
-				lappend ol "MOVE $new_dir"
-				$u configure -orders $ol
-				set courier_id [$u cget -num]
+				foreach u $couriers {
+					# TODO if only order is FORM NEW it's ok to move
+					set ol [$u cget -orders]
+					set courier_id [$u cget -num]
+					if {$ol ne ""} { continue }
+
+					lappend ol "MOVE $new_dir"
+					$u configure -orders $ol
+				}
 			}
 		}
 
@@ -1136,25 +1148,34 @@ itcl::body SitRep::createOrders {} {
 	while {!$is_end_game && [llength $couriers]} {
 		# move the furthest courier towards his closest region
 		set furthest_idx [lindex [lsort -integer -decreasing -indices $cmin_dists] 0]
-		set dist [lindex $cmin_dists $furthest_idx]
+		set u [lindex $couriers $furthest_idx]
+
+		# pull distances before remove
+		set dist  [lindex $cmin_dists $furthest_idx]
 		set dists [lindex $courier_dists $furthest_idx]
+
+		# remove courier
+		set couriers      [lreplace $couriers      $furthest_idx $furthest_idx]
+		set courier_dists [lreplace $courier_dists $furthest_idx $furthest_idx]
+		set cmin_dists    [lreplace $cmin_dists    $furthest_idx $furthest_idx]
+
+		set ol [$u cget -orig_orders]
+		# TODO make sure filterInstantOrders has removed FORM NEW
+		if {$ol ne ""} {
+			continue
+		}
+
 		set city_idx [lsearch -integer $dists $dist]
 		set loc [lindex $tax_regions $city_idx]
 
-		set u [lindex $couriers $furthest_idx]
 		$u moveTo {*}$loc
 
 		set unit_id [$u cget -db_id]
-		set ol [$u cget -orig_orders]
 
 		db eval {
 			UPDATE units SET orders=$ol
 			WHERE id=$unit_id
 		}
-
-		set couriers [lreplace $couriers $furthest_idx $furthest_idx]
-		set courier_dists [lreplace $courier_dists $furthest_idx $furthest_idx]
-		set cmin_dists [lreplace $cmin_dists $furthest_idx $furthest_idx]
 	}
 }
 
