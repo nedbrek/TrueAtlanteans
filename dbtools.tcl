@@ -93,7 +93,10 @@ proc curProduce {rid maxProducts} {
 
 proc countItem {ils item} {
 	foreach il $ils {
-		if {[lindex $il 2] eq [format {[%s]} $item]} {
+		if {[string compare -nocase [lindex $il 2] [format {[%s]} $item]] == 0} {
+			return [lindex $il 0]
+		}
+		if {[string compare -nocase [lindex $il 1] $item] == 0} {
 			return [lindex $il 0]
 		}
 	}
