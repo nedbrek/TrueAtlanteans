@@ -1188,7 +1188,7 @@ proc parseFile {f} {
 
 	# orders template
 	# faction number and pass
-	set v [getSection $f]
+	set v [split [getSection $f]]
 	if {[lindex $v 0] ne "#atlantis"} {
 		dict set turn Regions $regions
 		return $turn
