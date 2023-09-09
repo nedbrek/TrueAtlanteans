@@ -624,6 +624,7 @@ proc getRegion {f} {
 	while {![eof $f] &&
 		    ([lindex $v 0] eq "-" ||
 	       [lindex $v 0] eq "*" ||
+	       [lindex $v 0] eq ":" ||
 	       [lindex $v 0] eq "%" ||
 	       [lindex $v 0] eq "+")} {
 
