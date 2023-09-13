@@ -945,14 +945,20 @@ proc parseFile {f} {
 	# Faction Name (number) (War n,Trade n, Magic n)
 	if {![regexp {([^(]+) \(([[:digit:]]+)\) \(War ([[:digit:]]+), Trade ([[:digit:]]+)(, Magic ([[:digit:]]+))?\)} $v -> \
 	   fact_name fact_num war_num trade_num magic_num]} {
-			if {![regexp {([^(]+) \(([[:digit:]]+)\)} $v -> fact_name fact_num]} {
-				puts "Error parsing faction name '$v'"
-				exit 1
+			if {[regexp {([^(]+) \(([[:digit:]]+)\) \(Martial ([[:digit:]]+)(, Magic ([[:digit:]]+))?\)} $v -> \
+	   fact_name fact_num martial_num magic_num]} {
+				set war_num $martial_num
+				set trade_num $martial_num
+			} else {
+				if {![regexp {([^(]+) \(([[:digit:]]+)\)} $v -> fact_name fact_num]} {
+					puts "Error parsing faction name '$v'"
+					exit 1
+				}
+				# no faction points
+				set war_num 0
+				set trade_num 0
+				set magic_num 0
 			}
-			# no faction points
-			set war_num 0
-			set trade_num 0
-			set magic_num 0
 	}
 
 	dict set turn FactName $fact_name
