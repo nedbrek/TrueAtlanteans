@@ -435,12 +435,12 @@ proc drawDB {w db} {
 	set zlevel [getZlevel]
 
 	set data [$db eval {
-			SELECT x, y, type, city, detail.turn, detail.id, detail.exitDirs
-			FROM terrain left outer join detail
-			USING(x,y,z)
-			WHERE z=$zlevel
-			GROUP BY terrain.x, terrain.y, terrain.z
-			ORDER BY detail.turn
+			SELECT x, y, turn, id, exitDirs
+			FROM detail a
+			WHERE z=$zlevel AND turn = (
+			    SELECT max(turn) FROM detail
+			    WHERE x=a.x AND y=a.y AND z=a.z
+			)
 	}]
 
 	if {$zlevel == 0} {
@@ -449,12 +449,48 @@ proc drawDB {w db} {
 	}
 
 	set half_x [expr {$::max_x / 2}]
-	foreach {col row type city ct rid exitDirs} $data {
-		if {[info exists drawn($col,$row)]} {continue} 
-		set drawn($col,$row) ""
+	foreach {col row ct rid exitDirs} $data {
+		set terrain_data [db eval {
+			SELECT type, city FROM terrain
+			WHERE x=$col AND y=$row AND z=$zlevel
+		}]
+		foreach {type city} $terrain_data {}
+
 		set data_row [list $col $row $type $city $ct $rid $exitDirs]
 
 		set hex_id [plot_hex_num $w $col $row]
+		if {$ct == $::currentTurn && ![info exists decorate($col,$row)]} {
+			decorateHex $w $db $hex_id $data_row
+			set decorate($col,$row) ""
+			set drawn($col,$row) ""
+
+			if {$col >= $half_x} {
+				set hex_id [plot_left_neg_hex $w $col $row]
+				decorateHex $w $db $hex_id $data_row
+			}
+		}
+
+		if {[info exists drawn($col,$row)]} {continue}
+		set drawn($col,$row) ""
+
+		decorateHex $w $db $hex_id $data_row
+
+		if {$col >= $half_x} {
+			set hex_id [plot_left_neg_hex $w $col $row]
+			decorateHex $w $db $hex_id $data_row
+		}
+	}
+
+	set data [$db eval {
+			SELECT x, y, type, city FROM terrain
+			WHERE z=$zlevel
+	}]
+	foreach {col row type city} $data {
+		if {[info exists drawn($col,$row)]} {continue}
+		set drawn($col,$row) ""
+
+		set hex_id [plot_hex_num $w $col $row]
+		set data_row [list $col $row $type $city "" "" ""]
 		decorateHex $w $db $hex_id $data_row
 
 		if {$col >= $half_x} {
@@ -468,7 +504,7 @@ proc drawDB {w db} {
 			for {set x 0} {$x < $::max_x} {incr x} {
 				set col $x
 				set row [expr {($x & 1) ? $y + 1 : $y}]
-				if {[info exists drawn($col,$row)]} {continue} 
+				if {[info exists drawn($col,$row)]} {continue}
 				set drawn($col,$row) ""
 
 				set hexId [plot_hex_num $w $col $row]
@@ -2469,7 +2505,7 @@ proc checkOrder {u o x y z ctxt} {
 	set op $o
 	set c [lindex $op 0]
 	switch -nocase $c {
-		declare { 
+		declare {
 			# change diplomatic stance
 			# TODO use a dialog
 			return 0
