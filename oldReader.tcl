@@ -1201,7 +1201,11 @@ proc parseFile {f} {
 		return $turn
 	}
 	dict set turn PlayerNum [lindex $v 1]
-	dict set turn PlayerPass [lindex $v 2]
+	set pass [lindex $v 2]
+	if {[string index $pass 0] == "\""} {
+		set pass [string range $pass 1 end-1]
+	}
+	dict set turn PlayerPass $pass
 
 	# orders
 	set v [getOrderSection $f]
