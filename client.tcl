@@ -1898,17 +1898,41 @@ proc showEvents {} {
 
 		pack $t.vs -side right -fill y
 		pack $t.tv -side left -expand 1 -fill both
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.tv TREEVIEW]]
 	}
 	$t.tv delete [$t.tv children {}]
 
 	# configure all the columns
+	# check for existing settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VAL]
+		if {[llength $widths] != 2} {
+			set widths [list 216 673]
+		}
+	} else {
+		set widths [list 216 673]
+		set tv $t.tv
+	}
+
 	set cols ""
 	for {set i 1} {$i <= 1} {incr i} { lappend cols $i }
-	$t.tv configure -columns $cols
+	$tv configure -columns $cols
 
-	$t.tv column 1 -width 34
-	$t.tv heading #0 -text "Unit"
-	$t.tv heading 1 -text "Event"
+	$tv column #0 -width [lindex $widths 0]
+	for {set i 1} {$i < [llength $widths]} {incr i} {
+		$tv column $i -width [lindex $widths $i]
+	}
+
+	$tv heading #0 -text "Unit"
+	$tv heading 1 -text "Event"
 
 	# populate it
 	set par ""
@@ -1920,7 +1944,7 @@ proc showEvents {} {
 		if {$par eq ""} {
 			set par [$t.tv insert {} end -text "Times Reward"]
 		}
-		$t.tv insert $par end -values [dGet $val AMT]
+		$tv insert $par end -values [dGet $val AMT]
 	}
 
 	set par ""
@@ -1930,9 +1954,9 @@ proc showEvents {} {
 		WHERE type = "ERROR"
 	} {
 		if {$par eq ""} {
-			set par [$t.tv insert {} end -text "Errors"]
+			set par [$tv insert {} end -text "Errors"]
 		}
-		$t.tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
+		$tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
 	}
 
 	set par ""
@@ -1942,9 +1966,9 @@ proc showEvents {} {
 		WHERE type = "EVENT" OR type = "SAIL"
 	} {
 		if {$par eq ""} {
-			set par [$t.tv insert {} end -text "Events"]
+			set par [$tv insert {} end -text "Events"]
 		}
-		$t.tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
+		$tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
 	}
 }
 
