@@ -2969,11 +2969,51 @@ proc checkAllOrders {} {
 		}
 	}
 	if {$ret ne ""} {
-		tk_messageBox -message [join $ret "\n"]
+		showErrors $ret
 	} else {
 		tk_messageBox -message "No errors"
 	}
 	return $ret
+}
+
+proc showErrors {err_list} {
+	# build the window
+	set t .tOrderErrors
+	if {![winfo exists $t]} {
+		toplevel $t
+		wm title $t "Errors in Orders"
+		pack [frame $t.fTop] -side top -expand 1 -fill both
+
+		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+
+		pack $t.fTop.vs -side right -fill y
+		pack $t.fTop.tv -side left -expand 1 -fill both
+
+		wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
+		bind $t.fTop.tv <g> [list giveToSel $t.fTop.tv]
+	}
+
+	# clear old contents
+	$t.fTop.tv delete [$t.fTop.tv children {}]
+
+	# pull previous settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+	} else {
+		set tv $t.fTop.tv
+	}
+
+	# populate it
+	foreach err $err_list {
+		$tv insert {} end -text $err
+	}
 }
 
 proc saveOrders {} {
