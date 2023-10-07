@@ -1947,16 +1947,16 @@ proc showEvents {} {
 		$tv insert $par end -values [dGet $val AMT]
 	}
 
-	set par ""
+	set par_err ""
 	db eval {
 		SELECT type, val
 		FROM events
 		WHERE type = "ERROR"
 	} {
-		if {$par eq ""} {
-			set par [$tv insert {} end -text "Errors"]
+		if {$par_err eq ""} {
+			set par_err [$tv insert {} end -text "Errors"]
 		}
-		$tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
+		$tv insert $par_err end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
 	}
 
 	set par ""
@@ -1965,10 +1965,14 @@ proc showEvents {} {
 		FROM events
 		WHERE type = "EVENT" OR type = "SAIL"
 	} {
-		if {$par eq ""} {
-			set par [$tv insert {} end -text "Events"]
+		if {[dGet $val SUB] eq "FORBID"} {
+			$tv insert $par_err end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
+		} else {
+			if {$par eq ""} {
+				set par [$tv insert {} end -text "Events"]
+			}
+			$tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
 		}
-		$tv insert $par end -text [dGet $val UNIT] -values [list [dGet $val DESC]]
 	}
 }
 
