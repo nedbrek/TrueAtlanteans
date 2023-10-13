@@ -3281,6 +3281,24 @@ proc formTaxers {regionId} {
 	return [expr {min($taxersNeeded, $maxBuy)}]
 }
 
+proc applyOrderTemplate {} {
+	set t .tFormUnit.fTop.cbTemplate
+	set v [$t get]
+
+	set e .tFormUnit.fTop.eName
+	set o .tFormUnit.fTop.orders
+	switch $v {
+		Guard {
+			$e delete 0 end
+			$e insert end $v
+			$o insert end "study comb\n"
+			$o insert end "turn\n"
+			$o insert end "@tax\n"
+			$o insert end "endturn\n"
+		}
+	}
+}
+
 proc formUnit {} {
 	# pull current hex info
 	set xy [getSelectionXY]
@@ -3353,8 +3371,13 @@ proc formUnit {} {
 		grid [label $t.fTop.lCt -text "Count"] -row 4 -column 0
 		grid [ttk::spinbox $t.fTop.sCt -from 0] -row 4 -column 1 -sticky we
 
-		grid [label $t.fTop.lOrders -text "Orders"] -row 5 -columnspan 2
-		grid [text $t.fTop.orders -height 24 -width 42] -row 6 -columnspan 2 -sticky nswe
+		set template_values [list "Guard"]
+		grid [ttk::combobox $t.fTop.cbTemplate -state readonly -values $template_values] -row 5 -column 0
+		grid [button $t.fTop.bTemplate -text "Apply Template" -command applyOrderTemplate] -row 5 -column 1
+		$t.fTop.cbTemplate current 0
+
+		grid [label $t.fTop.lOrders -text "Orders"] -row 6 -columnspan 2
+		grid [text $t.fTop.orders -height 24 -width 42] -row 7 -columnspan 2 -sticky nswe
 
 		grid columnconfigure $t.fTop 1 -weight 1
 
@@ -3725,6 +3748,8 @@ proc enableMenus {} {
 menu .mTopMenu.mAction -tearoff 0
 .mTopMenu add cascade -label "Action" -menu .mTopMenu.mAction -underline 0
 .mTopMenu.mAction add command -label "Mark active hexes" -command markActive -underline 0
+.mTopMenu.mAction add command -label "Form new unit" -command formUnit -underline 5
+.mTopMenu.mAction add command -label "Split unit" -command splitUnit -underline 0
 .mTopMenu.mAction add command -label "Check Orders" -command checkAllOrders -underline 0
 
 # view menu
