@@ -1913,7 +1913,7 @@ proc showEvents {} {
 		wm geometry $t [dGet $settings GEOM]
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
-		set widths [dGet $child_settings VAL]
+		set widths [dGet $child_settings VALS]
 		if {[llength $widths] != 2} {
 			set widths [list 216 673]
 		}
@@ -2004,7 +2004,7 @@ proc showBattles {} {
 		wm geometry $t [dGet $settings GEOM]
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
-		set widths [dGet $child_settings VAL]
+		set widths [dGet $child_settings VALS]
 		if {[llength $widths] != 2} {
 			set widths {200 88}
 		}
@@ -2128,7 +2128,7 @@ proc showKeepOuts {} {
 		wm geometry $t [dGet $settings GEOM]
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
-		set widths [dGet $child_settings VAL]
+		set widths [dGet $child_settings VALS]
 		if {[llength $widths] != 2} {
 			set widths {20 88 88 88}
 		}
@@ -2234,6 +2234,41 @@ proc searchUnits {} {
 	}
 }
 
+proc wrapText {t d1 col_width name pfx} {
+	set later_pfx [lrepeat [llength $pfx] ""]
+
+	set id ""
+	set final_desc ""
+	set total_w 0
+	foreach desc_sent $d1 {
+		foreach dw [split [string trim $desc_sent]] {
+			set sent_w [font measure TkDefaultFont " $dw"]
+			if {$total_w + $sent_w > $col_width} {
+				if {$id ne ""} {
+					$t.fTop.tv insert $id end -text "" -values [list {*}$later_pfx $final_desc]
+				} else {
+					append final_desc
+					set id [$t.fTop.tv insert {} end -text $name -values [list {*}$pfx $final_desc]]
+				}
+				set final_desc $dw
+				set total_w $sent_w
+			} else {
+				append final_desc " " $dw
+				incr total_w $sent_w
+			}
+		}
+		append final_desc "."
+		incr total_w [font measure TkDefaultFont "."]
+	}
+
+	if {$id ne ""} {
+		$t.fTop.tv insert $id end -text "" -values [list {*}$later_pfx $final_desc]
+	} else {
+		set id [$t.fTop.tv insert {} end -text $name -values [list {*}$pfx $final_desc]]
+	}
+	return $id
+}
+
 proc itemView {} {
 	# build the window
 	set t .tSearchItems
@@ -2265,8 +2300,8 @@ proc itemView {} {
 		wm geometry $t [dGet $settings GEOM]
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
-		set widths [dGet $child_settings VAL]
-		if {[llength $widths] != 4} {
+		set widths [dGet $child_settings VALS]
+		if {[llength $widths] < 4} {
 			set widths {200 65 79 34}
 		}
 	} else {
@@ -2302,6 +2337,8 @@ proc itemView {} {
 		set wt [dGet $desc Weight]
 		set d1 [dGet $desc Desc]
 
+		set col_width [$t.fTop.tv column 4 -width]
+
 		if {$type eq "race"} {
 			set d [parseMan $d1]
 			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [join [dGet $d DESC] "."]]]
@@ -2317,13 +2354,9 @@ proc itemView {} {
 			}
 
 		} elseif {$type eq "item"} {
-			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt $d1]]
+			set id [wrapText $t $d1 $col_width $name [list $abbr $type $wt]]
 		} else {
-			set id [$t.fTop.tv insert {} end -text $name -values [list $abbr $type $wt [lindex $d1 1]]]
-			for {set i 0} {$i < [llength $d1]} {incr i} {
-				if {$i == 1} { continue }
-				$t.fTop.tv insert $id end -text "" -values [list "" "" "" [lindex $d1 $i]]
-			}
+			set id [wrapText $t $d1 $col_width $name [list $abbr $type $wt]]
 		}
 
 		set capacity [dGet $desc Capacity]
@@ -2374,7 +2407,7 @@ proc showObjectDefs {} {
 		wm geometry $t [dGet $settings GEOM]
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
-		set widths [dGet $child_settings VAL]
+		set widths [dGet $child_settings VALS]
 		if {[llength $widths] != 2} {
 			set widths {100 65}
 		}
@@ -2444,7 +2477,7 @@ proc showSkills {} {
 		wm geometry $t [dGet $settings GEOM]
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
-		set widths [dGet $child_settings VAL]
+		set widths [dGet $child_settings VALS]
 		if {[llength $widths] != 4} {
 			set widths {100 65 79 34}
 		}
@@ -2972,9 +3005,16 @@ proc checkAllOrders {} {
 			itcl::delete object {*}$units
 		}
 	}
+
 	if {$ret ne ""} {
 		showErrors $ret
 	} else {
+		# clear old contents
+		set t .tOrderErrors
+		if {[winfo exists $t]} {
+			$t.fTop.tv delete [$t.fTop.tv children {}]
+		}
+
 		tk_messageBox -message "No errors"
 	}
 	return $ret
