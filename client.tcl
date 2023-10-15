@@ -2478,7 +2478,7 @@ proc showSkills {} {
 		set children [dGet $settings CHILDREN]
 		foreach {tv child_settings} $children {}
 		set widths [dGet $child_settings VALS]
-		if {[llength $widths] != 4} {
+		if {[llength $widths] < 4} {
 			set widths {100 65 79 34}
 		}
 	} else {
@@ -2504,15 +2504,14 @@ proc showSkills {} {
 	$t.fTop.tv heading 3 -text "Cost"
 	$t.fTop.tv heading 4 -text "Desc"
 
+	set col_width [$t.fTop.tv column 4 -width]
+
 	::db eval {
 		SELECT name, abbr, level, cost, desc
 		FROM skills
 		ORDER BY name
 	} {
-		set par [$t.fTop.tv insert {} end -text $name -values [list $abbr $level $cost ""]]
-		foreach d $desc {
-			$t.fTop.tv insert $par end -text "" -values [list "" "" "" $d]
-		}
+		wrapText $t $desc $col_width $name [list $abbr $level $cost]
 	}
 }
 
