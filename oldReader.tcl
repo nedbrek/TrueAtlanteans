@@ -763,6 +763,12 @@ proc parseItem {v} {
 	}
 	#else other items
 
+	if {[string trim $l1] eq "This item is a miscellaneous combat item"} {
+		dict set d Type "combat"
+		dict set d Desc [lrange $l 2 end]
+		return $d
+	}
+
 	if {[lindex $l1 1] eq "race"} {
 		dict set d Type race
 		dict set d Desc [lrange $l 1 end]
@@ -808,6 +814,7 @@ proc parseItem {v} {
 			dict set d Produce [lindex $l 4]
 		}
 
+		resource -
 		mount {
 			dict set d Desc [lrange $l 2 end]
 		}
@@ -815,6 +822,10 @@ proc parseItem {v} {
 		weapon {
 			dict set d Desc [lrange $l 1 end]
 			dict set d Skill [lindex $l 2]
+		}
+
+		default {
+			dict set d Error "Ned error '$l'"
 		}
 	}
 
