@@ -2163,28 +2163,6 @@ proc updateSearch {new_txt} {
 	set t .tSearchUnits
 	$t.fTop.tv delete [$t.fTop.tv children {}]
 
-	# configure all the columns
-	set cols ""
-	for {set i 1} {$i <= 5} {incr i} { lappend cols $i }
-	$t.fTop.tv configure -columns $cols
-
-	set headers {
-		40 "Id" 0
-		34 "x"  0
-		34 "y"  0
-		34 "z"  0
-		800 "Orders" 1
-	}
-	$t.fTop.tv column #0 -stretch 0
-
-	set i 1
-	foreach {w h s} $headers {
-		$t.fTop.tv column $i -width $w
-		$t.fTop.tv heading $i -text $h
-		$t.fTop.tv column $i -stretch $s
-		incr i
-	}
-
 	# populate it
 	set name [format {%%%s%%} $new_txt]
 	::db eval {
@@ -2196,12 +2174,6 @@ proc updateSearch {new_txt} {
 		$t.fTop.tv insert {} end -text $name -values [list $uid $x $y $z [join $orders ";"]]
 	}
 
-	# allow sorting
-	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
-	for {set i 1} {$i <= 3} {incr i} {
-		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i 1]
-	}
-
 	return 1
 }
 
@@ -2209,29 +2181,80 @@ proc searchUnits {} {
 	# build the window
 	set t .tSearchUnits
 
-	if {![winfo exists $t]} {
-		toplevel $t
-		wm title $t "Find Units"
-
-		# TODO allow search by id
-		pack [frame $t.fEntry] -side top -fill x
-		pack [label $t.fEntry.l -text "Unit name"] -side left
-		pack [entry $t.fEntry.e -validate key -validatecommand {updateSearch %P}] -side left -expand 1 -fill x
-
-		pack [frame $t.fTop] -side top -expand 1 -fill both
-
-		scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
-		ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
-		bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
-
-		pack $t.fTop.vs -side right -fill y
-		pack $t.fTop.tv -side left -expand 1 -fill both
-
-		# start with courier
-		$t.fEntry.e insert 0 "Courier"
-	} else {
+	if {[winfo exists $t]} {
 		raise $t
+		# TODO refresh data
+		return
 	}
+
+	toplevel $t
+	wm title $t "Find Units"
+
+	# TODO allow search by id
+	pack [frame $t.fEntry] -side top -fill x
+	pack [label $t.fEntry.l -text "Unit name"] -side left
+	pack [entry $t.fEntry.e -validate key -validatecommand {updateSearch %P}] -side left -expand 1 -fill x
+
+	pack [frame $t.fTop] -side top -expand 1 -fill both
+
+	scrollbar $t.fTop.vs -command "$t.fTop.tv yview"
+	ttk::treeview $t.fTop.tv -yscrollcommand "$t.fTop.vs set"
+	bind $t.fTop.tv <Double-1> [list selectUnitFromView %W]
+
+	pack $t.fTop.vs -side right -fill y
+	pack $t.fTop.tv -side left -expand 1 -fill both
+
+	wm protocol $t WM_DELETE_WINDOW [list saveWindow db $t [list $t.fTop.tv TREEVIEW]]
+
+	# configure all the columns
+	# check for existing settings
+	set settings [db onecolumn {
+	    SELECT val FROM gui WHERE name="WINDOWS"
+	}]
+	set settings [dGet $settings $t]
+	if {$settings ne ""} {
+		wm geometry $t [dGet $settings GEOM]
+		set children [dGet $settings CHILDREN]
+		foreach {tv child_settings} $children {}
+		set widths [dGet $child_settings VALS]
+		if {[llength $widths] < 6} {
+			set widths {177 80 64 64 34 800}
+		}
+	} else {
+		set widths {177 80 64 64 34 800}
+		set tv $t.fTop.tv
+	}
+
+	set cols ""
+	for {set i 1} {$i <= 5} {incr i} { lappend cols $i }
+	$tv configure -columns $cols
+
+	set headers {
+		"Id" 0
+		"x"  0
+		"y"  0
+		"z"  0
+		"Orders" 1
+	}
+
+	$tv heading #0 -text "Name"
+	$tv column #0 -width [lindex $widths 0] -stretch 0
+	set i 1
+	foreach {h s} $headers {
+		$tv column $i -width [lindex $widths $i]
+		$tv heading $i -text $h
+		$tv column $i -stretch $s
+		incr i
+	}
+
+	# allow sorting
+	$t.fTop.tv heading #0 -command [list sortProdList $t.fTop.tv 0 0]
+	for {set i 1} {$i <= 3} {incr i} {
+		$t.fTop.tv heading $i -command [list sortProdList $t.fTop.tv $i 1]
+	}
+
+	# start with courier
+	$t.fEntry.e insert 0 "Courier"
 }
 
 proc wrapText {t d1 col_width name pfx} {
