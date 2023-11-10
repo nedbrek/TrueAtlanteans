@@ -3256,11 +3256,14 @@ proc showAllUnits {} {
 	$tv heading $i -text [lindex $hdrs $i-1]
 	$tv heading $i -command [list sortAllUnits $tv $i 0]
 
+	set total_silv 0
 	foreach {x y z name uid items orders skills} $units {
 		if {![info exists id($x,$y,$z)]} {
 			set terrain_type [::db onecolumn {SELECT type FROM terrain WHERE x=$x AND y=$y AND z=$z}]
-			set id($x,$y,$z) [$t.fTop.tv insert {} end -text $terrain_type -values [list "" "($x,$y,$z)" "" "" ""]]
+			set hdr_cols [list "" "($x,$y,$z)" "" "" "" 0]
+			set id($x,$y,$z) [$t.fTop.tv insert {} end -text $terrain_type -values $hdr_cols]
 			$t.fTop.tv item $id($x,$y,$z) -open 1
+			set total_silv 0
 		}
 
 		set vals [list]
@@ -3291,9 +3294,16 @@ proc showAllUnits {} {
 				}
 			}
 		}
+
 		lappend vals [countMen $items]
 		lappend vals [typeMen $items]
-		lappend vals [countItem $items SILV]
+
+		set amt_silv [countItem $items SILV]
+		incr total_silv $amt_silv
+		set hdr_cols [lreplace $hdr_cols 5 5 $total_silv]
+		$t.fTop.tv item $id($x,$y,$z) -values $hdr_cols
+		lappend vals $amt_silv
+
 		lappend vals [countItemsByType $items weapon]
 		lappend vals [countItemsByType $items armor]
 		lappend vals [countItemsByType $items mount]
