@@ -2680,12 +2680,15 @@ proc checkOrder {u o x y z ctxt} {
 					set recv "new [lindex $op 2]"
 					incr i
 				}
-				if {![dict exists $units $recv]} {
+				if {[dict exists $units $recv]} {
+					set recv_obj [dict get $units $recv]
+					if {$recv eq [{*}$u cget -num]} {
+						return [list -1 "Give: Cannot give to self ('$o')"]
+					}
+				} elseif {[lsearch [dict get $ctxt Foreign] $recv] != -1 } {
+					set recv_obj ""
+				} else {
 					return [list -1 "Give with invalid receiver ('$o')"]
-				}
-				set recv_obj [dict get $units $recv]
-				if {$recv eq [{*}$u cget -num]} {
-					return [list -1 "Give: Cannot give to self ('$o')"]
 				}
 			}
 
@@ -3017,6 +3020,11 @@ proc checkAllOrders {} {
 		set ctxt [dict create]
 		dict set ctxt Units $unit_map
 		dict set ctxt UnitObj $units
+
+		dict set ctxt Foreign [db eval {
+			SELECT uid FROM units
+			WHERE regionId=$id AND detail <> 'own'
+		}]
 
 		# run claim/give before other orders
 		lappend ret {*}[checkOrderType "claim" $x $y $z $ctxt]
