@@ -141,6 +141,32 @@ proc setZlevel {new_z} {
 	set gui::viewLevel [lsearch $zList $new_z]
 }
 
+proc unitFlagsStr {flags} {
+	set ret [list]
+	foreach {f l} $gui::unitFlags {
+		set v [dGet $flags $f]
+		if {$v eq "1"} {
+			lappend ret $l
+		}
+	}
+
+	set v [dGet $flags REVEAL]
+	if {$v eq "UNIT"} {
+		lappend ret "r"
+	} elseif {$v eq "FACTION"} {
+		lappend ret "R"
+	}
+
+	set v [dGet $flags CONSUME]
+	if {$v eq "UNIT"} {
+		lappend ret "c"
+	} elseif {$v eq "FACTION"} {
+		lappend ret "C"
+	}
+
+	return $ret
+}
+
 ##############################################################################
 ### drawing
 # use 1,2,rad3 triangles
@@ -753,24 +779,7 @@ proc showUnit {name} {
 	}
 
 	$t insert end "Flags: "
-	foreach {f l} $gui::unitFlags {
-		set v [dGet $flags $f]
-		if {$v eq "1"} {
-			$t insert end "$l "
-		}
-	}
-	set v [dGet $flags REVEAL]
-	if {$v eq "UNIT"} {
-		$t insert end "r "
-	} elseif {$v eq "FACTION"} {
-		$t insert end "R "
-	}
-	set v [dGet $flags CONSUME]
-	if {$v eq "UNIT"} {
-		$t insert end "c"
-	} elseif {$v eq "FACTION"} {
-		$t insert end "C"
-	}
+	$t insert end [join [unitFlagsStr $flags] " "]
 	$t insert end "\n"
 
 	set v [dGet $flags SPOILS]
@@ -3188,7 +3197,7 @@ proc typeMen {il} {
 proc showAllUnits {} {
 	set units [db eval {
 		SELECT detail.x, detail.y, detail.z, units.name, units.uid, units.items,
-		   units.orders, units.skills
+		   units.orders, units.skills, units.flags
 		FROM detail JOIN units
 		ON detail.id=units.regionId
 		WHERE detail.turn=$::currentTurn and units.detail='own'
@@ -3224,10 +3233,10 @@ proc showAllUnits {} {
 
 	# configure all the columns
 	set hdrs {
-		"Id" "Loc" "Skills" "Men" "Type" "Silv" "Weapons" "Armor" "Horses" "Orders"
+		"Id" "Loc" "Flags" "Skills" "Men" "Type" "Silv" "Weapons" "Armor" "Horses" "Orders"
 	}
 	set widths {
-		126 54 93 87 90 81 95 78 87 94 329
+		126 54 50 93 87 90 81 95 78 87 94 329
 	}
 
 	set settings [db onecolumn {
@@ -3266,10 +3275,10 @@ proc showAllUnits {} {
 
 	set total_men 0
 	set total_silv 0
-	foreach {x y z name uid items orders skills} $units {
+	foreach {x y z name uid items orders skills flags} $units {
 		if {![info exists id($x,$y,$z)]} {
 			set terrain_type [::db onecolumn {SELECT type FROM terrain WHERE x=$x AND y=$y AND z=$z}]
-			set hdr_cols [list "" "($x,$y,$z)" "" "" "" 0]
+			set hdr_cols [list "" "($x,$y,$z)" "" "" "" "" 0]
 			set id($x,$y,$z) [$t.fTop.tv insert {} end -text $terrain_type -values $hdr_cols]
 			$t.fTop.tv item $id($x,$y,$z) -open 1
 			set total_men 0
@@ -3279,6 +3288,8 @@ proc showAllUnits {} {
 		set vals [list]
 		lappend vals $uid
 		lappend vals "($x,$y,$z)"
+		lappend vals [join [unitFlagsStr $flags] ""]
+
 		if {[llength $skills] == 1} {
 			# only one skill - easy
 			lappend vals [lindex $skills 0 3]
@@ -3315,8 +3326,8 @@ proc showAllUnits {} {
 		incr total_silv $amt_silv
 		lappend vals $amt_silv
 
-		set hdr_cols [lreplace $hdr_cols 3 3 $total_men]
-		set hdr_cols [lreplace $hdr_cols 5 5 $total_silv]
+		set hdr_cols [lreplace $hdr_cols 4 4 $total_men]
+		set hdr_cols [lreplace $hdr_cols 6 6 $total_silv]
 		$t.fTop.tv item $id($x,$y,$z) -values $hdr_cols
 
 		lappend vals [countItemsByType $items weapon]
