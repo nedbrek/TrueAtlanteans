@@ -719,12 +719,6 @@ proc parseItem {v} {
 
 	dict set d Name [lindex $sl0 0]
 
-	if {[llength $l] == 1} {
-		# simple item
-		dict set d Type item
-		return $d
-	}
-
 	set sl01 [lindex $sl0 1]
 	if {[string trim [lindex $sl01 0]] eq "weight"} {
 		dict set d Weight [lindex $sl01 end]
@@ -750,8 +744,15 @@ proc parseItem {v} {
 			exit 1
 		}
 	}
+
 	if {$carries ne ""} {
 		dict set d Capacity $carries
+	}
+
+	if {[llength $l] == 1} {
+		# simple item
+		dict set d Type item
+		return $d
 	}
 
 	set l1 [lindex $l 1]
