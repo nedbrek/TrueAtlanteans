@@ -2603,6 +2603,11 @@ proc checkOrder {u o x y z ctxt} {
 			return 0
 		}
 
+		transport {
+			# TODO
+			return 0
+		}
+
 		faction {
 			# change faction type
 			# TODO use a dialog
@@ -2808,10 +2813,15 @@ proc checkOrder {u o x y z ctxt} {
 					incr i
 					set student "new [lindex $o $i]"
 				}
-				if {![dict exists $units $student]} {
+
+				if {[dict exists $units $student]} {
+					set student_obj [dict get $units $student]
+				} elseif {[lsearch [dict get $ctxt Foreign] $student] != -1 } {
+					continue
+				} else {
 					return [list -1 "Teach with invalid student ('$o')"]
 				}
-				set student_obj [dict get $units $student]
+
 				set student_orders [{*}$student_obj cget -orders]
 				set soi [lsearch -regexp -nocase $student_orders {^study}]
 				if {$soi == -1} {
