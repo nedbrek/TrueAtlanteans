@@ -366,7 +366,7 @@ proc parseUnit {v} {
 	# what sort of report is this
 	set quality own
 	set first_char [lindex $v 0]
-	if {$first_char eq "-" || $first_char eq "%" || $first_char eq ":"} {
+	if {$first_char eq "-" || $first_char eq "%" || $first_char eq ":" || $first_char eq "="} {
 		set quality foreign
 	}
 
@@ -625,6 +625,7 @@ proc getRegion {f} {
 		    ([lindex $v 0] eq "-" ||
 	       [lindex $v 0] eq "*" ||
 	       [lindex $v 0] eq ":" ||
+	       [lindex $v 0] eq "=" ||
 	       [lindex $v 0] eq "%" ||
 	       [lindex $v 0] eq "+")} {
 
